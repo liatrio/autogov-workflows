@@ -9,7 +9,7 @@ metadata:
   tags:
     - github-actions
 spec:
-  type: service
+  type: other
   lifecycle: experimental
   owner: tag-autogov
   system: demo-gh-attest-autogov
