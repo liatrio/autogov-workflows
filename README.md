@@ -39,6 +39,6 @@ env:
 
 jobs:
     release:
-        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yamll@main
+        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@main
         secrets: inherit
 ```
