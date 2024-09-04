@@ -21,7 +21,7 @@ jobs:
         uses: anchore/sbom-action@v0
         id: generate-sbom
         with:
-          image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
+          image: ghcr.io/${{ github.repository }}@${{ needs.attest-build.outputs.image_digest }}
           format: 'cyclonedx-json'
           output-file: 'sbom.cyclonedx.json'
       - name: Generate SBOM attestation
@@ -29,7 +29,7 @@ jobs:
         id: attest-sbom
         with:
           subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ inputs.image_digest }}
+          subject-digest: ${{ needs.attest-build.outputs.image_digest }}
           sbom-path: 'sbom.cyclonedx.json'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           push-to-registry: true
@@ -88,7 +88,7 @@ jobs:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: 'metadata.json'
           subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ inputs.image_digest }}
+          subject-digest: ${{ needs.attest-build.outputs.image_digest }}
           push-to-registry: true
 
   verify:
@@ -106,7 +106,7 @@ jobs:
         run: |
           gh attestation \
           verify \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+          oci://ghcr.io/${{ github.repository }}@${{ needs.attest-build.outputs.image_digest }} \
           -o liatrio \
           --format json
 
@@ -131,7 +131,7 @@ jobs:
         run: |
           gh attestation \
           download \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+          oci://ghcr.io/${{ github.repository }}@${{ needs.attest-build.outputs.image_digest }} \
           -o liatrio
       - name: Download Policy Bundle
         run: |
@@ -142,7 +142,7 @@ jobs:
         run: |
           opa eval \
           --fail \
-          --input ${{ inputs.image_digest }}.jsonl \
+          --input ${{ needs.attest-build.outputs.image_digest }}.jsonl \
           --bundle bundle.tar.gz \
           "data.governance.all_passed" > policy-evaluation-raw.json
           cat policy-evaluation-raw.json
