@@ -38,7 +38,13 @@ env:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+    attest-build:
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@feat/isolate-attest-image-build
+
     release:
+      needs: attest-build
         uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@main
         secrets: inherit
+        inputs:
+          image_digest: ${{ needs.attest-build.outputs.image_digest }}
 ```
