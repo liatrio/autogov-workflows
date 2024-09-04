@@ -45,6 +45,4 @@ jobs:
       needs: attest-build
         uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@feat/isolate-attest-image-build
         secrets: inherit
-        inputs:
-          image_digest: ${{ needs.attest-build.outputs.image_digest }}
 ```
