@@ -7,7 +7,6 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-
   attest-sbom:
     runs-on: ubuntu-latest
     steps:

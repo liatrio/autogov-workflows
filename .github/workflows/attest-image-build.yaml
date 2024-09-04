@@ -5,12 +5,12 @@ on:
     outputs:
       image_digest:
         description: "The digest of the image that was built and pushed"
-        value: ${{ jobs.attest-build.outputs.image_digest }}
+        value: ${{ jobs.attest-build.outputs.digest }}
 
 jobs:
   attest-build:
     outputs:
-      image_digest: ${{ steps.digest.outputs.sha256 }}
+      digest: ${{ steps.digest.outputs.sha256 }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
