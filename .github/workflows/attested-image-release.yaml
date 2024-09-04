@@ -21,7 +21,7 @@ jobs:
         uses: anchore/sbom-action@v0
         id: generate-sbom
         with:
-          image: ghcr.io/${{ github.repository }}@${{ needs.attest-build.outputs.image_digest }}
+          image: ghcr.io/${{ github.repository }}@${{ needs.build.outputs.image_digest }}
           format: 'cyclonedx-json'
           output-file: 'sbom.cyclonedx.json'
       - name: Generate SBOM attestation
