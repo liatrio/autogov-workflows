@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       image_digest:
+        type: string
         description: "The digest of the image that was built and pushed"
         required: true
 
