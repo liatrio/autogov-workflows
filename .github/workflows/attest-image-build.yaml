@@ -10,7 +10,7 @@ on:
 jobs:
   attest-build:
     outputs:
-      digest: ${{ steps.digest.outputs.sha256 }}
+      image_digest: ${{ steps.digest.outputs.sha256 }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
