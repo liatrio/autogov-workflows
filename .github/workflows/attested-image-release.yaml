@@ -20,7 +20,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ env.GH_TOKEN }}
       - name: Checkout workflow repo
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
@@ -28,13 +28,28 @@ jobs:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+      - name: check workflow repo
+        id: check-workflow-repo
+        if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
+        run: |
+          echo "in_autogov_workflow_repo=true" >> "$GITHUB_ENV"
       - name: Get latest commit SHA from branch
         id: get-sha
         run: |
           COMMIT_SHA=$(git rev-parse main)
           echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
-      - name: Verify artifact attestation
-        id: verify
+      - name: Verify attestation without commit sha
+        id: verify-without-sha
+        if: ${{ env.in_autogov_workflow_repo == 'true' }}
+        run: |
+          gh attestation \
+          verify \
+          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+          -o liatrio \
+          --format json
+      - name: Verify attestation with commit sha
+        id: verify-with-sha
+        if: ${{ env.in_autogov_workflow_repo != 'true' }}
         run: |
           gh attestation \
           verify \
@@ -43,6 +58,9 @@ jobs:
           --cert-identity-regex \
           "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@$COMMIT_SHA$" \
           --format json
+
+  # haven't decided on what direction to go in regards to what to validate against / saving this as an alternative:
+  # "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@[a-f0-9]{40}$" \
 
   run-opa:
     runs-on: ubuntu-latest
@@ -55,7 +73,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ env.GH_TOKEN }}
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
@@ -142,7 +160,7 @@ jobs:
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ env.GH_TOKEN }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
       - name: Upload Release Asset
@@ -151,4 +169,4 @@ jobs:
         with:
           files: results
           tag_name: v${{ steps.go-semantic-release.outputs.version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ env.GH_TOKEN }}

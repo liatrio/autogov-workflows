@@ -1,0 +1,15 @@
+{
+  "branches": [
+    {
+      "name": "main",
+      "prerelease": "alpha"
+    }
+  ],
+  "repositoryUrl": "https://github.com/liatrio/demo-gh-autogov-workflows",
+  "debug": "true",
+  "plugins": [
+    [
+      "@semantic-release/github"
+    ]
+  ]
+}
