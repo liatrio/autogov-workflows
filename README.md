@@ -39,11 +39,11 @@ env:
 
 jobs:
     build:
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@feat/isolate-attest-image-build
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@main
 
     release:
       needs: build
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@feat/isolate-attest-image-build
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@main
       secrets: inherit
       with:
         image_digest: ${{ needs.build.outputs.image_digest }}
