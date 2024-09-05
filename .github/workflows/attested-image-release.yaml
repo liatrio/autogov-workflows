@@ -12,31 +12,6 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  attest-sbom:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Generate SBOM
-        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
-        id: generate-sbom
-        with:
-          image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
-          format: 'cyclonedx-json'
-          output-file: 'sbom.cyclonedx.json'
-      - name: Generate SBOM attestation
-        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
-        id: attest-sbom
-        with:
-          subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ inputs.image_digest }}
-          sbom-path: 'sbom.cyclonedx.json'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-to-registry: true
 
   attest-blob:
     runs-on: ubuntu-latest
