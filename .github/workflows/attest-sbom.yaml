@@ -5,14 +5,13 @@ on:
     inputs:
       image_digest:
         type: string
-        description: "The digest of the image that was built and pushed"
+        description: The digest of the image that was built and pushed
         required: true
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-
   attest-sbom:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +22,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
         id: generate-sbom
         with:
           image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}

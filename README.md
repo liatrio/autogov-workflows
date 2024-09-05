@@ -9,7 +9,7 @@
 
 ### How to Use
 
-> replace main with commit sha
+> replace <commit_sha> with the [latest tag/release commit sha](https://github.com/liatrio/demo-gh-autogov-workflows/tags)
 
 ```yaml
 name: Build, Sign, and Verify Docker Image
@@ -41,25 +41,25 @@ env:
 
 jobs:
     build:
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@main
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@<commit_sha>
 
     sbom:
       needs: build
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-sbom.yaml@main
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-sbom.yaml@<commit_sha>
       secrets: inherit
       with:
         image_digest: ${{ needs.build.outputs.image_digest }}
 
     blob:
       needs: build
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-sbom.yaml@main
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-blob.yaml@<commit_sha>
       secrets: inherit
       with:
         image_digest: ${{ needs.build.outputs.image_digest }}
 
     release:
       needs: [build, sbom, blob]
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@main
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@<commit_sha>
       secrets: inherit
       with:
         image_digest: ${{ needs.build.outputs.image_digest }}
