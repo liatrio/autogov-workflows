@@ -1,0 +1,70 @@
+name: Attested Image Release
+
+on:
+  workflow_call:
+    inputs:
+      image_digest:
+        type: string
+        description: The digest of the image that was built and pushed
+        required: true
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+
+  attest-blob:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate Metadata Attestation
+        run: |
+          echo '{
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "predicateType": "https://cosign.sigstore.dev/attestation/v1",
+            "subject": [
+              {
+                "name": "${{ github.repository }}",
+                "digest": {
+                  "sha256": "${{ github.sha }}"
+                }
+              }
+            ],
+            "predicate": {
+              "metaData": {
+                "workflowRunId": "${{ github.run_id }}",
+                "commitSHA": "${{ github.sha }}",
+                "githubServerURL": "${{ github.server_url }}",
+                "repository": "${{ github.repository }}",
+                "repositoryId": "${{ github.repository_id }}",
+                "owner": "${{ github.repository_owner }}",
+                "ownerId": "${{ github.repository_owner_id }}",
+                "actor": "${{ github.actor }}",
+                "event": "${{ github.event_name }}",
+                "ref": "${{ github.ref }}",
+                "jobId": "${{ github.job }}",
+                "runNumber": "${{ github.run_number }}",
+                "workflowRefPath": "${{ github.workflow_ref }}",
+                "action": "${{ github.action }}",
+                "runnerOS": "${{ runner.os }}",
+                "runnerName": "${{ runner.name }}",
+                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+              }
+            }
+          }' > metadata.json
+        shell: bash
+      - run: cat metadata.json | jq -r
+      - uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        with:
+          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-path: 'metadata.json'
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ inputs.image_digest }}
+          push-to-registry: true
