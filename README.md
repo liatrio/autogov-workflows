@@ -9,6 +9,8 @@
 
 ### How to Use
 
+> replace main with commit sha
+
 ```yaml
 name: Build, Sign, and Verify Docker Image
 
@@ -41,8 +43,22 @@ jobs:
     build:
       uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-image-build.yaml@main
 
-    release:
+    sbom:
       needs: build
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-sbom.yaml@main
+      secrets: inherit
+      with:
+        image_digest: ${{ needs.build.outputs.image_digest }}
+
+    blob:
+      needs: build
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attest-sbom.yaml@main
+      secrets: inherit
+      with:
+        image_digest: ${{ needs.build.outputs.image_digest }}
+
+    release:
+      needs: [build, sbom, blob]
       uses: liatrio/demo-gh-autogov-workflows/.github/workflows/attested-image-release.yaml@main
       secrets: inherit
       with:
