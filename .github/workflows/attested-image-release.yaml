@@ -5,14 +5,13 @@ on:
     inputs:
       image_digest:
         type: string
-        description: "The digest of the image that was built and pushed"
+        description: The digest of the image that was built and pushed
         required: true
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-
   attest-sbom:
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +105,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout workflow repo
+        uses: actions/checkout@v4
+        with:
+          repository: liatrio/demo-gh-autogov-workflows
+          ref: feat/improve-verify
+          fetch-depth: 0
+          token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+      - name: Get latest commit SHA from branch
+        id: get-sha
+        run: |
+          COMMIT_SHA=$(git rev-parse feat/improve-verify)
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
       - name: Verify artifact attestation
         id: verify
         run: |
@@ -113,6 +124,8 @@ jobs:
           verify \
           oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
           -o liatrio \
+          --cert-identity-regex \
+          "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@$COMMIT_SHA$" \
           --format json
 
   run-opa:
