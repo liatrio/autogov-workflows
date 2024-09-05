@@ -5,7 +5,7 @@ on:
     outputs:
       image_digest:
         description: "The digest of the image that was built and pushed"
-        value: ${{ jobs.attest-build.outputs.digest }}
+        value: ${{ jobs.attest-build.outputs.image_digest }}
 
 jobs:
   attest-build:
