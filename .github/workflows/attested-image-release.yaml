@@ -16,20 +16,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
         id: generate-sbom
         with:
           image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
           format: 'cyclonedx-json'
           output-file: 'sbom.cyclonedx.json'
       - name: Generate SBOM attestation
-        uses: actions/attest-sbom@v1
+        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
         id: attest-sbom
         with:
           subject-name: ghcr.io/${{ github.repository }}
@@ -43,9 +43,9 @@ jobs:
     needs: [attest-sbom]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -87,7 +87,7 @@ jobs:
           }' > metadata.json
         shell: bash
       - run: cat metadata.json | jq -r
-      - uses: actions/attest@v1
+      - uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         with:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: 'metadata.json'
@@ -100,22 +100,22 @@ jobs:
     needs: [attest-sbom, attest-blob]
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout workflow repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           repository: liatrio/demo-gh-autogov-workflows
-          ref: feat/improve-verify
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
       - name: Get latest commit SHA from branch
         id: get-sha
         run: |
-          COMMIT_SHA=$(git rev-parse feat/improve-verify)
+          COMMIT_SHA=$(git rev-parse main)
           echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
       - name: Verify artifact attestation
         id: verify
@@ -133,9 +133,9 @@ jobs:
     needs: [attest-sbom, attest-blob, verify]
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -166,7 +166,7 @@ jobs:
           cat policy-evaluation-raw.json
       - name: Save evaluation results as artifact
         if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: results
           path: policy-evaluation-raw.json
@@ -176,7 +176,7 @@ jobs:
     needs: [attest-sbom, attest-blob, verify, run-opa]
     steps:
       - name: Download Results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: results
           path: .
@@ -206,7 +206,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
       - name: Save evaluation results as artifact
         if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: results_artifact
           path: results
@@ -218,39 +218,15 @@ jobs:
       contents: write
     steps:
       - name: Run go-semantic-release
-        uses: go-semantic-release/action@v1
+        uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
-
-      - name: Get release
-        if: steps.go-semantic-release.outputs.version != ''
-        id: get_release
-        run: |
-          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ steps.go-semantic-release.outputs.version}}")
-          upload_url=$(echo "$response" | jq -r '.upload_url')
-          if [ "$upload_url" = "null" ]; then
-            echo "::error::Upload URL is null for the v${{steps.go-semantic-release.outputs.version }} release."
-            exit 1
-          fi
-          echo "UPLOAD_URL=$upload_url" >> $GITHUB_ENV
-
-      - name: Download policy evaluation artifact
-        if: steps.go-semantic-release.outputs.version != ''
-        uses: actions/download-artifact@v4
-        with:
-          name: results_artifact
-
       - name: Upload Release Asset
         if: steps.go-semantic-release.outputs.version != ''
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          UPLOAD_URL: ${{ env.UPLOAD_URL }}
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: results
-          asset_name: results
-          asset_content_type: application/json
+          files: results
+          token: ${{ secrets.GITHUB_TOKEN }}
