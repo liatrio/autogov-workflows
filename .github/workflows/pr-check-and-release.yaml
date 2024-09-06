@@ -1,0 +1,46 @@
+name: Pull Request Check and Release
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - '**'
+  push:
+    branches:
+      - main
+      - feat/adds-pr-check
+    paths-ignore:
+      - 'README.md'
+      - 'catalog-info.yaml'
+
+permissions:
+  id-token: write
+  attestations: write
+  packages: write
+  contents: write
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    uses: ./.github/workflows/attest-image-build.yaml
+  sbom:
+    needs: build
+    uses: ./.github/workflows/attest-sbom.yaml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.build.outputs.image_digest }}
+  blob:
+    needs: build
+    uses: ./.github/workflows/attest-blob.yaml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.build.outputs.image_digest }}
+  release:
+    needs: [build, sbom, blob]
+    uses: ./.github/workflows/attested-image-release.yaml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.build.outputs.image_digest }}
