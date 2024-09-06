@@ -12,10 +12,8 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-
   verify:
     runs-on: ubuntu-latest
-    needs: [attest-blob]
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -48,7 +46,7 @@ jobs:
 
   run-opa:
     runs-on: ubuntu-latest
-    needs: [attest-blob, verify]
+    needs: [verify]
     steps:
       - name: Check out repository code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -59,7 +57,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup OPA
-        uses: open-policy-agent/setup-opa@v2
+        uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
           version: 0.67.1
       - name: Download artifact attestation
@@ -91,7 +89,7 @@ jobs:
 
   results:
     runs-on: ubuntu-latest
-    needs: [attest-blob, verify, run-opa]
+    needs: [verify, run-opa]
     steps:
       - name: Download Results
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
@@ -131,10 +129,15 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [attest-blob, verify, results]
+    needs: [verify, results]
     permissions:
       contents: write
     steps:
+      - name: Download Results
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: results
+          path: .
       - name: Run go-semantic-release
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
@@ -147,4 +150,5 @@ jobs:
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
           files: results
+          tag_name: v${{ steps.go-semantic-release.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
