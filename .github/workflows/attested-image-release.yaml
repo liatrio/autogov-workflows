@@ -21,42 +21,25 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ env.GH_TOKEN }}
-      - name: Checkout workflow repo
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          repository: liatrio/demo-gh-autogov-workflows
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
       - name: check workflow repo
         id: check-workflow-repo
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
         run: |
-          echo "in_autogov_workflow_repo=true" >> "$GITHUB_ENV"
-      - name: Get latest commit SHA from branch
+          echo "verify_tag=.*" >> "$GITHUB_ENV"
+      - name: Get latest commit SHA from main
         id: get-sha
+        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' }}
         run: |
-          COMMIT_SHA=$(git rev-parse main)
-          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
-      - name: Verify attestation without commit sha
-        id: verify-without-sha
-        if: ${{ env.in_autogov_workflow_repo == 'true' }}
-        run: |
-          gh attestation \
-          verify \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
-          -o liatrio \
-          --format json
-      - name: Verify attestation with commit sha
-        id: verify-with-sha
-        if: ${{ env.in_autogov_workflow_repo != 'true' }}
+          echo "verify_tag=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')" >> $GITHUB_ENV
+      - name: Verify attestation
+        id: verify
         run: |
           gh attestation \
           verify \
           oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
           -o liatrio \
           --cert-identity-regex \
-          "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@$COMMIT_SHA$" \
+          "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@${{ env.verify_tag }}$" \
           --format json
 
   # haven't decided on what direction to go in regards to what to validate against / saving this as an alternative:
