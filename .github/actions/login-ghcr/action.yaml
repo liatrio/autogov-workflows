@@ -1,0 +1,15 @@
+name: 'Login to GitHub Container Registry'
+description: 'Logs into GitHub Container Registry'
+inputs:
+  gh_token:
+    description: 'GitHub Token'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.gh_token }}

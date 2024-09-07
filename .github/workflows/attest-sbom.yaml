@@ -1,4 +1,4 @@
-name: Attest SBOM
+name: Attest SBOM / Attach to Image
 
 on:
   workflow_call:
@@ -8,19 +8,16 @@ on:
         description: The digest of the image that was built and pushed
         required: true
 
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 jobs:
   attest-sbom:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: ./.github/actions/login-ghcr
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM
         uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
         id: generate-sbom
@@ -28,6 +25,8 @@ jobs:
           image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
           format: 'cyclonedx-json'
           output-file: 'sbom.cyclonedx.json'
+      - name: Log SBOM File
+        run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
         id: attest-sbom

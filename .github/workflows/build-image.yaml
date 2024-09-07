@@ -1,4 +1,4 @@
-name: Attest Image Build
+name: Build Image
 
 on:
   workflow_call:
@@ -10,7 +10,7 @@ on:
 jobs:
   attest-build:
     outputs:
-      image_digest: ${{ steps.digest.outputs.sha256 }}
+      image_digest: ${{ steps.build-image.outputs.digest }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -18,11 +18,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: ./.github/actions/login-ghcr
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Image Metadata
         id: meta
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
@@ -43,13 +41,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=oci,dest=/tmp/image.tar
-      - id: digest
-        run: echo "sha256=${{ steps.build-image.outputs.digest }}" >> "$GITHUB_OUTPUT"
-      - name: Attest Provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
-        id: attest-build-provenance
-        with:
-          subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ steps.build-image.outputs.digest }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-to-registry: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
