@@ -2,10 +2,10 @@ name: Pull Request Check and Release
 
 on:
   workflow_dispatch:
-  # pull_request:
-  #   types: [opened, synchronize, reopened]
-  #   branches:
-  #     - '**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - '**'
   push:
     branches:
       - main
@@ -23,38 +23,38 @@ jobs:
   build-image:
     uses: ./.github/workflows/build-image.yaml
   attest-image:
-    uses: ./.github/workflows/attest-image.yaml
     needs: build-image
+    uses: ./.github/workflows/attest-image.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
   attest-sbom:
-    uses: ./.github/workflows/attest-sbom.yaml
     needs: build-image
+    uses: ./.github/workflows/attest-sbom.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
   attest-blob:
-    uses: ./.github/workflows/attest-blob.yaml
     needs: build-image
+    uses: ./.github/workflows/attest-blob.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
   verify:
-    uses: ./.github/workflows/verify.yaml
     needs: [build-image, attest-image, attest-sbom, attest-blob]
+    uses: ./.github/workflows/verify.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
   run-opa:
-    uses: ./.github/workflows/run-opa.yaml
     needs: [build-image, verify]
+    uses: ./.github/workflows/run-opa.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
   release:
-    uses: ./.github/workflows/attested-image-release.yaml
     needs: [build-image, run-opa]
+    uses: ./.github/workflows/attested-image-release.yaml
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}

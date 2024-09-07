@@ -17,7 +17,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: ./.github/actions/login-ghcr
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ github.token }}
       - name: Generate SBOM
         uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
         id: generate-sbom
@@ -34,5 +34,5 @@ jobs:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ inputs.image_digest }}
           sbom-path: 'sbom.cyclonedx.json'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           push-to-registry: true

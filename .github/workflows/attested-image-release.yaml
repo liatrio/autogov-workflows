@@ -9,82 +9,6 @@ on:
         required: true
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ env.GH_TOKEN }}
-      - name: check workflow repo
-        id: check-workflow-repo
-        if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
-        run: |
-          echo "verify_tag=.*" >> "$GITHUB_ENV"
-      - name: Get latest commit SHA from main
-        id: get-sha
-        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' }}
-        run: |
-          echo "verify_tag=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')" >> $GITHUB_ENV
-      - name: Verify attestation
-        id: verify
-        run: |
-          gh attestation \
-          verify \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
-          -o liatrio \
-          --cert-identity-regex \
-          "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@${{ env.verify_tag }}$" \
-          --format json
-
-  # haven't decided on what direction to go in regards to what to validate against / saving this as an alternative:
-  # "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@[a-f0-9]{40}$" \
-
-  run-opa:
-    runs-on: ubuntu-latest
-    needs: [verify]
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ env.GH_TOKEN }}
-      - name: Setup OPA
-        uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
-        with:
-          version: 0.67.1
-      - name: Download artifact attestation
-        id: download-attestations
-        run: |
-          gh attestation \
-          download \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
-          -o liatrio
-      - name: Download Policy Bundle
-        run: |
-          asset_url=$(curl -L -H "Authorization: Bearer ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}" https://api.github.com/repos/liatrio/demo-gh-autogov-policy-library/releases/latest | jq -r '.assets[] | select(.name == "bundle.tar.gz") | .url')
-          curl -L -o bundle.tar.gz -H "Accept: application/octet-stream" -H "Authorization: Bearer ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}" $asset_url
-      - name: Run OPA Evals
-        id: run-opa-evals
-        run: |
-          opa eval \
-          --fail \
-          --input ${{ inputs.image_digest }}.jsonl \
-          --bundle bundle.tar.gz \
-          "data.governance.all_passed" > policy-evaluation-raw.json
-          cat policy-evaluation-raw.json
-      - name: Save evaluation results as artifact
-        if: success() || failure()
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-        with:
-          name: results
-          path: policy-evaluation-raw.json
-
   results:
     runs-on: ubuntu-latest
     steps:
@@ -139,7 +63,7 @@ jobs:
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
       - name: Upload Release Asset
@@ -148,4 +72,4 @@ jobs:
         with:
           files: results
           tag_name: v${{ steps.go-semantic-release.outputs.version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}

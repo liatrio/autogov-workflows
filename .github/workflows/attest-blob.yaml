@@ -17,7 +17,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: ./.github/actions/login-ghcr
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ github.token }}
       - name: Generate Metadata Attestation
         id: generate-metadata
         run: |

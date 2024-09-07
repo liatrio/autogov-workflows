@@ -8,6 +8,10 @@ on:
         description: The digest of the image that was built and pushed
         required: true
 
+env:
+  GH_TOKEN: ${{ github.token }}
+  READ_CONTENT_GITHUB_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+
 jobs:
   run-opa:
     runs-on: ubuntu-latest
@@ -17,7 +21,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: ./.github/actions/login-ghcr
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ env.GH_TOKEN }}
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
@@ -30,7 +34,12 @@ jobs:
           oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
           -o liatrio
       - name: Download Policy Bundle
-        run: gh release download --repo liatrio/demo-gh-autogov-policy-library --pattern "bundle.tar.gz" --dir .
+        run: |
+          export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
+          gh release \
+          download \
+          --repo liatrio/demo-gh-autogov-policy-library \
+          --pattern "bundle.tar.gz" \
       - name: Run OPA Evals
         id: run-opa-evals
         run: |

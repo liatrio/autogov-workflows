@@ -8,14 +8,19 @@ on:
         description: The digest of the image that was built and pushed
         required: true
 
+env:
+  GH_TOKEN: ${{ github.token }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
         uses: ./.github/actions/login-ghcr
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          gh_token: ${{ env.GH_TOKEN }}
       - name: check workflow repo
         id: check-workflow-repo
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
