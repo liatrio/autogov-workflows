@@ -1,4 +1,4 @@
-name: Attest SBOM / Attach to Image
+name: OPA Evaluation
 
 on:
   workflow_call:
@@ -19,36 +19,34 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: ./.github/actions/login-ghcr
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          gh_token: ${{ env.GH_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
           version: 0.67.1
       - name: Download artifact attestation
-        id: download-attestations
         run: |
-          gh attestation \
-          download \
-          oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
-          -o liatrio
+          gh attestation download \
+            oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+            -o liatrio
       - name: Download Policy Bundle
         run: |
           export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
-          gh release \
-          download \
-          --repo liatrio/demo-gh-autogov-policy-library \
-          --pattern "bundle.tar.gz" \
+          gh release download \
+            --repo liatrio/demo-gh-autogov-policy-library \
+            --pattern "bundle.tar.gz" \
       - name: Run OPA Evals
-        id: run-opa-evals
         run: |
           opa eval \
-          --fail \
-          --input ${{ inputs.image_digest }}.jsonl \
-          --bundle bundle.tar.gz \
-          "data.governance.all_passed" > policy-evaluation-raw.json
-          cat policy-evaluation-raw.json
+            --fail \
+            --input ${{ inputs.image_digest }}.jsonl \
+            --bundle bundle.tar.gz \
+            "data.governance.all_passed" > policy-evaluation-raw.json
+            cat policy-evaluation-raw.json
       - name: Save evaluation results as artifact
         if: success() || failure()
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0

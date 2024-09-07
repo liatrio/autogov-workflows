@@ -57,7 +57,7 @@ jobs:
       - name: Download Results
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          name: results
+          name: results_artifact
           path: .
       - name: Run go-semantic-release
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0

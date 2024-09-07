@@ -15,12 +15,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: ./.github/actions/login-ghcr
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          gh_token: ${{ github.token }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Attest Provenance
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
-        id: attest-build-provenance
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ inputs.image_digest }}

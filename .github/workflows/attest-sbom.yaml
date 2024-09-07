@@ -15,12 +15,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: ./.github/actions/login-ghcr
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          gh_token: ${{ github.token }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Generate SBOM
         uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
-        id: generate-sbom
         with:
           image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
           format: 'cyclonedx-json'
@@ -29,7 +30,6 @@ jobs:
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
-        id: attest-sbom
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ inputs.image_digest }}

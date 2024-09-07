@@ -15,11 +15,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
-        uses: ./.github/actions/login-ghcr
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          gh_token: ${{ github.token }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Generate Metadata Attestation
-        id: generate-metadata
         run: |
           echo '{
             "_type": "https://in-toto.io/Statement/v0.1",
@@ -54,7 +55,6 @@ jobs:
               }
             }
           }' > metadata.json
-        shell: bash
       - run: cat metadata.json | jq -r
       - uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         with:
