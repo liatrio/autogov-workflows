@@ -1,15 +1,39 @@
 {
   "branches": [
-    {
-      "name": "main",
-      "prerelease": "alpha"
-    }
+    "main"
   ],
   "repositoryUrl": "https://github.com/liatrio/demo-gh-autogov-workflows",
-  "debug": "true",
+  "debug": "false",
   "plugins": [
+    "@semantic-release/changelog",
     [
-      "@semantic-release/github"
+      "@semantic-release/commit-analyzer",
+      {
+        "releaseRules": [
+          {
+            "type": "feat",
+            "release": "minor"
+          },
+          {
+            "type": "fix",
+            "release": "patch"
+          },
+          {
+            "type": "chore",
+            "release": "patch"
+          }
+        ]
+      }
+    ],
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/github",
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "CHANGELOG.md"
+        ]
+      }
     ]
   ]
 }
