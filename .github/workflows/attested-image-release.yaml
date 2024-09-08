@@ -32,10 +32,8 @@ jobs:
                   }
               ]
             )
-          }' policy-evaluation-raw.json > policy-evaluation.json
-          cat policy-evaluation.json
-          jq -s 'reduce .[] as $item ({}; . * $item)' policy-evaluation.json > results
-          cat results
+          }' policy-evaluation.json > results
+          cat results | jq -r
 
           echo "### Policy Evaluation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

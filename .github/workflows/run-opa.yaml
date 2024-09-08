@@ -45,11 +45,11 @@ jobs:
             --fail \
             --input ${{ inputs.image_digest }}.jsonl \
             --bundle bundle.tar.gz \
-            "data.governance.all_passed" > policy-evaluation-raw.json
-            cat policy-evaluation-raw.json
+            "data.governance.all_passed" > policy-evaluation.json
+            cat policy-evaluation.json | jq -r
       - name: Save evaluation results as artifact
         if: success() || failure()
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: results
-          path: policy-evaluation-raw.json
+          path: policy-evaluation.json

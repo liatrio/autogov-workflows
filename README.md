@@ -60,6 +60,7 @@ jobs:
     secrets: inherit
     with:
       image_digest: ${{ needs.build-image.outputs.image_digest }}
+      verify_tag: <commit_sha> # if not set, will use latest sha from main. .* can also be used to verify against anything or ^v[0-9]+.[0-9]+.[0-9]+$ for any commit sha.
   run-opa:
     needs: [build-image, verify]
     uses: liatrio/demo-gh-autogov-workflows/.github/workflows/run-opa.yaml@<commit_sha>

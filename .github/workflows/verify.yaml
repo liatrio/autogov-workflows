@@ -7,6 +7,10 @@ on:
         type: string
         description: The digest of the image that was built and pushed
         required: true
+      verify_tag:
+        type: string
+        description: Optional tag for verification
+        required: false
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -28,11 +32,14 @@ jobs:
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
         run: echo "verify_tag=.*" >> "$GITHUB_ENV"
       - name: Get latest commit SHA from main
-        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' }}
+        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
         run: |
           export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
           latest_sha=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')
           echo "verify_tag=$latest_sha" >> $GITHUB_ENV
+      - name: Set verify_tag from input
+        if: ${{ inputs.verify_tag }}
+        run: echo "verify_tag=${{ inputs.verify_tag }}" >> $GITHUB_ENV
       - name: Verify attestation
         run: |
           export GH_TOKEN=${{ github.token }}
