@@ -1,4 +1,4 @@
-name: Attested Image Release
+name: Attest Blob / Attach Blob to Image
 
 on:
   workflow_call:
@@ -7,9 +7,6 @@ on:
         type: string
         description: The digest of the image that was built and pushed
         required: true
-
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   attest-blob:
@@ -22,7 +19,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
       - name: Generate Metadata Attestation
         run: |
           echo '{
@@ -58,7 +55,6 @@ jobs:
               }
             }
           }' > metadata.json
-        shell: bash
       - run: cat metadata.json | jq -r
       - uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         with:

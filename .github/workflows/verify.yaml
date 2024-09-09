@@ -1,0 +1,53 @@
+name: Verify Image Attestations
+
+on:
+  workflow_call:
+    inputs:
+      image_digest:
+        type: string
+        description: The digest of the image that was built and pushed
+        required: true
+      verify_tag:
+        type: string
+        description: Optional tag for verification
+        required: false
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  READ_CONTENT_GITHUB_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Check if in workflow repo
+        if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
+        run: echo "verify_tag=.*" >> "$GITHUB_ENV"
+      - name: Get latest commit SHA from main
+        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
+        run: |
+          export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
+          latest_sha=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')
+          echo "verify_tag=$latest_sha" >> $GITHUB_ENV
+      - name: Set verify_tag from input
+        if: ${{ inputs.verify_tag }}
+        run: echo "verify_tag=${{ inputs.verify_tag }}" >> $GITHUB_ENV
+      - name: Verify attestation
+        run: |
+          export GH_TOKEN=${{ github.token }}
+          gh attestation verify \
+            oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+            -o liatrio \
+            --cert-identity-regex \
+            "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@${{ env.verify_tag }}$" \
+            --format json
+        # haven't decided on what direction to go in regards to what to validate against / saving this as an alternative:
+        # "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@[a-f0-9]{40}$" \

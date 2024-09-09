@@ -1,4 +1,4 @@
-name: Attest SBOM / Attach to Image
+name: Attest Image
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
         required: true
 
 jobs:
-  attest-sbom:
+  attest-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -20,19 +20,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Generate SBOM
-        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
-        with:
-          image: ghcr.io/${{ github.repository }}@${{ inputs.image_digest }}
-          format: 'cyclonedx-json'
-          output-file: 'sbom.cyclonedx.json'
-      - name: Log SBOM File
-        run: cat sbom.cyclonedx.json | jq -r
-      - name: Generate SBOM attestation
-        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+      - name: Attest Provenance
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ inputs.image_digest }}
-          sbom-path: 'sbom.cyclonedx.json'
           github-token: ${{ github.token }}
           push-to-registry: true
