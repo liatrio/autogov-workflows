@@ -1,4 +1,4 @@
-name: OPA Evaluation
+name: OPA Evaluation and Results
 
 on:
   workflow_call:
@@ -47,9 +47,31 @@ jobs:
             --bundle bundle.tar.gz \
             "data.governance.all_passed" > policy-evaluation.json
             cat policy-evaluation.json | jq -r
-      - name: Save evaluation results as artifact
+      - name: Format Results
         if: success() || failure()
+        run: |
+          jq '{
+            result: (
+              if ([.result[].expressions[].value] | any(. == false)) then "FAILED" else "PASSED" end
+            ),
+            violations: (
+              [.result[].expressions[]
+                | select(.value == false)
+                | {
+                    "Policy Set": (.text | split(".") | .[1] + "." + .[2]),
+                    "Results": .value
+                  }
+              ]
+            )
+          }' policy-evaluation.json > results
+          cat results | jq -r
+
+          echo "### Policy Evaluation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      - name: Save evaluation results as artifact
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          name: results
-          path: policy-evaluation.json
+          name: results_artifact
+          path: results
