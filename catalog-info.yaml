@@ -7,6 +7,8 @@ metadata:
   annotations:
     github.com/project-slug: liatrio/demo-gh-autogov-workflows
   tags:
+    - automated-governance
+    - demo
     - github-actions
 spec:
   type: other
