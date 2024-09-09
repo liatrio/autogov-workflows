@@ -2,17 +2,18 @@ name: Pull Request Check and Release Caller Workflow
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - main
   push:
     branches:
       - main
+      - dev/build-l3
     paths-ignore:
       - 'README.md'
       - 'catalog-info.yaml'
       - 'renovate.json'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
 
 permissions:
   id-token: write

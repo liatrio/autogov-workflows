@@ -28,9 +28,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      - run: |
+          echo ${{ github.ref_name }}
+          echo ${{ github.head_ref }}
+          echo ${{ github.ref }}
       - name: Check if in workflow repo
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
-        run: echo "verify_tag=${{ github.ref }}" >> "$GITHUB_ENV"
+        run: echo "verify_tag=${{ github.ref_name }}" >> "$GITHUB_ENV"
       - name: Get latest commit SHA from main
         if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
         run: |
@@ -47,7 +51,7 @@ jobs:
             --repo ${{ github.repository }} \
             --deny-self-hosted-runners \
             --cert-identity-regex \
-            "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@${{ env.verify_tag }}$" \
+            "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@refs\/heads\/${{ env.verify_tag }}$" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ env.verify_tag }}$"
+            | grep "^refs\/heads\/${{ env.verify_tag }}$"
