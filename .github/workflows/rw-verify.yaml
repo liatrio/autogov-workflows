@@ -30,7 +30,7 @@ jobs:
           password: ${{ github.token }}
       - name: Check if in workflow repo
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
-        run: echo "verify_tag=.*" >> "$GITHUB_ENV"
+        run: echo "verify_tag=${{ github.ref }}" >> "$GITHUB_ENV"
       - name: Get latest commit SHA from main
         if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
         run: |
@@ -42,12 +42,12 @@ jobs:
         run: echo "verify_tag=${{ inputs.verify_tag }}" >> $GITHUB_ENV
       - name: Verify attestation
         run: |
-          export GH_TOKEN=${{ github.token }}
           gh attestation verify \
             oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
-            -o liatrio \
+            --repo ${{ github.repository }} \
+            --deny-self-hosted-runners \
             --cert-identity-regex \
             "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@${{ env.verify_tag }}$" \
-            --format json
-        # haven't decided on what direction to go in regards to what to validate against / saving this as an alternative:
-        # "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@[a-f0-9]{40}$" \
+            --format json \
+            --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
+            | grep "^${{ env.verify_tag }}$"
