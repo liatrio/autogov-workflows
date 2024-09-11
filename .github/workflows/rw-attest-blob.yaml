@@ -33,26 +33,24 @@ jobs:
                 }
               }
             ],
-            "predicate": {
-              "metaData": {
-                "workflowRunId": "${{ github.run_id }}",
-                "commitSHA": "${{ github.sha }}",
-                "githubServerURL": "${{ github.server_url }}",
-                "repository": "${{ github.repository }}",
-                "repositoryId": "${{ github.repository_id }}",
-                "owner": "${{ github.repository_owner }}",
-                "ownerId": "${{ github.repository_owner_id }}",
-                "actor": "${{ github.actor }}",
-                "event": "${{ github.event_name }}",
-                "ref": "${{ github.ref }}",
-                "jobId": "${{ github.job }}",
-                "runNumber": "${{ github.run_number }}",
-                "workflowRefPath": "${{ github.workflow_ref }}",
-                "action": "${{ github.action }}",
-                "runnerOS": "${{ runner.os }}",
-                "runnerName": "${{ runner.name }}",
-                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
-              }
+            "metaData": {
+              "workflowRunId": "${{ github.run_id }}",
+              "commitSHA": "${{ github.sha }}",
+              "githubServerURL": "${{ github.server_url }}",
+              "repository": "${{ github.repository }}",
+              "repositoryId": "${{ github.repository_id }}",
+              "owner": "${{ github.repository_owner }}",
+              "ownerId": "${{ github.repository_owner_id }}",
+              "actor": "${{ github.actor }}",
+              "event": "${{ github.event_name }}",
+              "ref": "${{ github.ref }}",
+              "jobId": "${{ github.job }}",
+              "runNumber": "${{ github.run_number }}",
+              "workflowRefPath": "${{ github.workflow_ref }}",
+              "action": "${{ github.action }}",
+              "runnerOS": "${{ runner.os }}",
+              "runnerName": "${{ runner.name }}",
+              "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
             }
           }' > metadata.json
       - run: cat metadata.json | jq -r

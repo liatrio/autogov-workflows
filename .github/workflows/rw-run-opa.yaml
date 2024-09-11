@@ -35,20 +35,23 @@ jobs:
             -o liatrio
       - name: Download Policy Bundle
         run: |
+          set +x
           export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
           gh release download \
             --repo liatrio/demo-gh-autogov-policy-library \
-            --pattern "bundle.tar.gz" \
+            --pattern "bundle.tar.gz"
+          tar -xzvf bundle.tar.gz
       - name: Run OPA Evals
+        if: success() || failure()
         run: |
+          set -x
           opa eval \
             --fail \
             --input ${{ inputs.image_digest }}.jsonl \
-            --bundle bundle.tar.gz \
+            --data policy/governance/governance.rego \
             "data.governance.all_passed" > policy-evaluation.json
             cat policy-evaluation.json | jq -r
       - name: Format Results
-        if: success() || failure()
         run: |
           jq '{
             result: (
