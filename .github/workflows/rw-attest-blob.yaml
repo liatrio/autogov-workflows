@@ -33,7 +33,7 @@ jobs:
                 }
               }
             ],
-            "metaData": {
+            "metadata": {
               "workflowRunId": "${{ github.run_id }}",
               "commitSHA": "${{ github.sha }}",
               "githubServerURL": "${{ github.server_url }}",
