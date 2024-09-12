@@ -1,4 +1,4 @@
-name: Verify Image Attestations
+name: Reusable Verify Workflow
 
 on:
   workflow_call:

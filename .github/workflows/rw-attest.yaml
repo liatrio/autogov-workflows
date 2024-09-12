@@ -1,4 +1,4 @@
-name: Attest Blob / Attach Blob to Image
+name: Reusable Build Image / Attest Workflow
 
 on:
   workflow_call:

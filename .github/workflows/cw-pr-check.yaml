@@ -1,4 +1,4 @@
-name: Pull Request Check and Release Caller Workflow
+name: Caller Workflow
 
 on:
   workflow_dispatch:

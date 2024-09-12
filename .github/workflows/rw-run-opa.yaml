@@ -1,4 +1,4 @@
-name: OPA Evaluation and Results
+name: Reusable OPA Evaluation Workflow
 
 on:
   workflow_call:

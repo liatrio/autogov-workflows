@@ -1,4 +1,4 @@
-name: Attested Image Release
+name: Reusable Release Workflow
 
 on:
   workflow_call:
@@ -22,10 +22,3 @@ jobs:
           github-token: ${{ github.token }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
-      - name: Upload Release Asset
-        if: steps.go-semantic-release.outputs.version != ''
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
-        with:
-          files: results
-          tag_name: v${{ steps.go-semantic-release.outputs.version }}
-          token: ${{ github.token }}
