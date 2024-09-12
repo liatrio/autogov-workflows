@@ -40,7 +40,6 @@ jobs:
           gh release download \
             --repo liatrio/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"
-          tar -xzvf bundle.tar.gz
       - name: Run OPA Evals
         if: success() || failure()
         run: |
@@ -48,7 +47,7 @@ jobs:
           opa eval \
             --fail \
             --input ${{ inputs.image_digest }}.jsonl \
-            --data policy/governance/governance.rego \
+            --bundle "bundle.tar.gz" \
             "data.governance.all_passed" > policy-evaluation.json
             cat policy-evaluation.json | jq -r
       - name: Format Results
