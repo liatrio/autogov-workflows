@@ -46,12 +46,13 @@ jobs:
         run: echo "verify_tag=${{ inputs.verify_tag }}" >> $GITHUB_ENV
       - name: Verify attestation
         run: |
+          echo ${{ github.ref }}
           gh attestation verify \
             oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
             --repo ${{ github.repository }} \
             --deny-self-hosted-runners \
-            --cert-identity-regex \
-            "^https:\/\/github\.com\/liatrio\/demo-gh-autogov-workflows\/\.github\/workflows\/[^\/]+\.yaml@refs\/heads\/${{ env.verify_tag }}$" \
+            --cert-identity \
+            "https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@refs/heads/${{ env.verify_tag }}" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
             | grep "^refs\/heads\/${{ env.verify_tag }}$"
