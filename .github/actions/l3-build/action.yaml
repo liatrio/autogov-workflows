@@ -43,3 +43,9 @@ runs:
         outputs: type=oci,dest=/tmp/image.tar
         cache-from: type=gha
         cache-to: type=gha,mode=max
+    - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
+      with:
+        package-name: 'demo-gh-autogov-workflows'
+        package-type: 'container'
+        owner: 'liatrio'
+        min-versions-to-keep: 10
