@@ -1,0 +1,42 @@
+name: Caller Workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev/build-l3
+    paths-ignore:
+      - 'README.md'
+      - 'catalog-info.yaml'
+      - 'renovate.json'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  attestations: write
+  packages: write
+  contents: write
+
+jobs:
+  attest:
+    uses: ./.github/workflows/rw-attest.yaml
+  verify:
+    needs: [attest]
+    uses: ./.github/workflows/rw-verify.yaml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.attest.outputs.image_digest }}
+  run-opa:
+    needs: [verify, attest]
+    uses: ./.github/workflows/rw-run-opa.yaml
+    secrets: inherit
+    with:
+      image_digest: ${{ needs.attest.outputs.image_digest }}
+  release:
+    needs: [run-opa]
+    uses: ./.github/workflows/rw-release.yaml
+    secrets: inherit
