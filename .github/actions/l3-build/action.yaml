@@ -43,7 +43,7 @@ runs:
         outputs: type=oci,dest=/tmp/image.tar
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
+    - uses: actions/delete-package-versions@abd519f0d4139a1c79766c4859d3a301fb3a8daa
       with:
         package-name: 'demo-gh-autogov-workflows'
         package-type: 'container'
