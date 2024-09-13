@@ -2,7 +2,7 @@
 
 ## When to Use
 
-- This workflow is intended for building images and attaching and/or the following:
+- This workflow is intended for building images and/or attaching the following:
   - blob
   - sbom
 
