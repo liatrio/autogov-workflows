@@ -39,6 +39,16 @@ jobs:
             --repo liatrio/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"
       - name: Run OPA Evals
+        run: |
+          set -x
+          opa eval \
+          --fail \
+          --input ${{ inputs.image_digest }}.jsonl \
+          --bundle "bundle.tar.gz" \
+          "data.governance.all_passed" >\
+          policy-evaluation.json
+          cat policy-evaluation.json | jq -r
+      - name: Output Violations
         if: success() || failure()
         run: |
           set -x
@@ -46,30 +56,33 @@ jobs:
           --fail \
           --input ${{ inputs.image_digest }}.jsonl \
           --bundle "bundle.tar.gz" \
-          "data.security.provenance.violations; \
-          data.governance.all_passed" >\
-          policy-evaluation.json
-          cat policy-evaluation.json | jq -r
+          "data.security.provenance.violations" >\
+          violations-evaluation.json
+          cat violations-evaluation.json | jq -r
       - name: Format Results
+        if: success() || failure()
         run: |
-          jq '{
+          jq -s '{
             result: (
-              if ([.result[].expressions[].value] | any(. == false)) then "FAILED" else "PASSED" end
+              if ([.[] | .result[].expressions[].value] | any(. == false)) then "FAILED" else "PASSED" end
             ),
             violations: (
-              [.result[].expressions[]
-                | select(.value == false)
+              [.[] | .result[].expressions[]
+                | select(.value != "PASSED")
                 | {
                     "Policy Set": (.text | split(".") | .[1] + "." + .[2]),
                     "Results": .value
                   }
               ]
             )
-          }' policy-evaluation.json > results
+          }' policy-evaluation.json violations-evaluation.json > results
           jq -s 'reduce .[] as $item ({}; . * $item)' results > final_result
           cat final_result | jq -r
 
           echo "### Policy Evaluation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Result: $(jq -r '.result' final_result)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Violations:" >> $GITHUB_STEP_SUMMARY
+          echo "$(jq -r '.violations[] | "\(.Policy Set): \(.Results | join(", "))"' final_result)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -10,7 +10,7 @@
             }
         }
     ],
-    "metaData": {
+    "metadata": {
         "workflowData": {
             "workflowRefPath": "${{ github.workflow_ref }}",
             "branch": "${{ github.ref_name }}",
