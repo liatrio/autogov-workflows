@@ -42,6 +42,7 @@ jobs:
     secrets: inherit
     with:
       image_digest: ${{ needs.attest.outputs.image_digest }}
+      # verify_tag: <commit_sha> if not set, will use latest sha from main.
   run-opa:
     needs: [verify, attest]
     uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-run-opa.yaml@<commit_sha>
