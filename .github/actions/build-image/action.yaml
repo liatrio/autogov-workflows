@@ -1,0 +1,130 @@
+name: Build Image Composite Action
+
+description: >-
+  build for autogov reusable wf
+outputs:
+  image_digest:
+    description: 'The digest of the built image'
+    value: ${{ steps.build-image.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    - name: Image Metadata
+      id: meta
+      uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=
+          type=raw,value=latest,enable=${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+      id: build-image
+      with:
+        context: .
+        push: true
+        platforms: linux/amd64,linux/arm64
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        outputs: type=oci,dest=/tmp/image.tar
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
+      with:
+        package-name: 'demo-gh-autogov-workflows'
+        package-type: 'container'
+        owner: 'liatrio'
+        min-versions-to-keep: 10
+    - name: Dump GitHub context
+      shell: bash
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Dump job context
+      shell: bash
+      env:
+        JOB_CONTEXT: ${{ toJson(job) }}
+      run: echo "$JOB_CONTEXT"
+    - name: Dump steps context
+      shell: bash
+      env:
+        STEPS_CONTEXT: ${{ toJson(steps) }}
+      run: echo "$STEPS_CONTEXT"
+    - name: Dump runner context
+      shell: bash
+      env:
+        RUNNER_CONTEXT: ${{ toJson(runner) }}
+      run: echo "$RUNNER_CONTEXT"
+    - name: Dump strategy context
+      shell: bash
+      env:
+        STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+      run: echo "$STRATEGY_CONTEXT"
+    - name: Dump matrix context
+      shell: bash
+      env:
+        MATRIX_CONTEXT: ${{ toJson(matrix) }}
+      run: echo "$MATRIX_CONTEXT"
+
+    - name: Show default environment variables
+      shell: bash
+      run: |
+        echo "The job_id is: $GITHUB_JOB"
+        echo "The id of this action is: $GITHUB_ACTION"
+        echo "The run id is: $GITHUB_RUN_ID"
+        echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+        echo "GitHub SHA: $GITHUB_SHA"
+    - run: echo "next metadata run"
+      shell: bash
+    - name: Dump GitHub context
+      shell: bash
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT" > github-context.json
+    - name: Dump job context
+      shell: bash
+      env:
+        JOB_CONTEXT: ${{ toJson(job) }}
+      run: echo "$JOB_CONTEXT" > job-context.json
+    - name: Dump steps context
+      shell: bash
+      env:
+        STEPS_CONTEXT: ${{ toJson(steps) }}
+      run: echo "$STEPS_CONTEXT" > steps-context.json
+    - name: Dump runner context
+      shell: bash
+      env:
+        RUNNER_CONTEXT: ${{ toJson(runner) }}
+      run: echo "$RUNNER_CONTEXT" > runner-context.json
+    - name: Dump strategy context
+      shell: bash
+      env:
+        STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+      run: echo "$STRATEGY_CONTEXT" > strategy-context.json
+    - name: Dump matrix context
+      shell: bash
+      env:
+        MATRIX_CONTEXT: ${{ toJson(matrix) }}
+      run: echo "$MATRIX_CONTEXT" > matrix-context.json
+    - name: Show default environment variables
+      shell: bash
+      run: |
+        echo "The job_id is: $GITHUB_JOB"
+        echo "The id of this action is: $GITHUB_ACTION"
+        echo "The run id is: $GITHUB_RUN_ID"
+        echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+        echo "GitHub SHA: $GITHUB_SHA"
+    - name: List all GitHub environment variables
+      shell: bash
+      run: printenv | grep '^GITHUB_' > so_many_vars

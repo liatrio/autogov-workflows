@@ -13,11 +13,16 @@ jobs:
     outputs:
       image_digest: ${{ steps.build-image.outputs.image_digest }}
     steps:
+      - name: Check runner type
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: echo "Job is running on a self-hosted runner. Terminating job..."
+        continue-on-error: false
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Run build image composite action
+        if: ${{ runner.environment == 'github-hosted' }}
         id: build-image
-        uses: ./.github/actions/l3-build
+        uses: ./.github/actions/build-image
   attest-image:
     runs-on: ubuntu-latest
     needs: build-image
@@ -39,24 +44,30 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-image
     steps:
-      - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Generate Metadata Attestation
+      - run: |
+          echo ${{ github.workflow }}
+          echo ${{ github.workflow_ref }}
+          echo ${{ github.workflow_sha }}
+          echo ${{ github.workspace }}
+          echo ${{ github.action_repository }}
+          echo ${{ github.triggering_actor }}
+          echo ${{ github.event_name }}
+      - name: Generate Metadata Attestation for Image
         run: |
           echo '{
             "_type": "https://in-toto.io/Statement/v0.1",
             "predicateType": "https://cosign.sigstore.dev/attestation/v1",
             "subject": [
               {
-                "name": "${{ github.repository }}",
+                "name": "ghcr.io/${{ github.repository }}",
                 "digest": {
-                  "sha256": "${{ github.sha }}"
+                  "sha256": "${{ inputs.image_digest }}"
                 }
               }
             ],
