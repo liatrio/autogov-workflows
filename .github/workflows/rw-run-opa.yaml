@@ -16,8 +16,6 @@ jobs:
   run-opa:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
@@ -45,11 +43,13 @@ jobs:
         run: |
           set -x
           opa eval \
-            --fail \
-            --input ${{ inputs.image_digest }}.jsonl \
-            --bundle "bundle.tar.gz" \
-            "data.governance.all_passed" > policy-evaluation.json
-            cat policy-evaluation.json | jq -r
+          --fail \
+          --input ${{ inputs.image_digest }}.jsonl \
+          --bundle "bundle.tar.gz" \
+          "data.security.provenance.violations; \
+          data.governance.all_passed" >\
+          policy-evaluation.json
+          cat policy-evaluation.json | jq -r
       - name: Format Results
         run: |
           jq '{

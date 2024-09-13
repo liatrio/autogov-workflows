@@ -20,18 +20,18 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      - name: Check runner type
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: echo "Job is running on a self-hosted runner. Terminating job..."
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Log in to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: |
-          echo ${{ github.ref_name }}
-          echo ${{ github.head_ref }}
-          echo ${{ github.ref }}
       - name: Check if in workflow repo
         if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
         run: echo "verify_tag=${{ github.ref }}" >> "$GITHUB_ENV"
