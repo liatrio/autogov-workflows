@@ -15,7 +15,9 @@ jobs:
     steps:
       - name: Check runner type
         if: ${{ runner.environment != 'github-hosted' }}
-        run: echo "Job is running on a self-hosted runner. Terminating job..."
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
         continue-on-error: false
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
