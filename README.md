@@ -16,8 +16,8 @@ name: Caller Workflow
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: '**'
+    tags: 'v*.*.*'
     paths-ignore:
       - 'README.md'
       - 'catalog-info.yaml'
