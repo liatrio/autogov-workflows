@@ -7,8 +7,13 @@ on:
         description: The digest of the image that was built and pushed
         value: ${{ jobs.build-image.outputs.image_digest }}
 
+permissions: {}
+
 jobs:
   build-image:
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     outputs:
       image_digest: ${{ steps.build-image.outputs.image_digest }}
@@ -28,6 +33,11 @@ jobs:
   attest-image:
     runs-on: ubuntu-latest
     needs: build-image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -45,6 +55,11 @@ jobs:
   attest-blob:
     runs-on: ubuntu-latest
     needs: build-image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -104,6 +119,12 @@ jobs:
   attest-sbom:
     runs-on: ubuntu-latest
     needs: build-image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      # actions: read # required for a private repo to read the sbom once it's generated so it can upload as per https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7

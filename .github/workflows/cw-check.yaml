@@ -3,7 +3,6 @@ name: Caller Workflow
 on:
   workflow_dispatch:
   push:
-    branches: main
     paths-ignore:
       - 'README.md'
       - 'catalog-info.yaml'
@@ -13,13 +12,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: main
-
-permissions:
-  id-token: write
-  attestations: write
-  packages: write
-  contents: write
-  actions: read
 
 jobs:
   attest:
@@ -36,7 +28,3 @@ jobs:
     secrets: inherit
     with:
       image_digest: ${{ needs.attest.outputs.image_digest }}
-  release:
-    needs: [run-opa]
-    uses: ./.github/workflows/rw-release.yaml
-    secrets: inherit

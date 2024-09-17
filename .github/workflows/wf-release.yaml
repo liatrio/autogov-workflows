@@ -1,7 +1,8 @@
-name: Reusable Release Workflow
+name: Release Workflow
 
 on:
-  workflow_call:
+  push:
+    branches: main
 
 jobs:
   release:
