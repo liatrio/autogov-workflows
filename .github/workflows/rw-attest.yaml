@@ -123,8 +123,9 @@ jobs:
       id-token: write
       attestations: write
       packages: write
-      actions: read # required for a private repo to read the sbom once it's generated so it can upload as per https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
-      contents: read
+      # the below permissions are required for a private repo to read the sbom so it can upload as per https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
+      contents: write
+      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
