@@ -3,18 +3,23 @@ name: Caller Workflow
 on:
   workflow_dispatch:
   push:
-    branches: '**'
-    tags: 'v*.*.*'
+    branches: main
     paths-ignore:
       - 'README.md'
       - 'catalog-info.yaml'
       - 'renovate.json'
+  release:
+    types: [published]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: main
 
 permissions:
   id-token: write
   attestations: write
   packages: write
   contents: write
+  actions: read
 
 jobs:
   attest:

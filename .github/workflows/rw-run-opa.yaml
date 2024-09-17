@@ -15,7 +15,6 @@ env:
 jobs:
   run-opa:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -82,3 +81,14 @@ jobs:
           echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Violations: $(jq -r '.violations' results)" >> $GITHUB_STEP_SUMMARY
+      # ______________#
+      # image cleaner #
+      # ______________#
+      - uses: actions/delete-package-versions@abd519f0d4139a1c79766c4859d3a301fb3a8daa
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: 'container'
+          owner: ${{ github.repository_owner }}
+          min-versions-to-keep: 0
+          ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently does not work as per https://github.com/actions/delete-package-versions/issues/88
+          delete-only-untagged-versions: 'true'

@@ -27,29 +27,23 @@ runs:
           type=ref,event=branch
           type=ref,event=pr
           type=sha
-          type=raw,value=latest,enable=${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+          type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+          type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
     - name: Build and push Docker image
       uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
       id: build-image
       with:
         context: .
-        push: ${{ github.event_name != 'pull_request' }}
+        push: true
         platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         outputs: type=oci,dest=/tmp/image.tar
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    # _____________________________________
-    # image cleaner / debug steps
-    # _____________________________________
-    - uses: actions/delete-package-versions@abd519f0d4139a1c79766c4859d3a301fb3a8daa
-      with:
-        package-name: 'demo-gh-autogov-workflows'
-        package-type: 'container'
-        owner: 'liatrio'
-        min-versions-to-keep: 14
-        ignore-versions: '^(0|[1-9]\\d*)\\.0\\.0$'
+      # ____________#
+      # debug steps #
+      # ____________#
     - name: Dump GitHub context
       shell: bash
       env:

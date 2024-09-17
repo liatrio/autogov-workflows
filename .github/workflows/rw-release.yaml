@@ -14,6 +14,6 @@ jobs:
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
