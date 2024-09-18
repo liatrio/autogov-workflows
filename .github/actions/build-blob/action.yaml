@@ -1,0 +1,17 @@
+name: Build Blob Composite Action
+
+description: >-
+  A composite action that is placed in ./.github/actions/build-image/action.yaml whereby
+  ./.github/workflows/rw-attest.yaml will trigger this action to build an image. The steps
+  can be adjusted per the users need just as long as the result blob file is referenced for
+  downstream jobs.
+
+runs:
+  using: composite
+  steps:
+    - name: Build Blob
+      shell: bash
+      run: |
+        echo "i am a blob being created at $(date +'%Y-%m-%d') by ${{ github.triggering_actor }} by rw of
+        ${{ github.workflow_ref }} in the repo of ${{ github.repository }} by the action known as ${{ github.action }}
+        which may or may not live in the same repo as ${{ github.action_repository }}." > i_am_blob && ls -alt

@@ -11,6 +11,8 @@ on:
 jobs:
   attest:
     uses: ./.github/workflows/rw-attest.yaml
+    with:
+      build-type: image
   verify:
     needs: [attest]
     uses: ./.github/workflows/rw-verify.yaml

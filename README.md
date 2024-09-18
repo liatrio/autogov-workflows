@@ -31,6 +31,8 @@ Predicate Size Limits: Both actions/attest and actions/attest-sbom have a maximu
 
 [If you use a GitHub-hosted runner, each job runs in a fresh instance of a runner image specified by runs-on.](https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#choosing-github-hosted-runners)
 
+the build job (e.g. either image-build or blob-build) require nothing and are not dependent on any other jobs.
+
 slsa-framework:
 
 - <https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#build-your-own-builder-byob-framework>

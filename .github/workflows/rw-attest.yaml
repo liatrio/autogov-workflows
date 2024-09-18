@@ -3,6 +3,11 @@ name: Reusable Build Image / Attest Workflow
 on:
   workflow_call:
     inputs:
+      build-type:
+        description: 'Specify the type of build: "image" or "blob".'
+        required: true
+        default: 'image'
+        type: string
       subject-name:
         description: >
           Subject name as it should appear in the attestation. Required unless
@@ -27,7 +32,8 @@ on:
         type: string
       signer-workflow-cert-identity:
         description: >
-          The signer workflow's identity used to validate against the Subject Alternative Name (SAN) within the attestation certificate. The --cert-identity is the most effective/reliable means to validate the certificate, or workflow (e.g. signer workflow's identity).
+          The signer workflow's identity used to validate against the Subject Alternative Name (SAN) within the attestation certificate.
+          The --cert-identity is the most effective/reliable means to validate the certificate, or workflow (e.g. signer workflow's identity).
         required: false
         default: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@refs/heads/main
         type: string
@@ -37,13 +43,13 @@ on:
         required: false
         type: string
         default: 'https://cosign.sigstore.dev/attestation/v1'
-      format:
+      sbom-format:
         description: >
           The format of the SBOM.
         required: false
         type: string
         default: 'cyclonedx-json'
-      output-file:
+      sbom-output-file:
         description: >
           The output file for the SBOM.
         required: false
@@ -58,15 +64,15 @@ on:
     outputs:
       image_digest:
         description: The image digest of the image that was built from the build-image job.
-        value: ${{ jobs.build-image.outputs.image_digest }}
+        value: ${{ jobs.build.outputs.image_digest }}
       metadata_json:
         description: A JSON object with the build-image job's result metadata.
-        value: ${{ jobs.build-image.outputs.metadata_json }}
+        value: ${{ jobs.build.outputs.metadata_json }}
 
 permissions: {}
 
 jobs:
-  build-image:
+  build:
     permissions:
       contents: read
       packages: write
@@ -83,22 +89,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Run build image composite action
-        if: ${{ runner.environment == 'github-hosted' }}
+        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
         id: build-image
         uses: ./.github/actions/build-image
         with:
           build-context: ${{ inputs.build-context }}
           docker-file: ${{ inputs.docker-file }}
           platforms: ${{ inputs.platforms }}
+      - name: Build Blob
+        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
+        id: build-blob
+        uses: ./.github/actions/build-blob
+        with:
+          build-context: ${{ inputs.build-context }}
       - name: DEBUG THE THINGS
         run: |
           set +x
           echo "Image Digest: ${{ steps.build-image.outputs.image_digest }}"
           echo "Runner: $(echo '${{ toJson(runner) }}' | jq .)"
           echo "GitHub: $(echo '${{ toJson(github) }}' | jq .)"
-  attest-image:
+  attest-build:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-image
+    needs: build
     permissions:
       id-token: write
       attestations: write
@@ -115,12 +127,13 @@ jobs:
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
         with:
           subject-name: ${{ inputs.subject-name }}
-          subject-digest: ${{ needs.build-image.outputs.image_digest }}
+          subject-digest: ${{ needs.build.outputs.image_digest }}
           github-token: ${{ github.token }}
           push-to-registry: true
-  attest-blob:
+
+  attest-metadata:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-image
+    needs: build
     permissions:
       id-token: write
       attestations: write
@@ -141,7 +154,7 @@ jobs:
           echo ${{ github.action_repository || 'nothing to see here' }}
           echo ${{ github.triggering_actor }}
           echo ${{ github.event_name }}
-      - name: Generate Metadata Attestation for Image
+      - name: Generate Metadata Attestation
         run: |
           echo '{
             "_type": "https://in-toto.io/Statement/v0.1",
@@ -149,8 +162,9 @@ jobs:
             "subject": [
               {
                 "name": "${{ inputs['subject-name'] }}",
+                "name": "${{ inputs['subject-name'] }}",
                 "digest": {
-                  "sha256": "${{ needs.build-image.outputs.image_digest }}"
+                  "sha256": "${{ needs.build.outputs.image_digest }}"
                 }
               }
             ],
@@ -180,16 +194,17 @@ jobs:
           predicate-type: ${{ inputs['predicate-type'] }}
           predicate-path: metadata.json
           subject-name: ${{ inputs['subject-name'] }}
-          subject-digest: ${{ needs.build-image.outputs.image_digest }}
+          subject-digest: ${{ needs.build.outputs.image_digest }}
           push-to-registry: true
   attest-sbom:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-image
+    needs: build
     permissions:
       id-token: write
       attestations: write
       packages: write
-      # the below permissions are required for a private repo to read the sbom so it can upload as per https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
+      # the below permissions are required for a private repo to read the sbom so it can upload
+      # https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
       contents: write
       actions: read
     steps:
@@ -204,16 +219,16 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
         with:
-          image: ghcr.io/${{ github.repository }}@${{ needs.build-image.outputs.image_digest }}
-          format: ${{ inputs['format'] }}
-          output-file: ${{ inputs['output-file'] }}
+          image: ghcr.io/${{ github.repository }}@${{ needs.build.outputs.image_digest }}
+          format: ${{ inputs['sbom-format'] }}
+          output-file: ${{ inputs['sbom-output-file'] }}
       - name: Log SBOM File
-        run: cat ${{ inputs['output-file'] }} | jq -r
+        run: cat ${{ inputs['sbom-output-file'] }} | jq -r
       - name: Generate SBOM attestation
         uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
         with:
           subject-name: ${{ inputs['subject-name'] }}
-          subject-digest: ${{ needs.build-image.outputs.image_digest }}
+          subject-digest: ${{ needs.build.outputs.image_digest }}
           sbom-path: ${{ inputs['sbom-path'] }}
           github-token: ${{ github.token }}
           push-to-registry: true
