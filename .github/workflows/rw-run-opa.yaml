@@ -7,6 +7,16 @@ on:
         type: string
         description: The digest of the image that was built and pushed
         required: true
+      workflow-runner-label:
+        type: string
+        description: The label of the workflow runner
+        default: ubuntu-latest
+      registry:
+        description: >
+          The container registry to use.
+        required: false
+        type: string
+        default: ghcr.io
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -14,12 +24,12 @@ env:
 
 jobs:
   run-opa:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          registry: ghcr.io
+          registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Setup OPA
@@ -29,7 +39,7 @@ jobs:
       - name: Download artifact attestation
         run: |
           gh attestation download \
-            oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+            oci://${{ inputs.registry }}/${{ github.repository }}@${{ inputs.image_digest }} \
             -o liatrio
       - name: Download Policy Bundle
         run: |

@@ -11,14 +11,24 @@ on:
         type: string
         description: Optional tag for verification
         required: false
+      workflow-runner-label:
+        type: string
+        description: The label of the workflow runner
+        required: false
+        default: ubuntu-latest
+      registry:
+        description: >
+          The container registry to use.
+        required: false
+        type: string
+        default: 'ghcr.io'
 
 env:
   GH_TOKEN: ${{ github.token }}
-  READ_CONTENT_GITHUB_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Check runner type
         if: ${{ runner.environment != 'github-hosted' }}
@@ -31,7 +41,7 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          registry: ghcr.io
+          registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Check if in workflow repo
@@ -39,8 +49,9 @@ jobs:
         run: echo "verify_tag=${{ github.ref }}" >> "$GITHUB_ENV"
       - name: Get latest commit SHA from main
         if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
+        env:
+          GH_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
         run: |
-          export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
           latest_sha=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')
           echo "verify_tag=$latest_sha" >> $GITHUB_ENV
       - name: Set verify_tag from input
@@ -49,7 +60,7 @@ jobs:
       - name: Verify attestation
         run: |
           gh attestation verify \
-            oci://ghcr.io/${{ github.repository }}@${{ inputs.image_digest }} \
+            oci://${{ inputs.registry }}/${{ github.repository }}@${{ inputs.image_digest }} \
             --repo ${{ github.repository }} \
             --deny-self-hosted-runners \
             --cert-identity \
