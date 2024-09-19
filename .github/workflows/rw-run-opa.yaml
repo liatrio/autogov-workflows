@@ -56,10 +56,10 @@ jobs:
             --fail \
             --input ${{ inputs.image_digest }}.jsonl \
             --bundle "bundle.tar.gz" \
-            "data.governance.all_passed" >\
+            "data.governance.allow" >\
           policy-evaluation.json
           cat policy-evaluation.json | jq -r
-      - name: Output Violations
+      - name: Output Violations if failed
         if: ${{ failure() && steps.run-opa.outcome == 'failure' }}
         run: |
           set -x
@@ -67,7 +67,7 @@ jobs:
             --fail \
             --input ${{ inputs.image_digest }}.jsonl \
             --bundle "bundle.tar.gz" \
-            "data.security.provenance.violations" >\
+            "data.governance.violations" >\
           policy-evaluation.json
           cat policy-evaluation.json | jq -r
       - name: Format Results
@@ -75,11 +75,22 @@ jobs:
         run: |
           jq '{
             result: (
-              if ([.result[].expressions[].value | type == "array" and length > 0] | any) then "FAILED" else "PASSED" end
+              if ([.result[].expressions[].value | select(type == "object") | .provenance[], .sbom[]] | length > 0) then
+                "FAILED"
+              else
+                "PASSED"
+              end
             ),
             violations: (
-              if ([.result[].expressions[].value | type == "array" and length > 0] | any) then
-                [.result[].expressions[].value[] | select(type == "string")]
+              if ([.result[].expressions[].value | select(type == "object") | .provenance[], .sbom[]] | length > 0) then
+                [
+                  if (.result[].expressions[].value | select(type == "object") | .provenance | length > 0) then
+                    { "policy set": "provenance", "message": .result[].expressions[].value.provenance }
+                  else empty end,
+                  if (.result[].expressions[].value | select(type == "object") | .sbom | length > 0) then
+                    { "policy set": "sbom", "message": .result[].expressions[].value.sbom }
+                  else empty end
+                ]
               else
                 []
               end
@@ -91,6 +102,12 @@ jobs:
           echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Violations: $(jq -r '.violations' results)" >> $GITHUB_STEP_SUMMARY
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: results
+
       # ______________#
       # image cleaner #
       # ______________#
