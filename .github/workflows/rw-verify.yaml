@@ -50,7 +50,7 @@ jobs:
       - name: Get latest commit SHA from main
         if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
         env:
-          GH_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
         run: |
           latest_sha=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')
           echo "verify_tag=$latest_sha" >> $GITHUB_ENV

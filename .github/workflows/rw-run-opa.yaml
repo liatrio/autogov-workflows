@@ -20,7 +20,7 @@ on:
 
 env:
   GH_TOKEN: ${{ github.token }}
-  READ_CONTENT_GITHUB_TOKEN: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+  RW_CW_POLICY_REPO_ACCESS: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
 
 jobs:
   run-opa:
@@ -44,7 +44,7 @@ jobs:
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ env.READ_CONTENT_GITHUB_TOKEN }}
+          export GH_TOKEN=${{ env.RW_CW_POLICY_REPO_ACCESS }}
           gh release download \
             --repo liatrio/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"
@@ -75,22 +75,12 @@ jobs:
         run: |
           jq '{
             result: (
-              if ([.result[].expressions[].value | select(type == "object") | .provenance[], .sbom[]] | length > 0) then
-                "FAILED"
-              else
-                "PASSED"
-              end
+              if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then "FAILED" else "PASSED" end
             ),
             violations: (
-              if ([.result[].expressions[].value | select(type == "object") | .provenance[], .sbom[]] | length > 0) then
-                [
-                  if (.result[].expressions[].value | select(type == "object") | .provenance | length > 0) then
-                    { "policy set": "provenance", "message": .result[].expressions[].value.provenance }
-                  else empty end,
-                  if (.result[].expressions[].value | select(type == "object") | .sbom | length > 0) then
-                    { "policy set": "sbom", "message": .result[].expressions[].value.sbom }
-                  else empty end
-                ]
+              if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then
+                [.result[].expressions[].value | recurse(.[]?) | objects | to_entries[] |
+                 {policy: .key, message: .value | arrays | .[] | strings}]
               else
                 []
               end
@@ -101,13 +91,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Violations: $(jq -r '.violations' results)" >> $GITHUB_STEP_SUMMARY
+          if [ $(jq '.violations | length' results) -gt 0 ]; then
+              echo "#### Violations:" >> $GITHUB_STEP_SUMMARY
+              jq -r '
+              reduce .violations[] as $v ({}; .[$v.policy] += [$v.message])
+              | to_entries[]
+              | .key + ":\n" + (.value | map("- " + .) | join("\n")) + "\n"
+              ' results >> $GITHUB_STEP_SUMMARY
+          fi
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: results
           path: results
-
       # ______________#
       # image cleaner #
       # ______________#

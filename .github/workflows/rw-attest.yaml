@@ -107,7 +107,7 @@ jobs:
           set +x
           echo "Image Digest: ${{ steps.build-image.outputs.image_digest }}"
           echo "Runner: $(echo '${{ toJson(runner) }}' | jq .)"
-          echo "GitHub: $(echo '${{ toJson(github) }}' | jq .)"
+      #     echo "GitHub: $(echo '${{ toJson(github) }}' | jq .)"
   attest-build:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build

@@ -2,11 +2,14 @@ name: Release Workflow
 
 on:
   push:
-    branches: main
+    branches: [main]
     paths-ignore:
-      - 'README.md'
-      - 'catalog-info.yaml'
-      - 'renovate.json'
+      - "README.md"
+      - "catalog-info.yaml"
+      - "renovate.json"
+
+env:
+  GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
 
 jobs:
   release:
@@ -19,6 +22,28 @@ jobs:
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
-          github-token: ${{ secrets.READ_CONTENT_GITHUB_TOKEN }}
+          github-token: ${{ env.GH_TOKEN }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
+      - name: Get Run ID for Results
+        id: get-run-id
+        run: |
+          WF_NAME="Caller Workflow"
+          RUN_ID=$(gh run --repo "${{ github.repository }}" list --workflow "${WF_NAME}" --json databaseId --jq .[0].databaseId)
+          echo "Detected latest run id of ${RUN_ID} for workflow ${WF_NAME}"
+          echo "run-id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Download Results
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: results
+          path: .
+          github-token: ${{ env.GH_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.get-run-id.outputs.run-id }}
+      - name: Upload Results as Release Asset
+        if: steps.go-semantic-release.outputs.version != ''
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+        with:
+          files: results
+          tag_name: v${{ steps.go-semantic-release.outputs.version }}
+          token: ${{ env.GH_TOKEN }}
