@@ -1,0 +1,31 @@
+name: Caller Workflow
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  #   branches: [main]
+  push:
+
+jobs:
+  attest-image: #image
+    uses: ./.github/workflows/rw-attest.yaml
+    with:
+      build-type: image
+      subject-name: ghcr.io/${{ github.repository }}
+  verify-image: #image
+    needs: [attest-image]
+    uses: ./.github/workflows/rw-verify.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+  run-opa-image: #image
+    needs: [verify-image, attest-image]
+    uses: ./.github/workflows/rw-run-opa.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
