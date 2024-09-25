@@ -1,15 +1,6 @@
 // metadata file work in progress
 {
     "_type": "https://in-toto.io/Statement/v0.1",
-    "predicateType": "https://cosign.sigstore.dev/attestation/v1",
-    "subject": [
-        {
-            "name": "ghcr.io/${{ github.repository }}",
-            "digest": {
-                "sha256": "${{ inputs.image_digest }}"
-            }
-        }
-    ],
     "metadata": {
         "workflowData": {
             "workflowRefPath": "${{ github.workflow_ref }}",

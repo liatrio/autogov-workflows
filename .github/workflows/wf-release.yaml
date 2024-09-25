@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - "README.md"
-      - "catalog-info.yaml"
-      - "renovate.json"
+      - 'README.md'
+      - 'catalog-info.yaml'
+      - 'renovate.json'
 
 env:
   GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
@@ -28,14 +28,38 @@ jobs:
       - name: Get Run ID for Results
         id: get-run-id
         run: |
-          WF_NAME="Caller Workflow"
+          WF_NAME="Build Image Caller Workflow"
           RUN_ID=$(gh run --repo "${{ github.repository }}" list --workflow "${WF_NAME}" --json databaseId --jq .[0].databaseId)
           echo "Detected latest run id of ${RUN_ID} for workflow ${WF_NAME}"
           echo "run-id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Download Build Provenance Sigstore Bundle
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: image-provenance-attestation
+          path: .
+          github-token: ${{ env.GH_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.get-run-id.outputs.run-id }}
+      - name: Download Metadata Sigstore Bundle
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: image-metadata-attestation
+          path: .
+          github-token: ${{ env.GH_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.get-run-id.outputs.run-id }}
+      - name: Download SBOM Sigstore Bundle
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: image-sbom-attestation
+          path: .
+          github-token: ${{ env.GH_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.get-run-id.outputs.run-id }}
       - name: Download Results
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          name: results
+          name: image-results
           path: .
           github-token: ${{ env.GH_TOKEN }}
           repository: ${{ github.repository }}
@@ -44,6 +68,10 @@ jobs:
         if: steps.go-semantic-release.outputs.version != ''
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
-          files: results
+          files: |
+            image-results
+            image-provenance-attestation
+            image-metadata-attestation
+            image-sbom-attestation
           tag_name: v${{ steps.go-semantic-release.outputs.version }}
           token: ${{ env.GH_TOKEN }}
