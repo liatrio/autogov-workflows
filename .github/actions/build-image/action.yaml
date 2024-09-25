@@ -5,14 +5,16 @@ description: >-
   ./.github/workflows/rw-attest.yaml will trigger this action to build an image. The steps
   can be adjusted per the users need just as long as the output is the image digest.
 
+outputs:
+  image_digest:
+    description: The image digest of the image that was built from the build-image job.
+    value: ${{ steps.build-image.outputs.digest }}
+  metadata_json:
+    description: A JSON object with the build-image job's result metadata.
+    value: ${{ steps.build-image.outputs.metadata }}
 inputs:
-  subject-name:
-    description: The name for the image.
-    required: true
-    default: ghcr.io/${{ github.repository }}
   build-context:
-    description:
-      Build's context is the set of files located in the specified PATH (the default Git context
+    description: Build's context is the set of files located in the specified PATH (the default Git context
       URL will not work since a repo checkout is needed to invoke the composite action / isolated build steps).
       A valid Dockerfile must be available in the PATH given.
     required: false
@@ -24,17 +26,6 @@ inputs:
     description: List of target platforms for build.
     required: false
     default: linux/amd64,linux/arm64
-  registry:
-    description: Container registry to push image.
-    required: false
-    default: ghcr.io
-outputs:
-  image-digest:
-    description: The image digest of the image that was built from the build-image job.
-    value: ${{ steps.build-image.outputs.digest }}
-  image-build-metadata:
-    description: A JSON object with the build-image job's result metadata.
-    value: ${{ steps.build-image.outputs.metadata }}
 
 runs:
   using: composite
@@ -46,14 +37,14 @@ runs:
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
       with:
-        registry: ${{ inputs.registry }}
+        registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ github.token }}
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
       with:
-        images: ${{ inputs.subject-name }}
+        images: ghcr.io/${{ github.repository }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr

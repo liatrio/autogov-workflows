@@ -3,28 +3,10 @@ name: Reusable OPA Evaluation Workflow
 on:
   workflow_call:
     inputs:
-      build-type:
-        description: 'Specify the type of build: "image" or "blob".'
-        required: true
-        type: string
-      subject-name:
-        description: >
-          Subject name as it should appear in the attestation. Required unless
-          "subject-path" is specified, in which case it will be inferred from the
-          path.
-        default: ghcr.io/${{ github.repository }}
-        required: false
-        type: string
-      image-digest:
+      image_digest:
         type: string
         description: The digest of the image that was built and pushed
-        required: false
-        default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
-      build-artifact-id:
-        type: string
-        description: The artifact-id of the build artifacts.
-        required: false
-        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.build-artifact-id }}
+        required: true
       workflow-runner-label:
         type: string
         description: The label of the workflow runner
@@ -45,7 +27,6 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Log in to GitHub Container Registry
-        if: ${{ inputs.build-type == 'image' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ${{ inputs.registry }}
@@ -55,56 +36,11 @@ jobs:
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
           version: 0.67.1
-      - run: npm install @actions/artifact@2.1.9
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-      - name: Download Blob Artifact
-        if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@v7
-        env:
-          ARTIFACT_ID: ${{ inputs.build-artifact-id }}
-          ARTIFACTS_FOLDER: ./artifacts
-          ATTESTATIONS_FOLDER: ./attestations
-        with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
-      - name: List Downloaded Blob Artifacts
-        if: ${{ inputs.build-type == 'blob' }}
-        run: ls -althR ./artifacts
-      - name: Download artifacts for blob
-        if: ${{ inputs.build-type == 'blob' }}
+      - name: Download artifact attestation
         run: |
-          if [ -d "./artifacts" ]; then
-            for FILE in "./artifacts"/*; do
-              gh attestation download "$FILE" -o liatrio
-            done
-          else
-            echo "Directory ./artifacts does not exist"
-            exit 1
-          fi
-      - name: list downloaded sigstore bundle(s)
-        if: ${{ inputs.build-type == 'blob' }}
-        run: |
-          set -x
-          ls -althR ./artifacts
-          ls -althR *.jsonl
-      - name: cat sigstore bundle
-        if: ${{ inputs.build-type == 'blob' }}
-        run: |
-          set -x
-          cat *.jsonl | jq -r '.dsseEnvelope.payload' | base64 -d | jq -r
-      - name: Download artifact attestation for image
-        if: ${{ inputs.build-type == 'image' }}
-        run: |
-          gh attestation download oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} -o liatrio
+          gh attestation download \
+            oci://${{ inputs.registry }}/${{ github.repository }}@${{ inputs.image_digest }} \
+            -o liatrio
       - name: Download Policy Bundle
         run: |
           set +x
@@ -118,7 +54,7 @@ jobs:
           set -x
           opa eval \
             --fail \
-            --input ${{ inputs.image-digest.jsonl || '*.jsonl' }} \
+            --input ${{ inputs.image_digest }}.jsonl \
             --bundle "bundle.tar.gz" \
             "data.governance.allow" >\
           policy-evaluation.json
@@ -129,7 +65,7 @@ jobs:
           set -x
           opa eval \
             --fail \
-            --input ${{ inputs.image-digest.jsonl || '*.jsonl' }} \
+            --input ${{ inputs.image_digest }}.jsonl \
             --bundle "bundle.tar.gz" \
             "data.governance.violations" >\
           policy-evaluation.json
@@ -166,15 +102,8 @@ jobs:
       - name: Upload results
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-results' || inputs.build-type == 'blob' && 'blob-results' }}
+          name: results
           path: results
-          if-no-files-found: error
-      # - name: Upload Sigstore Bundle
-      #   uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
-      #   with:
-      #     name: sigstore-bundle
-      #     path: '*.jsonl'
-      #     if-no-files-found: error
       # ______________#
       # image cleaner #
       # ______________#
