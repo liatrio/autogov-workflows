@@ -2,8 +2,6 @@ name: Build Blob Caller Workflow
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]

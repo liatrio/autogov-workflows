@@ -159,6 +159,8 @@ jobs:
     env:
       ARTIFACTS_FOLDER: ./artifacts
       ATTESTATIONS_FOLDER: ./attestations
+    outputs:
+      build-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
     steps:
       - name: Check runner type
         if: ${{ runner.environment != 'github-hosted' }}
@@ -204,12 +206,17 @@ jobs:
           subject-path: ${{ inputs.build-type == 'blob' && format('./artifacts/{0}', inputs.subject-path) || '' }}
           github-token: ${{ github.token }}
           push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
+      - name: Rename Provenance Bundle
+        run: |
+          mkdir ./attestations
+          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ./attestations/attest-build-provenance-attestation.jsonl
       - name: Upload Provenance Sigstore Bundle
+        id: upload-provenance
         uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a #v4.3.6
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-provenance-attestation' || inputs.build-type == 'blob' && 'blob-provenance-attestation' }}
-          path: ${{ steps.attest-build-provenance.outputs.bundle-path }}
-          if-no-files-found: error
+          name: attest-build-provenance
+          path: ./attestations/attest-build-provenance-attestation.jsonl
+
   attest-metadata:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build
@@ -218,6 +225,8 @@ jobs:
       attestations: write
       packages: write
       contents: read
+    outputs:
+      build-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
     steps:
       - name: Check runner type
         if: ${{ runner.environment != 'github-hosted' }}
@@ -296,12 +305,18 @@ jobs:
           subject-name: ${{ inputs.build-type == 'image' && inputs['subject-name'] || '' }}
           subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
           subject-path: ${{ inputs.build-type == 'blob' && format('./artifacts/{0}', inputs.subject-path) || '' }}
+      - name: Rename Metadata Bundle
+        run: |
+          mkdir ./attestations
+          mv ${{ steps.attest-metadata.outputs.bundle-path }} ./attestations/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a #v4.3.6
+        id: upload-metadata
         with:
           name: ${{ inputs.build-type == 'image' && 'image-metadata-attestation' || inputs.build-type == 'blob' && 'blob-metadata-attestation' }}
-          path: ${{ steps.attest-metadata.outputs.bundle-path }}
+          path: ./attestations/attest-metadata-attestation.jsonl
           if-no-files-found: error
+
   attest-sbom:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: [build, attest-metadata, attest-build]
@@ -313,6 +328,8 @@ jobs:
       # https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
       contents: write
       actions: read
+    outputs:
+      build-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
     steps:
       - name: Check runner type
         if: ${{ runner.environment != 'github-hosted' }}
@@ -370,9 +387,76 @@ jobs:
           sbom-path: ${{ inputs['sbom-path'] }}
           github-token: ${{ github.token }}
           push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
-      - name: Upload Metadata Sigstore Bundle
+      - name: Rename SBOM Bundle
+        run: |
+          mkdir ./attestations
+          mv ${{ steps.attest-sbom.outputs.bundle-path }} ./attestations/attest-sbom-attestation.jsonl
+      - name: Upload SBOM Attestation
+        id: upload-sbom
         uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a #v4.3.6
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-sbom-attestation' || inputs.build-type == 'blob' && 'blob-sbom-attestation' }}
-          path: ${{ steps.attest-sbom.outputs.bundle-path }}
+          name: attest-sbom
+          path: ./attestations/attest-sbom-attestation.jsonl
+
+  upload-attestations:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: [attest-build, attest-metadata, attest-sbom]
+    env:
+      ARTIFACTS_FOLDER: ./attestations
+    steps:
+      - run: npm install @actions/artifact@2.1.9
+      - name: Download Provenance Attestation
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_ID: ${{ needs.attest-build.outputs.build-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Download Metadata Attestation
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_ID: ${{ needs.attest-metadata.outputs.build-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Download SBOM Attestation
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_ID: ${{ needs.attest-sbom.outputs.build-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Upload All Attestations
+        id: all-attestations
+        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a #v4.3.6
+        with:
+          name: all-attestations
+          path: ./attestations/*.jsonl
           if-no-files-found: error
