@@ -118,7 +118,7 @@ jobs:
           set -x
           opa eval \
             --fail \
-            --input ${{ inputs.image-digest.jsonl || '*.jsonl' }} \
+            --input <(jq -s . ${{ inputs.image-digest.jsonl || '*.jsonl' }}) \
             --bundle "bundle.tar.gz" \
             "data.governance.allow" >\
           policy-evaluation.json
@@ -129,7 +129,7 @@ jobs:
           set -x
           opa eval \
             --fail \
-            --input ${{ inputs.image-digest.jsonl || '*.jsonl' }} \
+            --input <(jq -s . ${{ inputs.image-digest.jsonl || '*.jsonl' }}) \
             --bundle "bundle.tar.gz" \
             "data.governance.violations" >\
           policy-evaluation.json
@@ -175,8 +175,8 @@ jobs:
       - uses: actions/delete-package-versions@abd519f0d4139a1c79766c4859d3a301fb3a8daa
         with:
           package-name: ${{ github.event.repository.name }}
-          package-type: 'container'
+          package-type: "container"
           owner: ${{ github.repository_owner }}
           min-versions-to-keep: 0
           ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently does not work as per https://github.com/actions/delete-package-versions/issues/88
-          delete-only-untagged-versions: 'true'
+          delete-only-untagged-versions: "true"
