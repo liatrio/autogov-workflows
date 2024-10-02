@@ -24,9 +24,16 @@ on:
         type: string
         description: The artifact-id of the build artifacts.
         default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.build-artifact-id }}
-      verify_tag:
+      all-attestations-artifact-id:
         type: string
-        description: Optional tag for verification
+        description: The artifact-id of the attestation artifacts.
+        required: false
+        default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }}
+      cert-identity:
+        type: string
+        description: >
+          The --cert-identity of the signer workflow, or builder, used in the verify job ensuring artifacts and attestations can be verified with the gh-cli.
+        default: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@refs/heads/main
         required: false
       workflow-runner-label:
         type: string
@@ -40,21 +47,34 @@ on:
         type: string
         default: 'ghcr.io'
 
+permissions: {}
+
 env:
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   verify:
+    permissions:
+      id-token: write
+      attestations: read
+      packages: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
-      - name: Check runner type
+      - name: Check Runner Type
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Checkout code
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-      - name: Log in to GitHub Container Registry
+      - name: Validate Inputs
+        run: |
+          if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.image-digest }}" ]]; then
+            echo "Error: subject-digest is required for build-type 'image'."
+            exit 1
+          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.build-artifact-id}}" ]]; then
+            echo "Error: build-artifact-id is required for build-type 'blob'."
+            exit 1
+          fi
+      - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
@@ -63,7 +83,7 @@ jobs:
           password: ${{ github.token }}
       - run: npm install @actions/artifact@2.1.9
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-      - name: download-artifact
+      - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
@@ -81,35 +101,23 @@ jobs:
 
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
-      - name: List downloaded artifacts
+      - name: List Downloaded Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: ls -althR ./artifacts
-      - name: Check if in workflow repo
-        if: ${{ github.repository == 'liatrio/demo-gh-autogov-workflows' }}
-        run: echo "verify_tag=${{ github.ref }}" >> "$GITHUB_ENV"
-      - name: Get latest commit SHA from main
-        if: ${{ github.repository != 'liatrio/demo-gh-autogov-workflows' && !inputs.verify_tag }}
-        env:
-          GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
-        run: |
-          latest_sha=$(gh api /repos/liatrio/demo-gh-autogov-workflows/commits/main | jq -r '.sha')
-          echo "verify_tag=$latest_sha" >> $GITHUB_ENV
-      - name: Set verify_tag from input
-        if: ${{ inputs.verify_tag }}
-        run: echo "verify_tag=${{ inputs.verify_tag }}" >> $GITHUB_ENV
-      - name: Verify attestation
+      - name: Verify Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |
+          set +x
           gh attestation verify \
             oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
             --repo ${{ github.repository }} \
             --deny-self-hosted-runners \
             --cert-identity \
-            "https://github.com/${{ github.repository }}/.github/workflows/rw-attest.yaml@${{ env.verify_tag }}" \
+            "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ env.verify_tag }}$"
-      - name: Verify blob attestation
+            | grep "^${{ github.ref }}$"
+      - name: Verify Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         env:
           ARTIFACTS_FOLDER: ./artifacts
@@ -119,7 +127,7 @@ jobs:
               $FILE \
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
-              --cert-identity "https://github.com/${{ github.repository }}/.github/workflows/rw-attest.yaml@${{ env.verify_tag }}" \
+              --cert-identity "${{ inputs.cert-identity }}" \
               --format json --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ env.verify_tag }}$"
+            | grep "^${{ github.ref }}$"
           done

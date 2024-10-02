@@ -10,6 +10,7 @@ metadata:
     - automated-governance
     - demo
     - github-actions
+    - workflow
 spec:
   type: other
   lifecycle: experimental

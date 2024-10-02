@@ -5,25 +5,44 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
-  # push:
+
+permissions: {}
 
 jobs:
   attest-blob: #blob
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: write
+      actions: read
     uses: ./.github/workflows/rw-attest.yaml
     with:
       build-type: blob
-      subject-path: i_am_blob
+      subject-path: |
+        i_am_blob
+        i_am_another_blob
   verify-blob: #blob
+    permissions:
+      id-token: write
+      attestations: read
+      packages: read
     needs: [attest-blob]
     uses: ./.github/workflows/rw-verify.yaml
     secrets: inherit
     with:
       build-type: blob
       build-artifact-id: ${{ needs.attest-blob.outputs.build-artifact-id }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@${{ github.ref }}
   run-opa-blob: #blob
+    permissions:
+      attestations: read
+      id-token: write
+      # packages: write is to delete stale images / read is only necessary for everything prior (will be fixed w/ low/high perm feat)
+      packages: write
     needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-run-opa.yaml
     secrets: inherit
     with:
       build-type: blob
-      build-artifact-id: ${{ needs.attest-blob.outputs.build-artifact-id }}
+      all-attestations-artifact-id: ${{ needs.attest-blob.outputs.all-attestations-artifact-id }}
