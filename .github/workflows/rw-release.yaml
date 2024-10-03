@@ -85,7 +85,7 @@ jobs:
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
           files: |
-            ${{ env.RESULTS_FOLDER }}-results/*
+            ${{ env.RESULTS_FOLDER }}/*
             ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           tag_name: v${{ steps.go-semantic-release.outputs.version }}
           token: ${{ env.GH_TOKEN }}
