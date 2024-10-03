@@ -46,7 +46,6 @@ runs:
         images: ${{ inputs.subject-name }}
         tags: |
           type=ref,event=branch
-          type=ref,event=pr
           type=sha
           type=raw,value=latest,enable=${{ github.event_name == 'release' }}
           type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}

@@ -94,7 +94,7 @@ on:
         value: ${{ inputs.build-type == 'blob' && jobs.build.outputs.build-artifact-id }}
       all-attestations-artifact-id:
         description: The artifact-id of all attestation artifacts.
-        value: ${{ inputs.build-type == 'blob' && jobs.upload-attestations.outputs.all-attestations }}
+        value: ${{ jobs.upload-attestations.outputs.all-attestations }}
 
 permissions: {}
 

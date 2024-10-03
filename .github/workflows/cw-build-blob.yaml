@@ -3,7 +3,6 @@ name: Build Blob Caller Workflow
 on:
   workflow_dispatch:
   # push:
-  #   branches: [main]
 
 permissions: {}
 
@@ -45,3 +44,13 @@ jobs:
     with:
       build-type: blob
       all-attestations-artifact-id: ${{ needs.attest-blob.outputs.all-attestations-artifact-id }}
+  release-blob: #blob
+    permissions:
+      contents: write
+    needs: [verify-blob, attest-blob, run-opa-blob]
+    uses: ./.github/workflows/rw-release.yaml
+    secrets: inherit
+    with:
+      build-type: blob
+      all-attestations-artifact-id: ${{ needs.attest-blob.outputs.all-attestations-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}

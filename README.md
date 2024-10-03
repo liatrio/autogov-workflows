@@ -162,6 +162,16 @@ jobs:
         with:
             build-type: image
             image-digest: ${{ needs.attest-image.outputs.image-digest }}
+    release-image: #image
+      permissions:
+        contents: write
+      needs: [verify-image, attest-image, run-opa-image]
+      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-release.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      secrets: inherit
+      with:
+        build-type: image
+        all-attestations-artifact-id: ${{ needs.attest-image.outputs.all-attestations-artifact-id }}
+        results-artifact-id: ${{ needs.attest-image.outputs.results-artifact-id }}
 ```
 
 ### Calling Reuseable Workflow to Build Blob(s)
@@ -685,6 +695,13 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 - No inputs for this action
 
+#### `.github/workflows/rw-release.yaml`
+
+- `build-type` (required, string): Specify the type of build: "image" or "blob".
+- `all-attestations-artifact-id` (required, string): The artifact-id of the attestation artifacts.
+- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
+
 ### Outputs
 
 #### `.github/workflows/rw-attest.yaml`
@@ -708,6 +725,10 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `image-build-metadata` (string): A JSON object with the build-image job's result metadata.
 
 #### `.github/actions/build-blob/action.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-release.yaml`
 
 - No outputs for this action
 
@@ -760,6 +781,21 @@ run-opa-image: #image
   with:
     build-type: image
     image-digest: ${{ needs.attest-image.outputs.image-digest }}
+```
+
+### Release Workflow
+
+```yaml:.github/workflows/rw-release.yaml
+release-image: #image
+  permissions:
+    contents: write
+  needs: [verify-image, attest-image, run-opa-image]
+  uses: ./.github/workflows/rw-release.yaml
+  secrets: inherit
+  with:
+    build-type: image
+    all-attestations-artifact-id: ${{ needs.attest-image.outputs.all-attestations-artifact-id }}
+    results-artifact-id: ${{ needs.attest-image.outputs.results-artifact-id }}
 ```
 
 ## Troubleshooting

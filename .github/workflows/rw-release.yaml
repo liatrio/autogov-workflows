@@ -1,0 +1,91 @@
+name: Release Workflow
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Specify the type of build: "image" or "blob".'
+        required: true
+        type: string
+      all-attestations-artifact-id:
+        type: string
+        description: The artifact-id of the attestation artifacts.
+        required: true
+        default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }}
+      results-artifact-id:
+        type: string
+        description: The artifact-id of the attestation artifacts.
+        required: true
+        default: ${{ github.event.needs.run-opa.outputs.results-artifact-id }}
+      workflow-runner-label:
+        type: string
+        description: The label of the workflow runner
+        default: ubuntu-latest
+
+env:
+  GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
+  ATTESTATIONS_ARTIFACT_ID: ${{ inputs.all-attestations-artifact-id }}
+  RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
+  ATTESTATIONS_FOLDER: ./attestations
+  RESULTS_FOLDER: ./${{ inputs.build-type }}-results
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Check Runner Type
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - run: npm install @actions/artifact@2.1.9
+        if: ${{ runner.environment == 'github-hosted'}}
+      - name: Download Sigstore Bundle(s)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ATTESTATIONS_ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
+      - name: Download opa-run Results
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.RESULTS_ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.RESULTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.RESULTS_FOLDER}`);
+      - name: Run go-semantic-release
+        uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+        id: go-semantic-release
+        with:
+          github-token: ${{ env.GH_TOKEN }}
+          changelog-generator-opt: emojis=true
+          allow-initial-development-versions: true
+      - name: Upload Results/Sigstore Bundle as Release Asset
+        if: steps.go-semantic-release.outputs.version != ''
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+        with:
+          files: |
+            ${{ env.RESULTS_FOLDER }}-results/*
+            ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
+          tag_name: v${{ steps.go-semantic-release.outputs.version }}
+          token: ${{ env.GH_TOKEN }}

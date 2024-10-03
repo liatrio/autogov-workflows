@@ -5,7 +5,7 @@ on:
   release:
     types: [published]
   push:
-    branches: [main]
+    branches: ['**']
 
 permissions: {}
 
@@ -45,4 +45,13 @@ jobs:
     with:
       build-type: image
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
-
+  release-image: #image
+    permissions:
+      contents: write
+    needs: [verify-image, attest-image, run-opa-image]
+    uses: ./.github/workflows/rw-release.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      all-attestations-artifact-id: ${{ needs.attest-image.outputs.all-attestations-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
