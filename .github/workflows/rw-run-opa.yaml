@@ -198,7 +198,7 @@ jobs:
       # ______________#
       - name: Delete Stale Image(s)
         if: ${{ inputs.build-type == 'image' }}
-        uses: actions/delete-package-versions@abd519f0d4139a1c79766c4859d3a301fb3a8daa # v5.0.0
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         continue-on-error: true
         with:
           package-name: ${{ github.event.repository.name }}
