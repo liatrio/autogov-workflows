@@ -81,7 +81,7 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.9
+      - run: npm install @actions/artifact@2.1.11
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}

@@ -192,7 +192,7 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.9
+      - run: npm install @actions/artifact@2.1.11
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
@@ -209,13 +209,15 @@ jobs:
 
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - run: |
+          echo "Workflow Inputs: $(echo '${{ toJson(inputs) }}' | jq .)"
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
         with:
           subject-name: ${{ inputs.build-type == 'image' && inputs.subject-name || '' }}
           subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && format('{0}/{1}', env.ARTIFACTS_FOLDER, inputs.subject-path) || '' }}
+          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
           github-token: ${{ github.token }}
           push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
       - name: Rename Provenance Bundle
@@ -255,7 +257,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.9
+      - run: npm install @actions/artifact@2.1.11
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
@@ -313,7 +315,7 @@ jobs:
           push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
           subject-name: ${{ inputs.build-type == 'image' && inputs['subject-name'] || '' }}
           subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && format('{0}/{1}', env.ARTIFACTS_FOLDER, inputs.subject-path) || '' }}
+          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
       - name: Rename Metadata Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -354,7 +356,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.9
+      - run: npm install @actions/artifact@2.1.11
         if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
@@ -387,7 +389,7 @@ jobs:
         with:
           subject-name: ${{ inputs.build-type == 'image' && inputs['subject-name'] || '' }}
           subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && env.ARTIFACTS_FOLDER || '' }}
+          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
           sbom-path: ${{ inputs['sbom-path'] }}
           github-token: ${{ github.token }}
           push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
@@ -409,7 +411,7 @@ jobs:
     outputs:
       all-attestations: ${{ steps.upload-all-attestations.outputs.artifact-id }}
     steps:
-      - run: npm install @actions/artifact@2.1.9
+      - run: npm install @actions/artifact@2.1.11
       - name: Download Provenance Attestation
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
