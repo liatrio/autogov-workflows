@@ -338,21 +338,25 @@ Considering many organizations and/or developers run builds and workflows from n
         "${{ inputs.cert-identity }}" \
         --format json \
         --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-        | grep "^${{ github.ref }}$"
+      | grep "^${{ github.ref }}$"
+      ...
 - name: Verify Blob Attestation(s)
   if: ${{ inputs.build-type == 'blob' }}
   env:
       ARTIFACTS_FOLDER: ./artifacts
   run: |
+      set +x
       for FILE in "$ARTIFACTS_FOLDER"/*; do
         gh attestation verify \
           $FILE \
           --deny-self-hosted-runners \
           --repo ${{ github.repository }} \
           --cert-identity "${{ inputs.cert-identity }}" \
-          --format json --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-        | grep "^${{ github.ref }}$"
-      done
+          --format json \
+          --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
+        | grep \
+            "^${{ github.ref }}$"
+      ...
 ```
 
 Again, verifying via the Reusable Workflow's GitHub reference (e.g. commit SHA, branch, tag etc) helps to thwart source repositories and/or signer workflows from being used that are not using approved branches, tags, or commit SHAs:
@@ -514,25 +518,32 @@ Expected top-level inputs that help describe what entity built the artifact, wha
 
 #### A Note About SLSA's Build L3 Reqs for Recording/Attesting to Workflow Inputs
 
-We use the [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments, which is what our current iteration is capable of.
+We use the [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
 
-SLSA's Provenance Spec does touch on `externalParameters`, though it is ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds).
-
+[The SLSA Provenance Model](https://slsa.dev/spec/v1.0/provenance#model)
 > externalParameters: the external interface to the build. In SLSA, these values are untrusted; they MUST be included in the provenance and MUST be verified downstream.
 
-<https://slsa.dev/spec/v1.0/provenance#builddefinition>
-
+[The SLSA Provenance Build Definition](https://slsa.dev/spec/v1.0/provenance#builddefinition)
 > The parameters that are under external control, such as those set by a user or tenant of the build platform. They MUST be complete at SLSA Build L3, meaning that there is no additional mechanism for an external party to influence the build. (At lower SLSA Build levels, the completeness MAY be best effort.)
 
-There is further discussion [here](https://github.com/slsa-framework/slsa-github-generator/issues/3618) that seems to point to these being necessary as well as recently being included in SLSA's [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator) as per the following commit:
+ One of the main reasons to attest to workflow inputs on GitHub's platform is to avoid [script injection attacks](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-for-github-actions#example-of-a-script-injection-attack), that is, a maintainer could ["obfuscate the code used to build their artifact by using a malicious (non-recorded) input"](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105322454).
+
+There is also further discussion [here](https://github.com/slsa-framework/slsa-github-generator/issues/3618) where the maintainers of SLSA's slsa-github-generator state that workflow inputs must be included during the attestation generation stage:
+
+- There is a [need to record inputs](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105994775) from the repository workflow including:
+  - Workflow input(s)
+  - Variables (e.g. user inputted environment vars / `env.*`)
+  - GitHub event(s)
+
+The maintainers of the [SLSA Framework](https://github.com/slsa-framework) just recently included workflow inputers in the [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator):
 
 - [feat: Record vars in SLSA generators](https://github.com/slsa-framework/slsa-github-generator/commit/40c607fde64a75eaaa47a6e41e674011d96060f1)
 
-From reading the provenance spec as well as the issues above, it is suggested that the absence of such workflow inputs from `buildDefinition.externalParameters.workflow.inputs` (e.g. from the provenance attestation) could deem our current iteration/effort to not be SLSA Build L3 compliant.
+Currently, only the following is provided from GitHub's Build Provenance Attestation:
 
-#### Proposed Solution
-
-A reusable workflow could create a custom predicate as we currently do to attest to metadata using the `actions/attest` action, which we discuss below. In this scenario, the one verifying should be able to trust the workflow (or builder) being used to attest/record the instantiation/hydration of `toJson(inputs)` into the custom predicate. So something such as `'.[].verificationResult.statement.predicate.buildDefinition.externalParameters.workflow.inputs` could be used to verify such inputs. This is something we would very much like to either see implemented natively with the provenance GHA or implement ourselves to "attest" to the workflow inputs used by a user. Currently, only the following is provided from the build provenance attestation:
+- `externalParameters`: This includes details about the workflow (workflow key) like its path, reference (ref), and repository. This is considered a top-level input as it directly defines the configuration of the workflow used in the build.
+- `internalParameters`: These are specific to the GitHub-hosted runner environment, such as `event_name`, `repository_id`, `repository_owner_id`, and `runner_environment`. They provide information about the context in which the build was run, but they are typically not explicitly set by a user. Instead, they are collected automatically from the GitHub Actions runtime.
+- `resolvedDependencies`: This lists dependencies used during the build, including a `gitCommit` digest that points to a specific version of the source code. This ensures reproducibility by tying the build to an exact version of the source.
 
 - `gh attestation verify oci://<subject_name>@<image_digest> --rep <repo> --cert-identity "<signer_workflow>@<github_ref>" --format json --jq '.[].verificationResult.statement.predicate.buildDefinition'`:
 
@@ -542,7 +553,7 @@ A reusable workflow could create a custom predicate as we currently do to attest
   "externalParameters": {
     "workflow": {
       "path": ".github/workflows/cw-check.yaml",
-      "ref": "refs/tags/v0.5.10",
+      "ref": "<github.ref>",
       "repository": "https://github.com/liatrio/demo-gh-autogov-workflows"
     }
   },
@@ -557,23 +568,99 @@ A reusable workflow could create a custom predicate as we currently do to attest
   "resolvedDependencies": [
     {
       "digest": {
-        "gitCommit": "df327b130efdc12f90ed6a6abae6f9066533e27c"
+        "gitCommit": "<git.sha>"
       },
-      "uri": "git+https://github.com/liatrio/demo-gh-autogov-workflows@refs/tags/v0.5.10"
+      "uri": "git+https://github.com/liatrio/demo-gh-autogov-workflows@<github.ref>"
     }
   ]
 }
 ```
 
-Our example above includes the following:
+While the slsa-github-generator ["...can record the inputs in a trustworthy way", "..the GitHub artifact attestations currently cannot."](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2106479658) Essentially, GitHub would need to provide workflow inputs in the build provenance attestation using something like `buildDefinition.externalParameters.workflow.inputs` instead of just `path`, `ref`, and `repository`.
 
-- `externalParameters`: This includes details about the workflow (workflow key) like its path, reference (ref), and repository. This is considered a top-level input as it directly defines the configuration of the workflow used in the build.
-- `internalParameters`: These are specific to the GitHub-hosted runner environment, such as `event_name`, `repository_id`, `repository_owner_id`, and `runner_environment`. They provide information about the context in which the build was run, but they are typically not explicitly set by a user. Instead, they are collected automatically from the GitHub Actions runtime.
-- `resolvedDependencies`: This lists dependencies used during the build, including a `gitCommit` digest that points to a specific version of the source code. This ensures reproducibility by tying the build to an exact version of the source.
+To be compliant across all SLSA Build Levels, we satisfy this gap in GitHub's artifact attestations offering ourselves by including workflow inputs, as well as other environment variable values, in our [generic metadata predicate/attestation](#cosign-generic-predicate) (discussed further below under the [tools section](#github-artifact-attestation-actions-and-other-tools-used)) that we attest to using the `actions/attest` action.
 
-While the slsa-github-generator ["...can record the inputs in a trustworthy way", "..the GitHub artifact attestations currently cannot."](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2106479658)
+An example of our metadata predicate:
 
-We are continuing to move forward with the expectation that `externalParameters.workflow` and the `resolvedDependencies` are sufficient in order to meet SLSA Level 3's requirement as they can be considered top-level inputs since they directly impact the build and are part of what makes the build traceable and reproducible via the provenance attestation for recording and attesting the parameters that impact the build process, which helps in ensuring reproducibility and supply chain integrity. With that being said, we are still interested and want to include user inputs either using the above solution (e.g "custom predicate") or something native per the issue, [feat: include workflow inputs in externalParameters](https://github.com/actions/attest-build-provenance/issues/55), mentioned above in order to record/attest to specific user workflow inputs and specifically to avoid [script injection attacks](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-for-github-actions#example-of-a-script-injection-attack).
+```json
+{
+  "_type": "https://in-toto.io/Statement/v0.1",
+  "metadata": {
+    "workflowData": {
+      "workflowRefPath": "${{ github.workflow_ref }}",
+      "branch": "${{ github.ref_name }}",
+      "buildWorkflowRunId": "${{ github.run_id }}",
+      "event": "${{ github.event_name }}",
+      "inputs": "${{toJson(inputs)}}"
+    },
+    "commitData": {
+      "commitSHA": "${{ github.sha }}",
+      "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+    },
+    "repositoryData": {
+      "repository": "${{ github.repository }}",
+      "repositoryId": "${{ github.repository_id }}",
+      "githubServerURL": "${{ github.server_url }}"
+    },
+    "ownerData": {
+      "owner": "${{ github.repository_owner }}",
+      "ownerId": "${{ github.repository_owner_id }}"
+    },
+    "jobData": {
+      "jobId": "${{ github.job }}",
+      "runNumber": "${{ github.run_number }}",
+      "action": "${{ github.action }}",
+      "actor": "${{ github.actor }}",
+      "status": "${{ job.status }}"
+    },
+    "runnerData": {
+      "os": "${{ runner.os }}",
+      "name": "${{ runner.name }}",
+      "arch": "${{ runner.arch }}",
+      "environment": "${{ runner.environment }}"
+    }
+  }
+}
+```
+
+The `inputs` object is used to hydrate the metadata artifact/attestation and then the following `gh attestation verify` commands are used to verify those inputs exist.
+
+image:
+
+```shell
+gh attestation verify \
+  oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
+  --repo ${{ github.repository }} \
+  --deny-self-hosted-runners \
+  --cert-identity \
+  "${{ inputs.cert-identity }}" \
+  --format json \
+  --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
+| grep -E \
+    'build-type|predicate-type|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-name|workflow-runner-label' | \
+  jq -r
+```
+
+blob:
+
+```shell
+for FILE in "$ARTIFACTS_FOLDER"/*; do
+  gh attestation verify \
+    $FILE \
+    --deny-self-hosted-runners \
+    --repo ${{ github.repository }} \
+    --cert-identity "${{ inputs.cert-identity }}" \
+    --format json \
+    --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
+  | grep -E \
+      'build-type|predicate-type|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-path|workflow-runner-label' | \
+    jq -r
+done
+```
+
+Instead of moving forward with the expectation that `externalParameters.workflow` and the `resolvedDependencies` (e.g. considered top-level inputs since they directly impact the build and are part of what makes the build traceable, but not necessarily reproducible) are sufficient in meeting all of SLSA's Build Level requirements, we are going one step further by including user inputs using our "custom predicate".
+
+For the time being, our solution provides a stop gap until GitHub offers a native solution as per the issue above, [feat: include workflow inputs in externalParameters](https://github.com/actions/attest-build-provenance/issues/55), to record/attest to user workflow inputs.
 
 ### Why No Pull Request?
 

@@ -6,6 +6,9 @@ on:
     types: [published]
   push:
     branches: ['**']
+    paths-ignore:
+      - catalog-info.yaml
+      - README.md
 
 permissions: {}
 
@@ -45,6 +48,7 @@ jobs:
     with:
       build-type: image
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      policy-bundle-version: v0.6.0
   release-image: #image
     permissions:
       contents: write

@@ -287,23 +287,39 @@ jobs:
           echo '{
             "_type": "https://in-toto.io/Statement/v0.1",
             "metadata": {
-              "workflowRunId": "${{ github.run_id }}",
-              "commitSHA": "${{ github.sha }}",
-              "githubServerURL": "${{ github.server_url }}",
-              "repository": "${{ github.repository }}",
-              "repositoryId": "${{ github.repository_id }}",
-              "owner": "${{ github.repository_owner }}",
-              "ownerId": "${{ github.repository_owner_id }}",
-              "actor": "${{ github.actor }}",
-              "event": "${{ github.event_name }}",
-              "ref": "${{ github.ref }}",
-              "jobId": "${{ github.job }}",
-              "runNumber": "${{ github.run_number }}",
-              "workflowRefPath": "${{ github.workflow_ref }}",
-              "action": "${{ github.action }}",
-              "runnerOS": "${{ runner.os }}",
-              "runnerName": "${{ runner.name }}",
-              "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+              "workflowData": {
+                "workflowRefPath": "${{ github.workflow_ref }}",
+                "branch": "${{ github.ref_name }}",
+                "buildWorkflowRunId": "${{ github.run_id }}",
+                "event": "${{ github.event_name }}",
+                "inputs": ${{ toJson(inputs) }}
+              },
+              "commitData": {
+                "commitSHA": "${{ github.sha }}",
+                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+              },
+              "repositoryData": {
+                "repository": "${{ github.repository }}",
+                "repositoryId": "${{ github.repository_id }}",
+                "githubServerURL": "${{ github.server_url }}"
+              },
+              "ownerData": {
+                "owner": "${{ github.repository_owner }}",
+                "ownerId": "${{ github.repository_owner_id }}"
+              },
+              "jobData": {
+                "jobId": "${{ github.job }}",
+                "runNumber": "${{ github.run_number }}",
+                "action": "${{ github.action }}",
+                "actor": "${{ github.actor }}",
+                "status": "${{ job.status }}"
+              },
+              "runnerData": {
+                "os": "${{ runner.os }}",
+                "name": "${{ runner.name }}",
+                "arch": "${{ runner.arch }}",
+                "environment": "${{ runner.environment }}"
+              }
             }
           }' > metadata.json
       - run: cat metadata.json | jq -r

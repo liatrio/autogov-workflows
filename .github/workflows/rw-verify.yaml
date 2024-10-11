@@ -116,18 +116,44 @@ jobs:
             "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ github.ref }}$"
+          | grep "^${{ github.ref }}$"
+
+          gh attestation verify \
+            oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
+            --repo ${{ github.repository }} \
+            --deny-self-hosted-runners \
+            --cert-identity \
+            "${{ inputs.cert-identity }}" \
+            --format json \
+            --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
+          | grep -E \
+              'build-type|predicate-type|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-name|workflow-runner-label' | \
+            jq -r
       - name: Verify Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         env:
           ARTIFACTS_FOLDER: ./artifacts
         run: |
+          set +x
           for FILE in "$ARTIFACTS_FOLDER"/*; do
             gh attestation verify \
               $FILE \
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
-              --format json --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ github.ref }}$"
+              --format json \
+              --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
+            | grep \
+                "^${{ github.ref }}$"
+
+            gh attestation verify \
+              $FILE \
+              --deny-self-hosted-runners \
+              --repo ${{ github.repository }} \
+              --cert-identity "${{ inputs.cert-identity }}" \
+              --format json \
+              --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
+            | grep -E \
+                'build-type|predicate-type|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-path|workflow-runner-label' | \
+              jq -r
           done

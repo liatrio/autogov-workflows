@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   # push:
   #   branches: ['**']
+  #   paths-ignore:
+  #     - catalog-info.yaml
+  #     - README.md
 
 permissions: {}
 
@@ -45,6 +48,7 @@ jobs:
     with:
       build-type: blob
       all-attestations-artifact-id: ${{ needs.attest-blob.outputs.all-attestations-artifact-id }}
+      policy-bundle-version: v0.6.0
   release-blob: #blob
     permissions:
       contents: write
