@@ -516,7 +516,7 @@ We also take the step to checkout the source repo by commit SHA, rather than onl
 
 Expected top-level inputs that help describe what entity built the artifact, what process they used, etc.
 
-#### A Note About SLSA's Build L3 Reqs for Recording/Attesting to Workflow Inputs
+#### A Note About SLSA's Build Level Requirements for Recording/Attesting to Workflow Inputs
 
 We use the [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
 
