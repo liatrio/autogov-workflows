@@ -390,7 +390,7 @@ jobs:
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Generate SBOM
-        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
+        uses: anchore/sbom-action@f5e124a5e5e1d497a692818ae907d3c45829d033 # v0.17.3
         with:
           image: ${{ inputs.build-type == 'image' && format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build.outputs.image-digest) || '' }}
           path: ${{ inputs.build-type == 'blob' && env.ARTIFACTS_FOLDER || '' }}
