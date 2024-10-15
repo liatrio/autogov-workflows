@@ -20,9 +20,8 @@ jobs:
       packages: write
       contents: write
       actions: read
-    uses: ./.github/workflows/rw-attest.yaml
+    uses: ./.github/workflows/rw-attest-image.yaml
     with:
-      build-type: image
       subject-name: ghcr.io/${{ github.repository }}
   verify-image: #image
     permissions:
@@ -35,7 +34,7 @@ jobs:
     with:
       build-type: image
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
   run-opa-image: #image
     permissions:
       attestations: read

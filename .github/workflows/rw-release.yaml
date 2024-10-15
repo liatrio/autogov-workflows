@@ -38,7 +38,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Check Runner Type
+      - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."

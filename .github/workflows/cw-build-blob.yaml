@@ -18,9 +18,8 @@ jobs:
       packages: write
       contents: write
       actions: read
-    uses: ./.github/workflows/rw-attest.yaml
+    uses: ./.github/workflows/rw-attest-blob.yaml
     with:
-      build-type: blob
       subject-path: |
         i_am_blob
         i_am_another_blob
@@ -34,8 +33,8 @@ jobs:
     secrets: inherit
     with:
       build-type: blob
-      build-artifact-id: ${{ needs.attest-blob.outputs.build-artifact-id }}
-      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@${{ github.ref }}
+      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
   run-opa-blob: #blob
     permissions:
       attestations: read

@@ -3,33 +3,23 @@ name: Reusable Build Image / Attest Workflow
 on:
   workflow_call:
     inputs:
-      build-type:
-        description: 'Specify the type of build: "image" or "blob".'
-        required: true
-        default: 'image'
-        type: string
       subject-name:
         description: >
           Subject name as it should appear in the attestation. Required unless
           "subject-path" is specified, in which case it will be inferred from the
           path.
-        required: false
+        required: true
         type: string
-      blob-artifact-name:
-        description: >
-          The name of the blob(s) built from the build-blob action found in
-          ./.github/actions/build-blob/action.yaml.
-        default: blob-build-artifact
+      registry:
+        description: Container registry to push image.
         required: false
+        default: ghcr.io
         type: string
-      subject-path:
+      image-artifact-name:
         description: >
-          Path to the artifact serving as the subject of the attestation. Must
-          specify exactly one of "subject-path" or "subject-digest". May contain a
-          glob pattern or list of paths (total subject count cannot exceed 2500).
-          examples: https://github.com/actions/attest-build-provenance?tab=readme-ov-file#examples
-        default: |
-          i_am_blob
+          The name of artifact for the image built from the build-image action found in
+          ./.github/actions/build-image/action.yaml.
+        default: image-build-artifact
         required: false
         type: string
       show-summary:
@@ -39,11 +29,6 @@ on:
         default: true
         required: false
         type: boolean
-      registry:
-        description: Container registry to push image.
-        required: false
-        default: ghcr.io
-        type: string
       workflow-runner-label:
         description: >
           The label used for runner/OS selection
@@ -51,19 +36,6 @@ on:
         required: false
         default: ubuntu-latest
         type: string
-      signer-workflow-cert-identity:
-        description: >
-          The signer workflow's identity used to validate against the Subject Alternative Name (SAN) within the attestation certificate.
-          The --cert-identity is the most effective/reliable means to validate the certificate, or workflow (e.g. signer workflow's identity).
-        required: false
-        default: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@refs/heads/main
-        type: string
-      predicate-type:
-        description: >
-          The type of attestation predicate.
-        required: false
-        type: string
-        default: 'https://cosign.sigstore.dev/attestation/v1'
       sbom-format:
         description: >
           The format of the SBOM.
@@ -83,15 +55,15 @@ on:
         type: string
         default: 'sbom.cyclonedx.json'
     outputs:
+      image-artifact-id:
+        description: The artifact-id of the image artifact.
+        value: ${{ jobs.build.outputs.image-artifact-id }}
       image-digest:
         description: The image digest of the image that was built from the build-image job.
-        value: ${{ inputs.build-type == 'image' && jobs.build.outputs.image-digest }}
+        value: ${{ jobs.build.outputs.image-digest }}
       image-build-metadata:
         description: A JSON object with the build-image job's result metadata.
-        value: ${{ inputs.build-type == 'image' && jobs.build.outputs.image-build-metadata }}
-      build-artifact-id:
-        description: The artifact-id of the build artifacts.
-        value: ${{ inputs.build-type == 'blob' && jobs.build.outputs.build-artifact-id }}
+        value: ${{ jobs.build.outputs.image-build-metadata }}
       all-attestations-artifact-id:
         description: The artifact-id of all attestation artifacts.
         value: ${{ jobs.upload-attestations.outputs.all-attestations }}
@@ -111,30 +83,20 @@ jobs:
     outputs:
       image-digest: ${{ steps.build-image.outputs.image-digest }}
       image-build-metadata: ${{ steps.build-image.outputs.image-build-metadata }}
-      job-id: ${{ github.job }}
-      build-artifact-id: ${{ steps.upload-blob.outputs.artifact-id }}
+      image-artifact-id: ${{ steps.upload-image.outputs.artifact-id }}
     steps:
-      - name: Check runner type
+      - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Validate Inputs
-        run: |
-          if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.subject-name }}" ]]; then
-            echo "Error: subject-name is required for build-type 'image'."
-            exit 1
-          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.subject-path }}" ]]; then
-            echo "Error: subject-path is required for build-type 'blob'."
-            exit 1
-          fi
       - name: Checkout code
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Build Image
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
+        if: ${{ runner.environment == 'github-hosted' }}
         id: build-image
         uses: ./.github/actions/build-image
         with:
@@ -142,95 +104,38 @@ jobs:
           subject-name: ${{ inputs.subject-name }}
           docker-file: ${{ inputs.docker-file }}
           platforms: ${{ inputs.platforms }}
-      - name: Build Blob
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-        id: build-blob
-        uses: ./.github/actions/build-blob
-      - run: |
-        if: ${{ inputs.build-type == 'blob' }}
-          set +x
-          ls -alth
-          cat i_am_blob
-      - name: Upload Blob
-        if: ${{ inputs.build-type == 'blob' }}
-        id: upload-blob
+      - name: Upload Image
+        id: upload-image
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: ${{ inputs.blob-artifact-name }}
-          path: ${{ inputs.subject-path }}
+          name: ${{ inputs.image-artifact-name }}
+          path: /tmp/image.tar
           if-no-files-found: error
-      - name: DEBUG THE THINGS
-        run: |
-          set +x
-          echo "Image Digest: ${{ steps.build-image.outputs.image-digest }}"
-          echo "Image Build Metadata: $(echo '${{ toJson(steps.build-image.outputs.image-build-metadata) }}' | jq .)"
-          echo "Runner: $(echo '${{ toJson(runner) }}' | jq .)"
-      #     echo "GitHub: $(echo '${{ toJson(github) }}' | jq .)"
-
-  attest-build:
-    runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build
-    permissions:
-      id-token: write
-      attestations: write
-      packages: write
-      contents: read
-    env:
-      ARTIFACT_ID: ${{ needs.build.outputs.build-artifact-id }}
-    outputs:
-      build-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
-    steps:
-      - name: Check Runner Type
-        if: ${{ runner.environment != 'github-hosted' }}
-        run: |
-          echo "Job is running on a self-hosted runner. Terminating job..."
-          exit 1
-      - name: Login to GitHub Container Registry
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ${{ inputs.registry }}
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.11
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-      - name: Download Blob Artifact(s)
-        if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
-      - run: |
-          echo "Workflow Inputs: $(echo '${{ toJson(inputs) }}' | jq .)"
-      - name: Attest Provenance
-        id: attest-build-provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
-        with:
-          subject-name: ${{ inputs.build-type == 'image' && inputs.subject-name || '' }}
-          subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
-          github-token: ${{ github.token }}
-          push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
-      - name: Rename Provenance Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-      - name: Upload Provenance Sigstore Bundle
-        id: upload-provenance
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-        with:
-          name: attest-build-provenance
-          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-          if-no-files-found: error
+      # - name: DEBUG THE THINGS
+      #   shell: bash
+      #   env:
+      #     GITHUB_CONTEXT: ${{ toJson(github) }}
+      #     JOB_CONTEXT: ${{ toJson(job) }}
+      #     STEPS_CONTEXT: ${{ toJson(steps) }}
+      #     RUNNER_CONTEXT: ${{ toJson(runner) }}
+      #     INPUTS_CONTEXT: ${{ toJson(runner) }}
+      #   run: |
+      #     echo "$GITHUB_CONTEXT"
+      #     echo "$JOB_CONTEXT"
+      #     echo "$STEPS_CONTEXT"
+      #     echo "$RUNNER_CONTEXT"
+      #     echo "$INPUTS_CONTEXT"
+      # - name: Show default environment variables
+      #   shell: bash
+      #   run: |
+      #     echo "The job_id is: $GITHUB_JOB"
+      #     echo "The id of this action is: $GITHUB_ACTION"
+      #     echo "The run id is: $GITHUB_RUN_ID"
+      #     echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+      #     echo "GitHub SHA: $GITHUB_SHA"
+      # - name: List all GitHub environment variables
+      #   shell: bash
+      #   run: printenv | grep '^GITHUB_'
 
   attest-metadata:
     runs-on: ${{ inputs.workflow-runner-label }}
@@ -240,40 +145,21 @@ jobs:
       attestations: write
       packages: write
       contents: read
-    env:
-      ARTIFACT_ID: ${{ needs.build.outputs.build-artifact-id }}
     outputs:
       build-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
     steps:
-      - name: Check Runner Type
+      - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Login to GitHub Container Registry
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
+        if: ${{ runner.environment == 'github-hosted' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.11
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-      - name: Download Blob Artifact(s)
-        if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - run: |
           echo ${{ github.workflow }}
           echo ${{ github.workflow_ref }}
@@ -326,12 +212,11 @@ jobs:
       - uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         id: attest-metadata
         with:
-          predicate-type: ${{ inputs['predicate-type'] }}
+          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: metadata.json
-          push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
-          subject-name: ${{ inputs.build-type == 'image' && inputs['subject-name'] || '' }}
-          subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
+          push-to-registry: true
+          subject-name: ${{ inputs['subject-name'] }}
+          subject-digest: ${{ needs.build.outputs.image-digest }}
       - name: Rename Metadata Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -340,8 +225,53 @@ jobs:
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         id: upload-metadata
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-metadata-attestation' || inputs.build-type == 'blob' && 'blob-metadata-attestation' }}
+          name: ${{ 'image-metadata-attestation' }}
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+          if-no-files-found: error
+
+  attest-build:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
+    env:
+      ARTIFACT_ID: ${{ needs.build.outputs.image-artifact-id }}
+    outputs:
+      build-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Attest Provenance
+        id: attest-build-provenance
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
+        with:
+          subject-name: ${{ inputs.subject-name }}
+          subject-digest: ${{ needs.build.outputs.image-digest }}
+          github-token: ${{ github.token }}
+          push-to-registry: true
+      - name: Rename Provenance Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+      - name: Upload Provenance Sigstore Bundle
+        id: upload-provenance
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: attest-build-provenance
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
           if-no-files-found: error
 
   attest-sbom:
@@ -355,45 +285,25 @@ jobs:
       packages: write
       contents: write
       actions: read
-    env:
-      ARTIFACT_ID: ${{ needs.build.outputs.build-artifact-id }}
     outputs:
       build-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
     steps:
-      - name: Check Runner Type
+      - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Login to GitHub Container Registry
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
+        if: ${{ runner.environment == 'github-hosted' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.11
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
-      - name: Download Blob Artifact(s)
-        if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Generate SBOM
         uses: anchore/sbom-action@f5e124a5e5e1d497a692818ae907d3c45829d033 # v0.17.3
         with:
-          image: ${{ inputs.build-type == 'image' && format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build.outputs.image-digest) || '' }}
-          path: ${{ inputs.build-type == 'blob' && env.ARTIFACTS_FOLDER || '' }}
+          image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build.outputs.image-digest) }}
           format: ${{ inputs['sbom-format'] }}
           output-file: ${{ inputs['sbom-output-file'] }}
           github-token: ${{ github.token }}
@@ -403,12 +313,11 @@ jobs:
         id: attest-sbom
         uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
         with:
-          subject-name: ${{ inputs.build-type == 'image' && inputs['subject-name'] || '' }}
-          subject-digest: ${{ inputs.build-type == 'image' && needs.build.outputs.image-digest || '' }}
-          subject-path: ${{ inputs.build-type == 'blob' && join(env.ARTIFACTS_FOLDER, '\n') || '' }}
+          subject-name: ${{ inputs['subject-name'] }}
+          subject-digest: ${{ needs.build.outputs.image-digest }}
           sbom-path: ${{ inputs['sbom-path'] }}
           github-token: ${{ github.token }}
-          push-to-registry: ${{ inputs.build-type == 'image' && 'true' || 'false' }}
+          push-to-registry: true
       - name: Rename SBOM Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -427,6 +336,11 @@ jobs:
     outputs:
       all-attestations: ${{ steps.upload-all-attestations.outputs.artifact-id }}
     steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
       - run: npm install @actions/artifact@2.1.11
       - name: Download Provenance Attestation
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

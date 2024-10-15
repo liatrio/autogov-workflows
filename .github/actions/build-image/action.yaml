@@ -2,7 +2,7 @@ name: Build Image Composite Action
 
 description: >-
   A composite action that is placed in ./.github/actions/build-image/action.yaml whereby
-  ./.github/workflows/rw-attest.yaml will trigger this action to build an image. The steps
+  ./.github/workflows/rw-attest-image.yaml will trigger this action to build an image. The steps
   can be adjusted per the users need just as long as the output is the image digest.
 
 inputs:
@@ -39,6 +39,16 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
@@ -49,16 +59,6 @@ runs:
           type=sha
           type=raw,value=latest,enable=${{ github.event_name == 'release' }}
           type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-      with:
-        registry: ${{ inputs.registry }}
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
     - name: Build and push Docker image
       uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
       id: build-image
@@ -72,47 +72,3 @@ runs:
         outputs: type=oci,dest=/tmp/image.tar
         cache-from: type=gha
         cache-to: type=gha,mode=max
-      # ____________#
-      # debug steps #
-      # ____________#
-    - name: Dump GitHub context
-      shell: bash
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
-    - name: Dump job context
-      shell: bash
-      env:
-        JOB_CONTEXT: ${{ toJson(job) }}
-      run: echo "$JOB_CONTEXT"
-    - name: Dump steps context
-      shell: bash
-      env:
-        STEPS_CONTEXT: ${{ toJson(steps) }}
-      run: echo "$STEPS_CONTEXT"
-    - name: Dump runner context
-      shell: bash
-      env:
-        RUNNER_CONTEXT: ${{ toJson(runner) }}
-      run: echo "$RUNNER_CONTEXT"
-    - name: Dump strategy context
-      shell: bash
-      env:
-        STRATEGY_CONTEXT: ${{ toJson(strategy) }}
-      run: echo "$STRATEGY_CONTEXT"
-    - name: Dump matrix context
-      shell: bash
-      env:
-        MATRIX_CONTEXT: ${{ toJson(matrix) }}
-      run: echo "$MATRIX_CONTEXT"
-    - name: Show default environment variables
-      shell: bash
-      run: |
-        echo "The job_id is: $GITHUB_JOB"
-        echo "The id of this action is: $GITHUB_ACTION"
-        echo "The run id is: $GITHUB_RUN_ID"
-        echo "The GitHub Actor's username is: $GITHUB_ACTOR"
-        echo "GitHub SHA: $GITHUB_SHA"
-    - name: List all GitHub environment variables
-      shell: bash
-      run: printenv | grep '^GITHUB_'

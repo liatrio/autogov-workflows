@@ -20,10 +20,10 @@ on:
         description: The digest of the image that was built and pushed
         required: false
         default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
-      build-artifact-id:
+      blob-artifact-id:
         type: string
         description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.build-artifact-id }}
+        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
       all-attestations-artifact-id:
         type: string
         description: The artifact-id of the attestation artifacts.
@@ -32,9 +32,8 @@ on:
       cert-identity:
         type: string
         description: >
-          The --cert-identity of the signer workflow, or builder, used in the verify job ensuring artifacts and attestations can be verified with the gh-cli.
-        default: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest.yaml@refs/heads/main
-        required: false
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and corrrect workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml
+        required: true
       workflow-runner-label:
         type: string
         description: The label of the workflow runner
@@ -60,7 +59,7 @@ jobs:
       packages: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
-      - name: Check Runner Type
+      - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
@@ -70,8 +69,8 @@ jobs:
           if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.image-digest }}" ]]; then
             echo "Error: subject-digest is required for build-type 'image'."
             exit 1
-          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.build-artifact-id}}" ]]; then
-            echo "Error: build-artifact-id is required for build-type 'blob'."
+          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.blob-artifact-id}}" ]]; then
+            echo "Error: blob-artifact-id is required for build-type 'blob'."
             exit 1
           fi
       - name: Login to GitHub Container Registry
@@ -87,7 +86,7 @@ jobs:
         if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
-          ARTIFACT_ID: ${{ inputs.build-artifact-id }}
+          ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
           ARTIFACTS_FOLDER: ./artifacts
         with:
           script: |
@@ -116,7 +115,7 @@ jobs:
             "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-          | grep "^${{ github.ref }}$"
+          | grep -q "^${{ github.ref }}$" || { echo "Error: Verification failed due to incorrect certificate source repository reference."; exit 1; }
 
           gh attestation verify \
             oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
@@ -126,9 +125,9 @@ jobs:
             "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-          | grep -E \
-              'build-type|predicate-type|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-name|workflow-runner-label' | \
-            jq -r
+          | grep -Eq \
+              'build-type|predicate-type|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-name|workflow-runner-label' \
+          && jq -r || { echo "Error: Verification failed due to missing workflow inputs."; exit 1; }
       - name: Verify Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         env:
@@ -143,8 +142,7 @@ jobs:
               --cert-identity "${{ inputs.cert-identity }}" \
               --format json \
               --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep \
-                "^${{ github.ref }}$"
+            | grep -q "^${{ github.ref }}$" || { echo "Error: Verification failed due to incorrect certificate source repository reference."; exit 1; }
 
             gh attestation verify \
               $FILE \
@@ -153,7 +151,7 @@ jobs:
               --cert-identity "${{ inputs.cert-identity }}" \
               --format json \
               --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-            | grep -E \
-                'build-type|predicate-type|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-path|workflow-runner-label' | \
-              jq -r
+            | grep -Eq \
+                'build-type|predicate-type|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-path|workflow-runner-label' \
+            && jq -r || { echo "Error: Verification failed due to missing workflow inputs."; exit 1; }
           done
