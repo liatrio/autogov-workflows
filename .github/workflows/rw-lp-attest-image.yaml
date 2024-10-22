@@ -279,6 +279,8 @@ jobs:
           path: ${{ env.ARTIFACTS_FOLDER }}
           format: cyclonedx-json
           output-file: sbom.cyclonedx.json
+          upload-release-assets: false
+          upload-artifact: false
           github-token: ${{ github.token }}
       - name: Log SBOM File
         run: cat sbom.cyclonedx.json | jq -r
