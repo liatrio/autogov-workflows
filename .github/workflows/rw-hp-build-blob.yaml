@@ -1,0 +1,72 @@
+name: Build Blob High Permissions Reuseable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      subject-path:
+        description: >
+          Path to the artifact serving as the subject of the attestation. Must
+          specify exactly one of "subject-path" or "subject-digest". May contain a
+          glob pattern or list of paths (total subject count cannot exceed 2500).
+          examples: https://github.com/actions/attest-build-provenance?tab=readme-ov-file#examples
+        default: |
+          i_am_blob
+        required: true
+        type: string
+      cert-identity:
+        type: string
+        description: >
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+        required: true
+
+permissions: {}
+
+jobs:
+  attest-blob: #blob
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    uses: ./.github/workflows/rw-hp-attest-blob.yaml
+    with:
+      subject-path: |
+        i_am_blob
+        i_am_another_blob
+
+  verify-blob: #blob
+    permissions:
+      id-token: write
+      attestations: read
+      packages: read # necessary if build-type is image
+    needs: [attest-blob]
+    uses: ./.github/workflows/rw-hp-verify.yaml
+    secrets: inherit
+    with:
+      build-type: blob
+      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      cert-identity: ${{ inputs.cert-identity }}
+
+  run-opa-blob: #blob
+    permissions:
+      attestations: read
+      packages: write # to delete stale images while we build solution
+    needs: [verify-blob, attest-blob]
+    uses: ./.github/workflows/rw-hp-run-opa.yaml
+    secrets: inherit
+    with:
+      build-type: blob
+      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      policy-bundle-version: v0.6.0
+
+  release-blob: #blob
+    permissions:
+      contents: write
+    needs: [verify-blob, attest-blob, run-opa-blob]
+    uses: ./.github/workflows/rw-hp-release.yaml
+    secrets: inherit
+    with:
+      build-type: blob
+      attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
+      attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}

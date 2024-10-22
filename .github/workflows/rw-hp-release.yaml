@@ -1,4 +1,4 @@
-name: Release Workflow
+name: Release High Permissions Reuseable Workflow
 
 on:
   workflow_call:
@@ -7,14 +7,26 @@ on:
         description: 'Specify the type of build: "image" or "blob".'
         required: true
         type: string
-      all-attestations-artifact-id:
+      # will be added for https://github.com/liatrio/demo-gh-autogov-workflows/issues/194
+      # blob-artifact-id:
+      #   type: string
+      #   description: The artifact-id of the build artifacts.
+      #   default: ${{ inputs.build-type == 'blob' && github.event.needs.attest-build.outputs.blob-artifact-id }}
+      attest-build-attestation-artifact-id:
+        description: The artifact-id of the build provenance attestation artifact.
+        default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}
         type: string
-        description: The artifact-id of the attestation artifacts.
-        required: true
-        default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }}
+      attest-metadata-attestations-artifact-id:
+        description: The artifact-id of the custom metadata attestation artifact.
+        default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}
+        type: string
+      attest-sbom-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}
+        type: string
       results-artifact-id:
         type: string
-        description: The artifact-id of the attestation artifacts.
+        description: The artifact-id of the results artifact.
         required: true
         default: ${{ github.event.needs.run-opa.outputs.results-artifact-id }}
       workflow-runner-label:
@@ -23,16 +35,20 @@ on:
         default: ubuntu-latest
 
 env:
-  GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
-  ATTESTATIONS_ARTIFACT_ID: ${{ inputs.all-attestations-artifact-id }}
+  ARTIFACT_IDS: |
+    ${{ inputs.attest-build-attestation-artifact-id }}
+    ${{ inputs.attest-metadata-attestations-artifact-id }}
+    ${{ inputs.attest-sbom-attestations-artifact-id }}
   RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
   ATTESTATIONS_FOLDER: ./attestations
+  ARTIFACTS_FOLDER: ./artifacts
   RESULTS_FOLDER: ./${{ inputs.build-type }}-results
+  GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
 
 permissions: {}
 
 jobs:
-  release:
+  release-high-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
@@ -43,22 +59,30 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - run: npm install @actions/artifact@2.1.11
+      - name: Install actions/artifact Library
         if: ${{ runner.environment == 'github-hosted'}}
+        run: npm install @actions/artifact@2.1.11
+      - name: Create Attestations Folder
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }}
       - name: Download Sigstore Bundle(s)
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const { DefaultArtifactClient } = require('@actions/artifact');
             const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ATTESTATIONS_ARTIFACT_ID;
+            const artifactIds = process.env.ARTIFACT_IDS.split('\n').map(id => id.trim()).filter(id => id);
 
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
+            for (const artifactId of artifactIds) {
+              if (!artifactId) {
+                console.log('Skipping undefined artifact ID');
+                continue;
+              }
+
+              await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
+              console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
             }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
+      - name: Process Sigstore Bundle(s)
+        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl
       - name: Download opa-run Results
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

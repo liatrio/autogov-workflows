@@ -1,4 +1,4 @@
-name: Reusable OPA Evaluation Workflow
+name: OPA Evaluation Low Permissions Reuseable Workflow
 
 on:
   workflow_call:
@@ -7,33 +7,25 @@ on:
         description: 'Specify the type of build: "image" or "blob".'
         required: true
         type: string
-      subject-name:
-        description: >
-          Subject name as it should appear in the attestation. Required unless
-          "subject-path" is specified, in which case it will be inferred from the
-          path.
-        default: ghcr.io/${{ github.repository }}
-        required: false
+      attest-build-attestation-artifact-id:
+        description: The artifact-id of the build provenance attestation artifact.
+        required: true
+        default: ${{ github.event.needs.attest-build-low-perms.outputs.attest-build-attestation-artifact-id }}
         type: string
-      image-digest:
+      attest-metadata-attestations-artifact-id:
+        description: The artifact-id of the custom metadata attestation artifact.
+        required: true
+        default: ${{ github.event.needs.attest-metadata-low-perms.outputs.build-artifact-id }}
         type: string
-        description: The digest of the image that was built and pushed
-        required: false
-        default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
-      all-attestations-artifact-id:
+      attest-sbom-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        required: true
+        default: ${{ github.event.needs.attest-sbom-low-perms.outputs.build-artifact-id }}
         type: string
-        description: The artifact-id of the attestation artifacts.
-        required: false
-        default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }}
       workflow-runner-label:
         type: string
         description: The label of the workflow runner
         default: ubuntu-latest
-      registry:
-        description: The container registry to use.
-        required: false
-        type: string
-        default: ghcr.io
       opa-version:
         description: The OPA version to use.
         required: false
@@ -46,25 +38,22 @@ on:
     outputs:
       results-artifact-id:
         description: The image digest of the image that was built from the build-image job.
-        value: ${{ jobs.run-opa.outputs.results-artifact-id }}
+        value: ${{ jobs.run-opa-low-perms.outputs.results-artifact-id }}
 
 permissions: {}
 
 env:
   GH_TOKEN: ${{ github.token }}
   RW_CW_POLICY_REPO_ACCESS: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
-  ARTIFACT_ID: ${{ inputs.all-attestations-artifact-id }}
+  ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
 jobs:
-  run-opa:
+  run-opa-low-perms:
     outputs:
       results-artifact-id: ${{ steps.upload-results.outputs.artifact-id }}
     permissions:
-      attestations: read
-      id-token: write
-      # packages: write is to delete stale images / read is only necessary for everything prior
-      packages: write
+      contents: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -72,63 +61,39 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Validate Inputs
-        run: |
-          if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.image-digest }}" ]]; then
-            echo "Error: subject-digest is required for build-type 'image'."
-            exit 1
-          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.all-attestations-artifact-id }}" ]]; then
-            echo "Error: subject-path is required for build-type 'blob'."
-            exit 1
-          fi
+
       - name: Setup OPA
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image'|| inputs.build-type == 'blob' }}
+        if: ${{ runner.environment == 'github-hosted' }}
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
           version: ${{ inputs.opa-version }}
-      - name: Log in to GitHub Container Registry
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ${{ inputs.registry }}
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.11
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
+      - name: Install actions/artifact Library
+        run: npm install @actions/artifact@2.1.11
+      - name: Create Attestations and Artifacts Folders
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)
-        if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_IDS: |
+            ${{ inputs.attest-build-attestation-artifact-id }}
+            ${{ inputs.attest-metadata-attestations-artifact-id }}
+            ${{ inputs.attest-sbom-attestations-artifact-id }}
         with:
           script: |
             const { DefaultArtifactClient } = require('@actions/artifact');
             const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
+            const artifactIds = process.env.ARTIFACT_IDS.split('\n').map(id => id.trim()).filter(id => id);
 
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
+            for (const artifactId of artifactIds) {
+              if (!artifactId) {
+                console.log('Skipping undefined artifact ID');
+                continue;
+              }
+
+              await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
+              console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
             }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
-      # - name: Download artifacts for blob
-      #   if: ${{ inputs.build-type == 'blob' }}
-      #   run: |
-      #     if [ -d "./artifacts" ]; then
-      #       for FILE in "./artifacts"/*; do
-      #         gh attestation download "$FILE" -o liatrio
-      #       done
-      #     else
-      #       echo "Directory ./artifacts does not exist"
-      #       exit 1
-      #     fi
-      - name: Download Image Artifact Attestation(s)
-        if: ${{ inputs.build-type == 'image' }}
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}; cd ${{ env.ATTESTATIONS_FOLDER }}
-          gh attestation download \
-            oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
-            -o liatrio
-      - name: Process Sigstore Bundle(s)
+      - name: Process Sigstore Bundle(s) for OPA Eval
         run: |
           set +x
           jq -s . ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl \
@@ -197,20 +162,6 @@ jobs:
         id: upload-results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-results' || inputs.build-type == 'blob' && 'blob-results' }}
+          name: ${{ inputs.build-type == 'image' && 'image-results-low-perms' || inputs.build-type == 'blob' && 'blob-results-low-perms' }}
           path: results
           if-no-files-found: error
-      # ______________#
-      # image cleaner #
-      # ______________#
-      - name: Delete Stale Image(s)
-        if: ${{ inputs.build-type == 'image' }}
-        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
-        continue-on-error: true
-        with:
-          package-name: ${{ github.event.repository.name }}
-          package-type: 'container'
-          owner: ${{ github.repository_owner }}
-          min-versions-to-keep: 100
-          ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently only works against the sha https://github.com/actions/delete-package-versions/issues/121#issuecomment-2237110213
-          delete-only-untagged-versions: 'true'

@@ -1,0 +1,75 @@
+name: Build Image High Permissions Reuseable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      subject-name:
+        description: >
+          Subject name as it should appear in the attestation. Required unless
+          "subject-path" is specified, in which case it will be inferred from the
+          path.
+        required: true
+        type: string
+      use-low-perms:
+        description: >
+          Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
+        default: false
+        required: false
+        type: boolean
+      cert-identity:
+        type: string
+        description: >
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+        required: true
+
+permissions: {}
+
+jobs:
+  attest-image: #image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
+    uses: ./.github/workflows/rw-hp-attest-image.yaml
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      use-low-perms: ${{ inputs.use-low-perms }}
+
+  verify-image: #image
+    permissions:
+      id-token: write
+      attestations: read
+      packages: read
+    needs: [attest-image]
+    uses: ./.github/workflows/rw-hp-verify.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      cert-identity: ${{ inputs.cert-identity }}
+
+  run-opa-image: #image
+    permissions:
+      attestations: read
+      packages: write # to delete stale images while we build solution
+    needs: [verify-image, attest-image]
+    uses: ./.github/workflows/rw-hp-run-opa.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      policy-bundle-version: v0.6.0
+
+  release-image: #image
+    permissions:
+      contents: write
+    needs: [verify-image, attest-image, run-opa-image]
+    uses: ./.github/workflows/rw-hp-release.yaml
+    secrets: inherit
+    with:
+      build-type: image
+      attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestations-artifact-id }}
+      attest-sbom-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestations-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}

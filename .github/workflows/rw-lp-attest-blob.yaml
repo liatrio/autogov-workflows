@@ -1,0 +1,295 @@
+name: Attest Blob Low Permissions Reuseable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      subject-path:
+        description: >
+          Path to the artifact serving as the subject of the attestation. Must
+          specify exactly one of "subject-path" or "subject-digest". May contain a
+          glob pattern or list of paths (total subject count cannot exceed 2500).
+          examples: https://github.com/actions/attest-build-provenance?tab=readme-ov-file#examples
+        default: |
+          i_am_blob
+        required: true
+        type: string
+      blob-artifact-name:
+        description: >
+          The name of artifact for the blob(s) built from the build-blob action found in
+          ./.github/actions/build-blob/action.yaml.
+        default: blob-build-artifact-low-perms
+        required: false
+        type: string
+      show-summary:
+        description: >
+          Whether to attach a list of generated attestations to the workflow run
+          summary page. Defaults to true.
+        default: true
+        required: false
+        type: boolean
+      workflow-runner-label:
+        description: >
+          The label used for runner/OS selection
+          examples: https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#example-specifying-an-operating-system.
+        required: false
+        default: ubuntu-latest
+        type: string
+    outputs:
+      blob-artifact-id:
+        description: The artifact-id of the blob artifact(s).
+        value: ${{ jobs.build-blob-low-perms.outputs.blob-artifact-id }}
+      attest-build-attestation-artifact-id:
+        description: The artifact-id of the build provenance attestation artifact.
+        value: ${{ jobs.attest-blob-low-perms.outputs.provenance-artifact-id }}
+      attest-metadata-attestations-artifact-id:
+        description: The artifact-id of the custom metadata attestation artifact.
+        value: ${{ jobs.blob-attest-metadata-low-perms.outputs.metadata-artifact-id }}
+      attest-sbom-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        value: ${{ jobs.blob-attest-sbom-low-perms.outputs.sbom-artifact-id }}
+
+permissions: {}
+
+env:
+  ARTIFACTS_FOLDER: ./artifacts
+  ATTESTATIONS_FOLDER: ./attestations
+
+jobs:
+  build-blob-low-perms:
+    permissions:
+      contents: read
+    runs-on: ${{ inputs.workflow-runner-label }}
+    outputs:
+      blob-artifact-id: ${{ steps.upload-blob.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build Blob
+        if: ${{ runner.environment == 'github-hosted' }}
+        id: build-blob
+        uses: ./.github/actions/build-blob
+      - name: Upload Blob
+        id: upload-blob
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ${{ inputs.blob-artifact-name }}
+          path: ${{ inputs.subject-path }}
+          if-no-files-found: error
+
+  attest-blob-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-blob-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    env:
+      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+    outputs:
+      provenance-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        run: npm install @actions/artifact@2.1.11
+        if: ${{ runner.environment == 'github-hosted' }}
+      - name: Download Blob Artifact(s)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Attest Provenance
+        id: attest-build-provenance
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
+        with:
+          subject-path: ${{ join(env.ARTIFACTS_FOLDER, '\n') }}
+          github-token: ${{ github.token }}
+          push-to-registry: false
+      - name: Rename Provenance Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+      - name: Upload Provenance Sigstore Bundle
+        id: upload-provenance
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: blob-build-provenance-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+          if-no-files-found: error
+
+  blob-attest-metadata-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-blob-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    env:
+      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+    outputs:
+      metadata-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        run: npm install @actions/artifact@2.1.11
+        if: ${{ runner.environment == 'github-hosted' }}
+      - name: Download Blob Artifact(s)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Generate Metadata Attestation
+        run: |
+          echo '{
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "metadata": {
+              "workflowData": {
+                "workflowRefPath": "${{ github.workflow_ref }}",
+                "branch": "${{ github.ref_name }}",
+                "buildWorkflowRunId": "${{ github.run_id }}",
+                "event": "${{ github.event_name }}",
+                "inputs": ${{ toJson(inputs) }}
+              },
+              "commitData": {
+                "commitSHA": "${{ github.sha }}",
+                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+              },
+              "repositoryData": {
+                "repository": "${{ github.repository }}",
+                "repositoryId": "${{ github.repository_id }}",
+                "githubServerURL": "${{ github.server_url }}"
+              },
+              "ownerData": {
+                "owner": "${{ github.repository_owner }}",
+                "ownerId": "${{ github.repository_owner_id }}"
+              },
+              "jobData": {
+                "jobId": "${{ github.job }}",
+                "runNumber": "${{ github.run_number }}",
+                "action": "${{ github.action }}",
+                "actor": "${{ github.actor }}",
+                "status": "${{ job.status }}"
+              },
+              "runnerData": {
+                "os": "${{ runner.os }}",
+                "name": "${{ runner.name }}",
+                "arch": "${{ runner.arch }}",
+                "environment": "${{ runner.environment }}"
+              }
+            }
+          }' > metadata.json && cat metadata.json | jq -r
+      - name: Attest Metadata
+        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        id: attest-metadata
+        with:
+          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-path: metadata.json
+          push-to-registry: false
+          subject-path: ${{ join(env.ARTIFACTS_FOLDER, '\n') }}
+      - name: Rename Metadata Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+      - name: Upload Metadata Sigstore Bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        id: upload-metadata
+        with:
+          name: blob-metadata-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+          if-no-files-found: error
+
+  blob-attest-sbom-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-blob-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    env:
+      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+    outputs:
+      sbom-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        run: npm install @actions/artifact@2.1.11
+        if: ${{ runner.environment == 'github-hosted' }}
+      - name: Download Blob Artifact(s)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Generate SBOM
+        uses: anchore/sbom-action@8d0a6505bf28ced3e85154d13dc6af83299e13f1 # v0.17.4
+        with:
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          github-token: ${{ github.token }}
+      - name: Log SBOM File
+        run: cat sbom.cyclonedx.json | jq -r
+      - name: Generate SBOM attestation
+        id: attest-sbom
+        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        with:
+          subject-path: ${{ join(env.ARTIFACTS_FOLDER, '\n') }}
+          sbom-path: sbom.cyclonedx.json
+          github-token: ${{ github.token }}
+          push-to-registry: false
+      - name: Rename SBOM Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+      - name: Upload SBOM Attestation
+        id: upload-sbom
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: blob-sbom-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+          if-no-files-found: error

@@ -1,0 +1,213 @@
+name: OPA Evaluation High Permissions Reuseable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Specify the type of build: "image" or "blob".'
+        required: true
+        type: string
+      subject-name:
+        description: >
+          Subject name as it should appear in the attestation. Required unless
+          "subject-path" is specified, in which case it will be inferred from the
+          path.
+        default: ghcr.io/${{ github.repository }}
+        required: false
+        type: string
+      image-digest:
+        type: string
+        description: The digest of the image that was built and pushed
+        required: false
+        default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
+      registry:
+        description: The container registry to use.
+        required: false
+        type: string
+        default: ghcr.io
+      blob-artifact-id:
+        type: string
+        description: The artifact-id of the build artifacts.
+        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
+      workflow-runner-label:
+        type: string
+        description: The label of the workflow runner
+        default: ubuntu-latest
+      opa-version:
+        description: The OPA version to use.
+        required: false
+        type: string
+        default: 0.67.1
+      policy-bundle-version:
+        description: The version of the policy bundle to download from https://github.com/liatrio/demo-gh-autogov-policy-library.
+        required: false
+        type: string
+    outputs:
+      results-artifact-id:
+        description: The image digest of the image that was built from the build-image job.
+        value: ${{ jobs.run-opa-high-perms.outputs.results-artifact-id }}
+
+permissions: {}
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  RW_CW_POLICY_REPO_ACCESS: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
+  ARTIFACTS_FOLDER: ./artifacts
+  ATTESTATIONS_FOLDER: ./attestations
+
+jobs:
+  run-opa-high-perms:
+    outputs:
+      results-artifact-id: ${{ steps.upload-results.outputs.artifact-id }}
+    permissions:
+      attestations: read
+      packages: write # to delete stale images while we build solution
+    runs-on: ${{ inputs.workflow-runner-label }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Validate Inputs
+        run: |
+          if [[ "${{ inputs.build-type }}" == "image" ]]; then
+            if [[ -z "${{ inputs.subject-name }}" || -z "${{ inputs.image-digest }}" ]]; then
+              echo "Error: Both subject-name and image-digest are required for build-type 'image'."
+              exit 1
+            fi
+          fi
+      - name: Setup OPA
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
+        with:
+          version: ${{ inputs.opa-version }}
+      - name: Login to GitHub Container Registry
+        if: ${{ inputs.build-type == 'image' }}
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Create Attestations and Artifacts Folders
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
+      - name: Install actions/artifact Library
+        if: ${{ inputs.build-type == 'blob' }}
+        run: npm install @actions/artifact@2.1.11
+      - name: Download Blob Artifact(s)
+        if: ${{ inputs.build-type == 'blob' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Download Blob Artifact Attestation(s)
+        if: ${{ inputs.build-type == 'blob' }}
+        run: |
+          cd ${{ env.ATTESTATIONS_FOLDER }}
+          for ARTIFACT in ../${{ env.ARTIFACTS_FOLDER }}/*; do
+              gh attestation download "$ARTIFACT" -o ${{ github.repository_owner }}
+          done
+      - name: Download Image Artifact Attestation(s)
+        if: ${{ inputs.build-type == 'image' }}
+        run: |
+          cd ${{ env.ATTESTATIONS_FOLDER }}
+          gh attestation download \
+            oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
+            -o liatrio
+      - name: Process Sigstore Bundle(s)
+        run: |
+          set +x
+          jq -s . ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl \
+          > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
+          rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
+          cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
+      - name: Download Policy Bundle
+        run: |
+          set +x
+          export GH_TOKEN=${{ env.RW_CW_POLICY_REPO_ACCESS }}
+          gh release download ${{ inputs.policy-bundle-version }} \
+            --repo liatrio/demo-gh-autogov-policy-library \
+            --pattern "bundle.tar.gz"
+      - name: Run OPA Evals
+        id: run-opa
+        run: |
+          set -x
+          opa eval \
+            --fail \
+            --input ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
+            --bundle "bundle.tar.gz" \
+            "data.governance.allow" >\
+          policy-evaluation.json
+          cat policy-evaluation.json | jq -r
+      - name: Output Violations if failed
+        if: ${{ failure() && steps.run-opa.outcome == 'failure' }}
+        run: |
+          set -x
+          opa eval \
+            --fail \
+            --input ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
+            --bundle "bundle.tar.gz" \
+            "data.governance.violations" >\
+          policy-evaluation.json
+          cat policy-evaluation.json | jq -r
+      - name: Format Results
+        if: success() || failure()
+        run: |
+          jq '{
+            result: (
+              if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then "FAILED" else "PASSED" end
+            ),
+            violations: (
+              if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then
+                [.result[].expressions[].value | recurse(.[]?) | objects | to_entries[] |
+                 {policy: .key, message: .value | arrays | .[] | strings}]
+              else
+                []
+              end
+            )
+          }' policy-evaluation.json > results
+          cat results | jq -r
+          echo "### Policy Evaluation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $(jq '.violations | length' results) -gt 0 ]; then
+              echo "#### Violations:" >> $GITHUB_STEP_SUMMARY
+              jq -r '
+              reduce .violations[] as $v ({}; .[$v.policy] += [$v.message])
+              | to_entries[]
+              | .key + ":\n" + (.value | map("- " + .) | join("\n")) + "\n"
+              ' results >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload Results
+        id: upload-results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ${{ inputs.build-type == 'image' && 'image-results' || inputs.build-type == 'blob' && 'blob-results' }}
+          path: results
+          if-no-files-found: error
+      # ______________#
+      # image cleaner #
+      # ______________#
+      - name: Delete Stale Image(s)
+        if: ${{ inputs.build-type == 'image' }}
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        continue-on-error: true
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: 'container'
+          owner: ${{ github.repository_owner }}
+          min-versions-to-keep: 100
+          ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently only works against the sha https://github.com/actions/delete-package-versions/issues/121#issuecomment-2237110213
+          delete-only-untagged-versions: 'true'

@@ -1,4 +1,4 @@
-name: Reusable Verify Workflow
+name: Verify High Permissions Reuseable Workflow
 
 on:
   workflow_call:
@@ -20,39 +20,36 @@ on:
         description: The digest of the image that was built and pushed
         required: false
         default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
-      blob-artifact-id:
-        type: string
-        description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
-      all-attestations-artifact-id:
-        type: string
-        description: The artifact-id of the attestation artifacts.
-        required: false
-        default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }}
-      cert-identity:
-        type: string
-        description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and corrrect workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml
-        required: true
-      workflow-runner-label:
-        type: string
-        description: The label of the workflow runner
-        required: false
-        default: ubuntu-latest
       registry:
         description: >
           The container registry to use.
         required: false
         type: string
         default: 'ghcr.io'
+      blob-artifact-id:
+        type: string
+        description: The artifact-id of the build artifacts.
+        default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
+      cert-identity:
+        type: string
+        description: >
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+        required: true
+      workflow-runner-label:
+        type: string
+        description: The label of the workflow runner
+        required: false
+        default: ubuntu-latest
 
 permissions: {}
 
 env:
   GH_TOKEN: ${{ github.token }}
+  ATTESTATIONS_FOLDER: ./attestations
+  ARTIFACTS_FOLDER: ./artifacts
 
 jobs:
-  verify:
+  verify-high-perms:
     permissions:
       id-token: write
       attestations: read
@@ -65,29 +62,32 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Validate Inputs
+        if: ${{ runner.environment == 'github-hosted' }}
         run: |
           if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.image-digest }}" ]]; then
-            echo "Error: subject-digest is required for build-type 'image'."
+            echo "Error: image-digest is required for build-type 'image'."
             exit 1
           elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.blob-artifact-id}}" ]]; then
             echo "Error: blob-artifact-id is required for build-type 'blob'."
             exit 1
           fi
       - name: Login to GitHub Container Registry
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'image' }}
+        if: ${{ inputs.build-type == 'image' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: npm install @actions/artifact@2.1.11
-        if: ${{ runner.environment == 'github-hosted' && inputs.build-type == 'blob' }}
+      - name: Create Attestations and Artifacts Folders
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
+      - name: Install actions/artifact Library
+        if: ${{ inputs.build-type == 'blob' }}
+        run: npm install @actions/artifact@2.1.11
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
           ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
-          ARTIFACTS_FOLDER: ./artifacts
         with:
           script: |
             const { DefaultArtifactClient } = require('@actions/artifact');
@@ -100,10 +100,17 @@ jobs:
 
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
-      - name: List Downloaded Blob Artifact(s)
+      - name: Download Blob Artifact Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
-        run: ls -althR ./artifacts
-      - name: Verify Image Attestation(s)
+        run: |
+          cd ${{ env.ATTESTATIONS_FOLDER }}
+          for ARTIFACT in ../${{ env.ARTIFACTS_FOLDER }}/*; do
+              gh attestation download "$ARTIFACT" -o ${{ github.repository_owner }}
+          done
+      - name: Process Sigstore Bundle(s)
+        if: ${{ inputs.build-type == 'blob' }}
+        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl
+      - name: Online Verification of Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |
           set +x
@@ -115,7 +122,7 @@ jobs:
             "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-          | grep -q "^${{ github.ref }}$" || { echo "Error: Verification failed due to incorrect certificate source repository reference."; exit 1; }
+          | grep "^${{ github.ref }}$"
 
           gh attestation verify \
             oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
@@ -125,33 +132,31 @@ jobs:
             "${{ inputs.cert-identity }}" \
             --format json \
             --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-          | grep -Eq \
-              'build-type|predicate-type|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-name|workflow-runner-label' \
-          && jq -r || { echo "Error: Verification failed due to missing workflow inputs."; exit 1; }
-      - name: Verify Blob Attestation(s)
+          | grep -E \
+            'subject-name|registry|workflow-runner-label|show-summary' | \
+            jq -r
+      - name: Online Verification of Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
-        env:
-          ARTIFACTS_FOLDER: ./artifacts
         run: |
           set +x
-          for FILE in "$ARTIFACTS_FOLDER"/*; do
+          for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
             gh attestation verify \
-              $FILE \
+              $ARTIFACT \
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
               --format json \
               --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep -q "^${{ github.ref }}$" || { echo "Error: Verification failed due to incorrect certificate source repository reference."; exit 1; }
+            | grep "^${{ github.ref }}$"
 
             gh attestation verify \
-              $FILE \
+              $ARTIFACT \
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
               --format json \
               --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-            | grep -Eq \
-                'build-type|predicate-type|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|subject-path|workflow-runner-label' \
-            && jq -r || { echo "Error: Verification failed due to missing workflow inputs."; exit 1; }
+            | grep -E \
+              'blob-artifact-name|subject-path|workflow-runner-label|show-summary' | \
+            jq -r
           done

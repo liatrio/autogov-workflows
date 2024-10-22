@@ -1,0 +1,303 @@
+name: Attest Image Low Permissions Reuseable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      subject-name:
+        description: >
+          Subject name as it should appear in the attestation. Required unless
+          "subject-path" is specified, in which case it will be inferred from the
+          path.
+        required: true
+        type: string
+      use-low-perms:
+        description: >
+          Enables the use of less permissions such as not reaching out to container registries to access image attestations in the case of build-type being image and in the case of both build-types, pulling GitHub's trusted root for offline verification.
+        default: false
+        required: false
+        type: boolean
+      image-artifact-name:
+        description: The name of artifact for the image built from the build-image action.
+        default: image-build-artifact-low-perms
+        required: false
+        type: string
+      show-summary:
+        description: >
+          Whether to attach a list of generated attestations to the workflow run
+          summary page. Defaults to true.
+        default: true
+        required: false
+        type: boolean
+      workflow-runner-label:
+        description: >
+          The label used for runner/OS selection, examples:
+          https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#example-specifying-an-operating-system.
+        required: false
+        default: ubuntu-latest
+        type: string
+    outputs:
+      image-artifact-id:
+        description: The artifact-id of the image artifact.
+        value: ${{ jobs.build-image-low-perms.outputs.image-artifact-id }}
+      attest-build-attestation-artifact-id:
+        description: The artifact-id of the build provenance attestation artifact.
+        value: ${{ jobs.attest-image-low-perms.outputs.build-artifact-id }}
+      attest-metadata-attestations-artifact-id:
+        description: The artifact-id of the custom metadata attestation artifact.
+        value: ${{ jobs.image-attest-metadata-low-perms.outputs.build-artifact-id }}
+      attest-sbom-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        value: ${{ jobs.image-attest-sbom-low-perms.outputs.build-artifact-id }}
+
+permissions: {}
+
+env:
+  ARTIFACTS_FOLDER: ./artifacts
+  ATTESTATIONS_FOLDER: ./attestations
+
+jobs:
+  build-image-low-perms:
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ inputs.workflow-runner-label }}
+    outputs:
+      image-digest: ${{ steps.build-image.outputs.image-digest }}
+      image-artifact-id: ${{ steps.upload-image.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build Image
+        if: ${{ runner.environment == 'github-hosted' }}
+        id: build-image
+        uses: ./.github/actions/build-image
+        with:
+          subject-name: ${{ inputs.subject-name }}
+          use-low-perms: ${{ inputs.use-low-perms }}
+      - name: Upload Image
+        id: upload-image
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ${{ inputs.image-artifact-name }}
+          path: /tmp/image.tar
+          if-no-files-found: error
+
+  attest-image-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-image-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    env:
+      ARTIFACT_ID: ${{ needs.build-image-low-perms.outputs.image-artifact-id }}
+    outputs:
+      build-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: npm install @actions/artifact@2.1.11
+      - name: Download Image Artifact
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_ID: ${{ needs.build-image-low-perms.outputs.image-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Attest Provenance
+        id: attest-build-provenance
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
+        with:
+          subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
+          github-token: ${{ github.token }}
+          push-to-registry: false
+      - name: Rename Provenance Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+      - name: Upload Provenance Sigstore Bundle
+        id: upload-provenance
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: image-build-provenance-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+          if-no-files-found: error
+
+  image-attest-metadata-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-image-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    outputs:
+      build-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: npm install @actions/artifact@2.1.11
+      - name: Download Image Artifact
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_ID: ${{ needs.build-image-low-perms.outputs.image-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Generate Metadata Attestation
+        run: |
+          echo '{
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "metadata": {
+              "workflowData": {
+                "workflowRefPath": "${{ github.workflow_ref }}",
+                "branch": "${{ github.ref_name }}",
+                "buildWorkflowRunId": "${{ github.run_id }}",
+                "event": "${{ github.event_name }}",
+                "inputs": ${{ toJson(inputs) }}
+              },
+              "commitData": {
+                "commitSHA": "${{ github.sha }}",
+                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
+              },
+              "repositoryData": {
+                "repository": "${{ github.repository }}",
+                "repositoryId": "${{ github.repository_id }}",
+                "githubServerURL": "${{ github.server_url }}"
+              },
+              "ownerData": {
+                "owner": "${{ github.repository_owner }}",
+                "ownerId": "${{ github.repository_owner_id }}"
+              },
+              "jobData": {
+                "jobId": "${{ github.job }}",
+                "runNumber": "${{ github.run_number }}",
+                "action": "${{ github.action }}",
+                "actor": "${{ github.actor }}",
+                "status": "${{ job.status }}"
+              },
+              "runnerData": {
+                "os": "${{ runner.os }}",
+                "name": "${{ runner.name }}",
+                "arch": "${{ runner.arch }}",
+                "environment": "${{ runner.environment }}"
+              }
+            }
+          }' > metadata.json && cat metadata.json | jq -r
+      - name: Attest Metadata
+        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        id: attest-metadata
+        with:
+          subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
+          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-path: metadata.json
+          push-to-registry: false
+      - name: Rename Metadata Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+      - name: Upload Metadata Sigstore Bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        id: upload-metadata
+        with:
+          name: attest-metadata-image-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+          if-no-files-found: error
+
+  image-attest-sbom-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-image-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    outputs:
+      build-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Install actions/artifact Library
+        run: npm install @actions/artifact@2.1.11
+        if: ${{ runner.environment == 'github-hosted' }}
+      - name: Download Image Artifact
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_ID: ${{ needs.build-image-low-perms.outputs.image-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Generate SBOM
+        uses: anchore/sbom-action@8d0a6505bf28ced3e85154d13dc6af83299e13f1 # v0.17.4
+        with:
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          github-token: ${{ github.token }}
+      - name: Log SBOM File
+        run: cat sbom.cyclonedx.json | jq -r
+      - name: Generate SBOM attestation
+        id: attest-sbom
+        uses: actions/attest-sbom@5026d3663739160db546203eeaffa6aa1c51a4d6 # v1.4.1
+        with:
+          subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
+          sbom-path: sbom.cyclonedx.json
+          github-token: ${{ github.token }}
+          push-to-registry: false
+      - name: Rename SBOM Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+      - name: Upload SBOM Attestation
+        id: upload-sbom
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: image-sbom-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+          if-no-files-found: error

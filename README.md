@@ -8,7 +8,7 @@
   - [L1: Documented Build Parameters](#l1-documented-build-parameters)
 - [Usage](#usage)
   - [GitHub Artifact Attestation Actions and Other Tools Used](#github-artifact-attestation-actions-and-other-tools-used)
-  - [Repository Access](#repository-access)
+  - [Configure Access](#access)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Example Workflow Snippets](#example-workflow-snippets)
@@ -17,10 +17,10 @@
 
 ## Quick Start Guide
 
-1. **Configure Repositories for Access**:
-   Ensure you have the necessary permissions and tokens configured in your remote caller repository described in the [Repository Access](#repository-access) section in [the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
-   - **Permissions**: Ensure you have the necessary permissions to run the workflows.
-   - **Tokens**: Set up the required tokens as described in the [Repository Access](#repository-access) section.
+1. **Configure Access**:
+   Ensure you have the necessary permissions and tokens configured in your remote caller repository described in the [access section](#access) below.
+   - **Permissions**: Ensure you have the [necessary permissions to run the workflows](#workflow-access).
+   - **Tokens**: Set up the [required tokens](#repository-access) for repo access.
 2. **Create Your Local Composite Actions**:
    For example create `.github/actions/build-image/action.yaml` for images or `.github/actions/build-blob/action.yaml` for blobs:
 
@@ -28,200 +28,142 @@
 
 ```yaml
 inputs:
-    subject-name:
-        description: The name for the image.
-        required: true
-        default: ghcr.io/${{ github.repository }}
-    build-context:
-        description:
-            Build's context is the set of files located in the specified PATH (the default Git context
-            URL will not work since a repo checkout is needed to invoke the composite action / isolated build steps).
-            A valid Dockerfile must be available in the PATH given.
-        required: false
-        default: .
-    docker-file:
-        description: Path to the Dockerfile. (default is {context}/Dockerfile).
-        required: false
-    platforms:
-        description: List of target platforms for build.
-        required: false
-        default: linux/amd64,linux/arm64
-    registry:
-        description: Container registry to push image.
-        required: false
-        default: ghcr.io
+  subject-name:
+    description: The name for the image.
+    required: true
+    default: ghcr.io/${{ github.repository }}
+  use-low-perms:
+    description: >
+      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
+    default: "false"
+    required: false
 outputs:
-    image-digest:
-        description: The image digest of the image that was built from the build-image job.
-        value: ${{ steps.build-image.outputs.digest }}
-    image-build-metadata:
-        description: A JSON object with the build-image job's result metadata.
-        value: ${{ steps.build-image.outputs.metadata }}
+  image-digest:
+    description: The image digest of the image that was built from the build-image job.
+    value: ${{ steps.build-image.outputs.digest }}
 
 runs:
-    using: composite
-    steps:
-        - name: Image Metadata
-          id: meta
-          uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
-          with:
-              images: ${{ inputs.subject-name }}
-              tags: |
-                  type=ref,event=branch
-                  type=ref,event=pr
-                  type=sha
-                  type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-                  type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
-        - name: Log in to GitHub Container Registry
-          uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-          with:
-              registry: ${{ inputs.registry }}
-              username: ${{ github.actor }}
-              password: ${{ github.token }}
-        - name: Build and push Docker image
-          uses: docker/build-push-action@32945a339266b759abcbdc89316275140b0fc960 # v6.8.0
-          id: build-image
-          with:
-              context: ${{ inputs.build-context }}
-              file: ${{ inputs.docker-file }}
-              push: true
-              platforms: ${{ inputs.platforms }}
-              tags: ${{ steps.meta.outputs.tags }}
-              labels: ${{ steps.meta.outputs.labels }}
-              outputs: type=oci,dest=/tmp/image.tar
-              cache-from: type=gha
-              cache-to: type=gha,mode=max
+  using: composite
+  steps:
+    - name: Image Metadata
+      id: meta
+      uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+      with:
+        images: ${{ inputs.subject-name }}
+        tags: |
+          type=ref,event=branch
+          type=sha
+          type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+          type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+      id: build-image
+      with:
+        context: .
+        file: Dockerfile
+        push: ${{ inputs.use-low-perms == 'false' && 'true' || inputs.use-low-perms == 'true' && 'false' }}
+        platforms: linux/amd64,linux/arm64
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        outputs: type=oci,dest=/tmp/image.tar
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 ```
 
 **`build-blob`Composite Action**
 
 ```yaml
 runs:
-    using: composite
-    steps:
-        - name: Build Blob
-          shell: bash
-          run: |
-              echo "i am a blob being created at $(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
-              ${{ github.workflow_ref }} in the repo of ${{ github.repository }} by the action known as ${{ github.action }}
-              which may or may not live in the same repo as the action repo of ${{ github.action_repository || 'nothing to see here' }}." > i_am_blob && ls -alth  &&
-              echo "$(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
-              ${{ github.workflow_ref }} in the repo of ${{ github.repository }}" > i_am_another_blob
+  using: composite
+  steps:
+    - name: Build Blob
+      shell: bash
+      run: |
+        echo "i am a blob being created at $(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
+        ${{ github.workflow_ref }} in the repo of ${{ github.repository }} by the action known as ${{ github.action }}." > i_am_blob &&
+        echo "i am another blob being created at $(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
+        ${{ github.workflow_ref }} in the repo of ${{ github.repository }}" > i_am_another_blob
 ```
 
 3. **Create Your Caller Workflows / Configure Inputs**:
    For example create `.github/workflows/cw-build-image.yaml` for images or `.github/workflows/cw-build-blob.yaml` for blobs:
 
-**`cw-build-image.yaml`**:
+Pick one of the following four jobs (e.g. job definitions) depending on desired build type and permissions:
 
-### Calling Reuseable Workflow to Build Image
+**`cw-build.yaml`**:
+
+### Calling Reuseable Workflow
 
 ```yaml
-name: Build Image Caller Workflow
+name: Build Entrypoint Caller Workflow
 
 on:
     workflow_dispatch:
     push:
 
 jobs:
-    attest-image: #image
-      permissions:
-        id-token: write
-        attestations: write
-        packages: write
-        contents: write
-        actions: read
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-      with:
-        subject-name: ghcr.io/${{ github.repository }}
-    verify-image: #image
-      permissions:
-        id-token: write
-        attestations: read
-        packages: read
-      needs: [attest-image]
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-verify.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-      secrets: inherit
-      with:
-        build-type: image
-        image-digest: ${{ needs.attest-image.outputs.image-digest }}
-        cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@refs/heads/main # Include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
-    run-opa-image: #image
-        permissions:
-            attestations: read
-            id-token: write
-            packages: read
-        needs: [verify-image, attest-image]
-        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-run-opa.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-        secrets: inherit
-        with:
-            build-type: image
-            image-digest: ${{ needs.attest-image.outputs.image-digest }}
-    release-image: #image
-      permissions:
-        contents: write
-      needs: [verify-image, attest-image, run-opa-image]
-      uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-release.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-      secrets: inherit
-      with:
-        build-type: image
-        all-attestations-artifact-id: ${{ needs.attest-image.outputs.all-attestations-artifact-id }}
-        results-artifact-id: ${{ needs.attest-image.outputs.results-artifact-id }}
-```
+  attest-image-hp: #image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write # to delete stale images while we build solution
+      contents: write
+    uses: ./.github/workflows/rw-hp-build-image.yaml
+    secrets: inherit
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
 
-### Calling Reuseable Workflow to Build Blob(s)
+  attest-image-lp: #image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: read
+      contents: write
+    uses: ./.github/workflows/rw-lp-build-image.yaml
+    secrets: inherit
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      use-low-perms: true
 
-**`cw-build-blob.yaml`**:
+  attest-blob-hp: #blob
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write # to delete stale images while we build solution
+      contents: write
+    uses: ./.github/workflows/rw-hp-build-blob.yaml
+    secrets: inherit
+    with:
+      subject-path: |
+        i_am_blob
+        i_am_another_blob
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
 
-```yaml
-name: Build Blob Caller Workflow
+  attest-blob-lp: #blob
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    uses: ./.github/workflows/rw-lp-build-blob.yaml
+    secrets: inherit
+    with:
+      subject-path: |
+        i_am_blob
+        i_am_another_blob
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
 
-on:
-    workflow_dispatch:
-    push:
-
-permissions: {}
-
-jobs:
-    attest-blob: #blob
-        permissions:
-            id-token: write
-            attestations: write
-            packages: write
-            contents: write
-            actions: read
-        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-        with:
-            subject-path: |
-                i_am_blob
-                i_am_another_blob
-    verify-blob: #blob
-        permissions:
-            id-token: write
-            attestations: read
-            packages: read
-        needs: [attest-blob]
-        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-verify.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-        secrets: inherit
-        with:
-            build-type: blob
-            blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-            cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@refs/heads/main # Include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
-    run-opa-blob: #blob
-        permissions:
-            attestations: read
-            id-token: write
-            packages: write
-        needs: [verify-blob, attest-blob]
-        uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-run-opa.yaml@main # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
-        secrets: inherit
-        with:
-            build-type: blob
-            all-attestations-artifact-id: ${{ needs.attest-blob.outputs.all-attestations-artifact-id }}
 ```
 
 4. **Run the Workflow**:
@@ -239,7 +181,9 @@ jobs:
 
 ## Why Sign/Attest?
 
-In today's digital landscape, ensuring the integrity and security of software development processes is crucial. GitHub's official Action for creating signed SLSA (Supply Chain Levels for Software Artifacts) attestations, along with its [CLI tool for verifying artifacts](https://cli.github.com/manual/gh_attestation), provides a robust foundation for securing the distribution of built artifacts.
+In today's digital landscape, ensuring the integrity and security of software development processes is crucial. GitHub's official Action(s) for creating signed SLSA (Supply Chain Levels for Software Artifacts) attestations, along with its [CLI tool for verifying artifacts](https://cli.github.com/manual/gh_attestation), provides a robust foundation for securing the distribution of built artifacts.
+
+SLSA is a security framework designed to prevent tampering, improve integrity, and secure packages and infrastructure. It provides a checklist of standards and controls to enhance software supply chain security. For more details, visit the [SLSA website](https://slsa.dev/).
 
 To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3), which mitigates risks such as:
 
@@ -248,7 +192,7 @@ To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3), whi
 - Exposed credentials associated with attestation signing material
 - [Hard-to-follow build steps](https://slsa.dev/spec/v1.0/provenance#BuildDefinition)
 
-GitHub recommends using [Reusable Workflows](https://github.com/slsa-framework/github-actions-buildtypes/tree/main/workflow/v1).
+GitHub recommends using [reusable workflows](https://github.com/slsa-framework/github-actions-buildtypes/tree/main/workflow/v1).
 
 This README outlines how our services can help your organization implement a Reusable Workflow to meet SLSA Build Level 3 requirements, ensuring a secure and compliant Software Development Life Cycle (SDLC).
 
@@ -342,16 +286,15 @@ Considering many organizations and/or developers run builds and workflows from n
       ARTIFACTS_FOLDER: ./artifacts
   run: |
       set +x
-      for FILE in "$ARTIFACTS_FOLDER"/*; do
+      for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
         gh attestation verify \
-          $FILE \
+          $ARTIFACT \
           --deny-self-hosted-runners \
           --repo ${{ github.repository }} \
           --cert-identity "${{ inputs.cert-identity }}" \
           --format json \
           --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-        | grep \
-            "^${{ github.ref }}$"
+        | grep "^${{ github.ref }}$"
       ...
 ```
 
@@ -360,8 +303,7 @@ Again, verifying via the Reusable Workflow's GitHub reference (e.g. commit SHA, 
 ```yaml
 cert-identity:
     description: >
-        The --cert-identity of the signer workflow, or builder, used in the verify job ensuring artifacts and attestations can be verified with the gh-cli.
-    default: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@refs/heads/main
+        The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 ```
 
 Our approach guarantees that both the source repository and the signer workflow originate from approved branches or tags, providing confidence that the artifact was built to meet SLSA Level 3 requirements as long as whomever is verifying is diligent and remembers to include the `cert-identity` (e.g. also known as `signer-workflow`) flag via the gh-cli.
@@ -374,7 +316,7 @@ To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-harde
 
 Using GitHub Actions, this simply requires the separation of the signing process into its own job. Additionally, it's important to ensure the jobs are executed on GitHub's hardened runners, "intentionally" avoiding any "self-hosted" runners. Next, to accommodate different build styles, we can enhance the reusable workflow by abstracting build commands into a [Composite Action](https://docs.github.com/en/actions/sharing-automations/creating-actions/about-custom-actions#composite-actions) located at a well-defined place in your repository.
 
-The Reusable Workflow will execute the repository's locally available composite action to build either an image or blob (or both), followed by attesting the artifacts in a separate attesting job.
+The reusable workflow will execute the repository's locally available composite action to build either an image or blob (or both), followed by attesting the artifacts in a separate attesting job.
 
 ![Job Isolation](./assets/isolated_attest_jobs.png)
 
@@ -410,31 +352,60 @@ While uploads via `actions/upload-artifact` are designed to be immutable with an
 
 ##### Reducing Permissions Further
 
-Currently, the permissions our reuseable workflow(s) require are quite especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). Our solution here would be to, as we with blob builds, is rely on image artifacts to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow) in our reuseable workflow(s) using an input such as `use-low-perms` to enable lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to job(s) downstream.
+Our reuseable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
 
-The input `use-low-perms` would be disabled by default via `use-high-perms`:
+Also, to avoid additional permissions for online verification the bundle and trusted-root are simply passed as artifacts to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
 
-**`use-low-perms`**:
-
-```yaml
-permissions:
-  contents: read
-```
-
-**`use-high-perms`**:
+The following permissions are used are used for images when used as a blob in the *-low-perms.yaml reuseable workflow files:
 
 ```yaml
-permissions:
-  id-token: write
-  attestations: write
-  # the below permissions are required for a private repo to read the sbom so it can upload
-  # https://github.com/anchore/sbom-action/issues/468#issuecomment-2126467656
-  packages: write
-  contents: write
-  actions: read
+attest:
+  permissions:
+    id-token: write
+    attestations: write
+    packages: read
+    contents: read
+    actions: read
+verify:
+  permissions:
+    contents: read
+run-opa:
+  permissions:
+    contents: read
 ```
 
-The blob also requires some additional permissions for online verification which could be resolved by simply passing the bundle and trusted-root to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
+Otherwise the following permissions are using (e.g. container registry access etc):
+
+```yaml
+attest:
+  permissions:
+    id-token: write
+    attestations: write
+    packages: write
+    contents: write
+    actions: read
+verify:
+  permissions:
+    id-token: write
+    attestations: read
+    packages: read
+run-opa:
+  permissions:
+    id-token: write
+    attestations: read
+```
+
+###### Using Lower Permissions: Image Digest Differences
+
+The digest of an exported image tarball will always differ from the digest of the pushed image in the registry.
+
+This happens because:
+
+- Compression Differences: The image tarball generated by docker save is uncompressed, while the images pushed to registries are typically compressed (e.g., with gzip). The compression changes the contents and results in different digests.
+- Layer Digests: Docker calculates the digest of each layer independently, and any difference in how layers are packaged or compressed (as with a tarball vs. pushed layers) will result in different final digests.
+- Metadata: There can be slight differences in the metadata, such as timestamps and other details, that are included in the image manifest when pushing to a registry versus what’s exported in the tarball.
+
+So, while you can work towards making the image as reproducible as possible, the differences in how Docker handles the compression and layers when saving versus pushing mean that the digests will almost always be different. An additional step could be to compare the individual layer digests instead of the overall image digest, as they will likely match across both the tarball and the pushed image.
 
 ### L2: Ensure a Trusted Build Environment
 
@@ -444,7 +415,7 @@ To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hoste
 
 Self-hosted runners [can be maliciously modified](https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security) by their host, but GitHub can provide safe GitHub-hosted runners to help protect the integrity of the build.
 
-The `rw-attest-<build-type>.yaml` runs the respective repository's composite action (e.g. `./github/actions build-<blob_or_image>`) with a runner-label that you may supply as input. However, if a user has a [self-hosted runner labeled "ubuntu-latest"](https://github.com/slsa-framework/slsa-github-generator/issues/1868#issuecomment-1979426130) or GitHub-hosted default runner labels, then GitHub Actions may still queue the job on their self-hosted runners.
+The `rw-<permissions_path>-attest-<build-type>.yaml` runs the respective repository's composite action (e.g. `./github/actions build-<blob_or_image>`) with a runner-label that you may supply as input. However, if a user has a [self-hosted runner labeled "ubuntu-latest"](https://github.com/slsa-framework/slsa-github-generator/issues/1868#issuecomment-1979426130) or GitHub-hosted default runner labels, then GitHub Actions may still queue the job on their self-hosted runners.
 
 #### Verifying GitHub-Hosted Runners
 
@@ -475,10 +446,7 @@ jobs:
         id: build-image
         uses: ./.github/actions/build-image
         with:
-          build-context: ${{ inputs.build-context }}
           subject-name: ${{ inputs.subject-name }}
-          docker-file: ${{ inputs.docker-file }}
-          platforms: ${{ inputs.platforms }}
       ...
       - name: Build Blob
         if: ${{ runner.environment == 'github-hosted' }}
@@ -632,24 +600,24 @@ gh attestation verify \
   --format json \
   --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
 | grep -E \
-    'subject-name|registry|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|workflow-runner-label' | \
+  'subject-name|registry|workflow-runner-label|show-summary' | \
   jq -r
 ```
 
 blob:
 
 ```shell
-for FILE in "$ARTIFACTS_FOLDER"/*; do
+for ARTIFACT in "$ARTIFACTS_FOLDER"/*; do
   gh attestation verify \
-    $FILE \
+    $ARTIFACT \
     --deny-self-hosted-runners \
     --repo ${{ github.repository }} \
     --cert-identity "${{ inputs.cert-identity }}" \
     --format json \
     --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
   | grep -E \
-      'subject-path|blob-artifact-name|sbom-format|sbom-output-file|sbom-path|show-summary|signer-workflow-cert-identity|workflow-runner-label' | \
-    jq -r
+    'blob-artifact-name|subject-path|workflow-runner-label|show-summary' | \
+  jq -r
 done
 ```
 
@@ -697,11 +665,50 @@ We use the `gh attestation` commands from the [GitHub CLI](https://cli.github.co
 - **Verify Attestations**: Ensure the integrity and authenticity of artifacts by verifying their attestations. This can be done both online and offline, providing flexibility in different environments.
 - **Download Attestations**: Retrieve attestations for artifacts, which can then be used for further verification or auditing purposes.
 
-#### Significance of OCI Format vs Docker Format, and why the OCI Format is preferred for Attestations
+#### Significance of OCI Format vs Docker Format
 
 Within the workflow you will notice a section for the `build-image` step that defines the type or format for the image output. The Docker format can sometimes cause errors especially when exporting multi-platform images (e.g. `docker exporter does not support exporting manifest lists`), which pushes others to the OCI format which is more standardized and compatible across various container runtimes (e.g., Docker, Kubernetes).
 
-### Repository Access
+- **OCI (Open Container Initiative)**: The Open Container Initiative (OCI) is an open governance structure for creating open industry standards around container formats and runtimes. For more information, visit the [Open Container Initiative website](https://opencontainers.org/).
+
+### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
+
+It is good practice to wrap the actual call to each respective reuseable workflow in an additional reuseable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
+
+### Access
+
+#### Workflow Access
+
+[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reuseable workflows that call other reuseable workflows.
+
+Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reuseable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
+
+```yaml
+actions/attest-build-provenance/predicate@*,
+actions/attest-build-provenance@*,
+actions/attest-sbom/predicate@*,
+actions/attest-sbom@*,
+actions/attest@*,
+actions/checkout@*,
+actions/delete-package-versions@*,
+actions/github-script@*,
+actions/upload-artifact@*,
+anchore/sbom-action@*,
+docker/build-push-action@*,
+docker/login-action@*,
+docker/metadata-action@*,
+docker/setup-buildx-action@*,
+docker/setup-qemu-action@*,
+go-semantic-release/action@*,
+open-policy-agent/setup-opa@*,
+softprops/action-gh-release@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@*,
+```
+
+#### Repository Access
 
 Required token permissions for access to the following private repositories:
 
@@ -728,38 +735,138 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 ### Inputs
 
-#### `.github/workflows/rw-attest-image.yaml`
+#### `.github/actions/build-image/action.yaml`
+
+- `subject-name` (required, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
+- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
+
+#### `.github/actions/build-blob/action.yaml`
+
+- No inputs for this action
+
+#### `.github/workflows/rw-hp-build-image.yaml`
+
+- `subject-name` (required, string): Subject name as it should appear in the attestation.
+- `use-low-perms` (optional, boolean, default: false): Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+
+#### `.github/workflows/rw-hp-build-blob.yaml`
+
+- `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+
+#### `.github/workflows/rw-lp-build-image.yaml`
+
+- `subject-name` (required, string): Subject name as it should appear in the attestation.
+- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+
+#### `.github/workflows/rw-lp-build-blob.yaml`
+
+- `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+
+#### `.github/workflows/rw-hp-attest-image.yaml`
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
+- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `sbom-format` (optional, string, default: 'cyclonedx-json'): The format of the SBOM.
-- `sbom-output-file` (optional, string, default: 'sbom.cyclonedx.json'): The output file for the SBOM.
-- `sbom-path` (optional, string, default: 'sbom.cyclonedx.json'): The path to the SBOM file.
 
-#### `.github/workflows/rw-attest-blob.yaml`
+#### `.github/workflows/rw-hp-attest-blob.yaml`
 
 - `subject-path` (required, string, default: 'i_am_blob'): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `sbom-format` (optional, string, default: 'cyclonedx-json'): The format of the SBOM.
-- `sbom-output-file` (optional, string, default: 'sbom.cyclonedx.json'): The output file for the SBOM.
-- `sbom-path` (optional, string, default: 'sbom.cyclonedx.json'): The path to the SBOM file.
 
-#### `.github/workflows/rw-verify.yaml`
+#### `.github/workflows/rw-hp-verify.yaml`
+
+- `build-type` (required, string): Specify the type of build: "image" or "blob".
+- `subject-name` (optional, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
+- `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
+- `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
+- `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
+- `all-attestations-artifact-id` (optional, string, default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }})
+- `cert-identity` (optional, string, default: '<https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+
+#### `.github/workflows/rw-hp-run-opa.yaml`
+
+- `build-type` (required, string): Specify the type of build: "image" or "blob".
+- `subject-name` (required if `build-type` is `image`, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation. Required unless "subject-path" is specified, in which case it will be inferred from the path.
+- `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
+- `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
+- `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
+- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/demo-gh-autogov-policy-library/releases).
+
+#### `.github/workflows/rw-hp-release.yaml`
+
+- `build-type` (required, string): Specify the type of build: "image" or "blob".
+- `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
+- `attest-metadata-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}: The artifact-id of the SBOM attestation artifact.
+- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
+
+### Outputs
+
+#### `.github/workflows/rw-hp-attest-image.yaml`
+
+- `image-digest` (string): The image digest of the image that was built from the build-image job.
+- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
+- `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+
+#### `.github/workflows/rw-hp-attest-blob.yaml`
+
+- `blob-artifact-id` (string): The artifact-id of the build artifacts.
+- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
+- `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+
+#### `.github/workflows/rw-hp-verify.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-hp-run-opa.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-hp-release.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-lp-attest-image.yaml`
+
+- `subject-name` (required, string): Subject name as it should appear in the attestation.
+- `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
+- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
+- `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+
+#### `.github/workflows/rw-lp-attest-blob.yaml`
+
+- `subject-path` (required, string, default: 'i_am_blob'): Path to the artifact serving as the subject of the attestation.
+- `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
+- `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
+- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+
+#### `.github/workflows/rw-lp-verify.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `subject-name` (optional, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
 - `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `all-attestations-artifact-id` (optional, string, default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }})
-- `cert-identity` (optional, string, default: '<https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml_or_rw-attest-image.yaml@refs/heads/main>'): The signer workflow's identity used to validate against the Subject Alternative Name (SAN) within the attestation certificate.
+- `cert-identity` (optional, string, default: '<https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 
-#### `.github/workflows/rw-run-opa.yaml`
+#### `.github/workflows/rw-lp-run-opa.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `subject-name` (required if `build-type` is `image`, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
@@ -770,19 +877,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
 - `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/demo-gh-autogov-policy-library/releases).
 
-#### `.github/actions/build-image/action.yaml`
-
-- `subject-name` (required, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
-- `build-context` (optional, string, default: '.'): The build context used for the Docker build.
-- `docker-file` (optional, string): Path to the Dockerfile.
-- `platforms` (optional, string, default: 'linux/amd64,linux/arm64'): Comma-separated list of target platforms for the Docker build.
-- `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
-
-#### `.github/actions/build-blob/action.yaml`
-
-- No inputs for this action
-
-#### `.github/workflows/rw-release.yaml`
+#### `.github/workflows/rw-lp-release.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `all-attestations-artifact-id` (required, string): The artifact-id of the attestation artifacts.
@@ -791,69 +886,175 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 ### Outputs
 
-#### `.github/workflows/rw-attest-image.yaml`
+#### `.github/workflows/rw-hp-build-image.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-hp-build-blob.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-lp-build-image.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-lp-build-blob.yaml`
+
+- No outputs for this action
+
+#### `.github/workflows/rw-lp-attest-image.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
-- `image-build-metadata` (string): A JSON object with the build-image job's result metadata.
 - `image-artifact-id` (string): The artifact-id of the image artifacts.
 - `all-attestations-artifact-id` (string): The artifact-id of all attestation artifacts.
 
-#### `.github/workflows/rw-attest-blob.yaml`
+#### `.github/workflows/rw-lp-attest-blob.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the build artifacts.
 - `all-attestations-artifact-id` (string): The artifact-id of all attestation artifacts.
 
-#### `.github/workflows/rw-verify.yaml`
+#### `.github/workflows/rw-lp-verify.yaml`
 
 - No outputs for this action
 
-#### `.github/workflows/rw-run-opa.yaml`
+#### `.github/workflows/rw-lp-run-opa.yaml`
 
 - No outputs for this action
 
 #### `.github/actions/build-image/action.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
-- `image-build-metadata` (string): A JSON object with the build-image job's result metadata.
 
 #### `.github/actions/build-blob/action.yaml`
 
 - No outputs for this action
 
-#### `.github/workflows/rw-release.yaml`
+#### `.github/workflows/rw-lp-release.yaml`
 
 - No outputs for this action
 
 ## Example Workflow Snippets
 
-### Attest Workflows
+### Entrypoint Workflows
 
-#### `rw-attest-image.yaml`
+#### `rw-hp-build-image.yaml`
 
-```yaml:.github/workflows/rw-attest-image.yaml
+```yaml:.github/workflows/rw-hp-build-image.yaml
 attest-image: #image
   permissions:
     id-token: write
     attestations: write
     packages: write
     contents: write
-    actions: read
-  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+    secrets: inherit
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+```
+
+#### `rw-hp-build-blob.yaml`
+
+```yaml:.github/workflows/rw-hp-build-blob.yaml
+attest-image: #blob
+  permissions:
+    id-token: write
+    attestations: write
+    packages: write # necessary if build-type is image
+    contents: write
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  with:
+    subject-path: |
+      i_am_blob
+      i_am_another_blob
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+```
+
+#### `rw-lp-build-image.yaml`
+
+```yaml:.github/workflows/rw-lp-build-image.yaml
+attest-image: #image
+  permissions:
+    id-token: write
+    attestations: write
+    packages: read
+    contents: write
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
   with:
     subject-name: ghcr.io/${{ github.repository }}
 ```
 
-#### `rw-attest-blob.yaml`
+#### `rw-lp-build-blob.yaml`
 
-```yaml:.github/workflows/rw-attest-blob.yaml
+```yaml:.github/workflows/rw-lp-build-blob.yaml
+attest-image: #blob
+  permissions:
+    id-token: write
+    attestations: write
+    contents: write
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  with:
+    subject-path: |
+      i_am_blob
+      i_am_another_blob
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+```
+
+### Attest Workflows
+
+#### `rw-hp-attest-image.yaml`
+
+```yaml:.github/workflows/rw-hp-attest-image.yaml
+attest-image: #image
+  permissions:
+    id-token: write
+    attestations: write
+    packages: write # necessary if build-type is image
+    contents: write
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  with:
+    subject-name: ghcr.io/${{ github.repository }}
+```
+
+#### `rw-hp-attest-blob.yaml`
+
+```yaml:.github/workflows/rw-hp-attest-blob.yaml
   attest-blob: #blob
     permissions:
       id-token: write
       attestations: write
-      packages: write
-      contents: write
-      actions: read
-  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+      contents: read
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+    with:
+      subject-path: |
+        i_am_blob
+        i_am_another_blob
+```
+
+#### `rw-lp-attest-image.yaml`
+
+```yaml:.github/workflows/rw-lp-attest-image.yaml
+attest-image: #image
+  permissions:
+    id-token: write
+    attestations: write
+    packages: read
+    contents: read
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      use-low-perms: true
+```
+
+#### `rw-lp-attest-blob.yaml`
+
+```yaml:.github/workflows/rw-lp-attest-blob.yaml
+  attest-blob: #blob
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
     with:
       subject-path: |
         i_am_blob
@@ -862,50 +1063,108 @@ attest-image: #image
 
 ### Verify Workflow
 
-```yaml:.github/workflows/rw-verify.yaml
-verify-image: #image
+```yaml:.github/workflows/rw-hp-verify.yaml
+verify-<build-type>:
   permissions:
     id-token: write
     attestations: read
     packages: read
-  needs: [attest-image]
-  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-verify.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  needs: [attest-<build-type>]
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-verify.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
   secrets: inherit
   with:
-    build-type: image
+    build-type: <build-type>
     image-digest: ${{ needs.attest-image.outputs.image-digest }}
-    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+    or
+    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+    results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+```
+
+```yaml:.github/workflows/rw-lp-verify.yaml
+verify-<build-type>:
+  permissions:
+    id-token: write
+    attestations: read
+    packages: read
+  needs: [attest-<build-type>]
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-verify.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  secrets: inherit
+  with:
+    build-type: <build-type>
+    image-artifact-id: ${{ needs.attest-image.outputs.image-artifact-id }}
+    or
+    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+    attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
+    attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
+    attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
 ```
 
 ### Run OPA Workflow
 
-```yaml:.github/workflows/rw-run-opa.yaml
-run-opa-image: #image
+```yaml:.github/workflows/rw-hp-run-opa.yaml
+run-opa-<build-type>:
   permissions:
     attestations: read
     id-token: write
     packages: read
-  needs: [verify-image, attest-image]
-  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-run-opa.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  needs: [verify-<build-type>, attest-<build-type>]
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-run-opa.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
   secrets: inherit
   with:
-    build-type: image
+    build-type: <build-type>
     image-digest: ${{ needs.attest-image.outputs.image-digest }}
+    or
+    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+```
+
+```yaml:.github/workflows/rw-lp-run-opa.yaml
+run-opa-<build-type>:
+  permissions:
+    attestations: read
+    id-token: write
+    packages: read
+  needs: [verify-<build-type>, attest-<build-type>]
+  uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-run-opa.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  secrets: inherit
+  with:
+    build-type: <build-type>
+    image-artifact-id: ${{ needs.attest-image.outputs.image-artifact-id }}
+    or
+    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
 ```
 
 ### Release Workflow
 
-```yaml:.github/workflows/rw-release.yaml
-release-image: #image
+```yaml:.github/workflows/rw-hp-release.yaml
+release-<build-type>:
   permissions:
     contents: write
-  needs: [verify-image, attest-image, run-opa-image]
-  uses: ./.github/workflows/rw-release.yaml
+  needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
+  uses: ./.github/workflows/rw-hp-release.yaml
   secrets: inherit
   with:
-    build-type: image
-    all-attestations-artifact-id: ${{ needs.attest-image.outputs.all-attestations-artifact-id }}
-    results-artifact-id: ${{ needs.attest-image.outputs.results-artifact-id }}
+    build-type: <build-type>
+    attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
+    attest-metadata-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestations-artifact-id }}
+    attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
+    results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
+```
+
+```yaml:.github/workflows/rw-lp-release.yaml
+release-<build-type>:
+  permissions:
+    contents: write
+  needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
+  uses: ./.github/workflows/rw-lp-release.yaml
+  secrets: inherit
+  with:
+    build-type: <build-type>
+    attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
+    attest-metadata-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestations-artifact-id }}
+    attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
+    results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
 ## Troubleshooting
@@ -913,13 +1172,43 @@ release-image: #image
 ### Common Issues
 
 1. **Permission Denied**:
-   Ensure that your PAT has the necessary permissions as described in the [Repository Access](#repository-access) section.
+   Ensure that your PAT and respective workflows have the necessary [access](#access sections).
 
 2. **Workflow Fails to Trigger**:
    Check that you are using one of the supported event types: `create`, `release`, `push`, or `workflow_dispatch`.
 
 3. **Attestation Verification Fails**:
    Ensure that the `cert-identity` and other inputs are correctly specified. Verify that the workflow is running on GitHub-hosted runners.
+
+The following can be helpful to troubleshoot GitHub environment variables; often used for things such as the owner and repository:
+
+```yaml
+- name: DEBUG THE THINGS
+  shell: bash
+  env:
+    GITHUB_CONTEXT: ${{ toJson(github) }}
+    JOB_CONTEXT: ${{ toJson(job) }}
+    STEPS_CONTEXT: ${{ toJson(steps) }}
+    RUNNER_CONTEXT: ${{ toJson(runner) }}
+    INPUTS_CONTEXT: ${{ toJson(runner) }}
+  run: |
+    echo "$GITHUB_CONTEXT"
+    echo "$JOB_CONTEXT"
+    echo "$STEPS_CONTEXT"
+    echo "$RUNNER_CONTEXT"
+    echo "$INPUTS_CONTEXT"
+- name: Show default environment variables
+  shell: bash
+  run: |
+    echo "The job_id is: $GITHUB_JOB"
+    echo "The id of this action is: $GITHUB_ACTION"
+    echo "The run id is: $GITHUB_RUN_ID"
+    echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+    echo "GitHub SHA: $GITHUB_SHA"
+- name: List all GitHub environment variables
+  shell: bash
+  run: printenv | grep '^GITHUB_'
+```
 
 ### Getting Help
 

@@ -1,0 +1,66 @@
+name: Build Entrypoint Caller Workflow
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    branches: ['**']
+    paths-ignore:
+      - catalog-info.yaml
+      - README.md
+
+permissions: {}
+
+jobs:
+  attest-image-hp: #image
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write # necessary if build-type is image
+      contents: write
+    uses: ./.github/workflows/rw-hp-build-image.yaml
+    secrets: inherit
+    with:
+      subject-name: ghcr.io/${{ github.repository }}
+      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+
+  # attest-image-lp: #image
+  #   permissions:
+  #     id-token: write
+  #     attestations: write
+  #     packages: read
+  #     contents: write
+  #   uses: ./.github/workflows/rw-lp-build-image.yaml
+  #   secrets: inherit
+  #   with:
+  #     subject-name: ghcr.io/${{ github.repository }}
+  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@${{ github.ref }}
+  #     use-low-perms: true
+
+  # attest-blob-hp: #blob
+  #   permissions:
+  #     id-token: write
+  #     attestations: write
+  #     packages: write # necessary if build-type is image
+  #     contents: write
+  #   uses: ./.github/workflows/rw-hp-build-blob.yaml
+  #   secrets: inherit
+  #   with:
+  #     subject-path: |
+  #       i_am_blob
+  #       i_am_another_blob
+  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+
+  # attest-blob-lp: #blob
+  #   permissions:
+  #     id-token: write
+  #     attestations: write
+  #     contents: write
+  #   uses: ./.github/workflows/rw-lp-build-blob.yaml
+  #   secrets: inherit
+  #   with:
+  #     subject-path: |
+  #       i_am_blob
+  #       i_am_another_blob
+  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}
