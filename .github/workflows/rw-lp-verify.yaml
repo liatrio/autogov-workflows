@@ -96,7 +96,7 @@ jobs:
             }
       - name: Process Sigstore Bundle(s)
         run: |
-          cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl
+          cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Process Sigstore Bundle for Offline Blob Verification
         if: ${{ inputs.build-type == 'blob' }}
         run: |
@@ -105,9 +105,9 @@ jobs:
               output_file="${subject_name}_bundle.jsonl"
               echo "$line" >> ${{ env.ATTESTATIONS_FOLDER }}/"$output_file"
               echo "Appended JSON object to $output_file"
-          done < ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl
+          done < ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
           cd ${{ env.ATTESTATIONS_FOLDER }}
-          rm attest-*.jsonl sigstore_bundle.jsonl
+          rm attest-*.jsonl sigstore-bundle.jsonl
       - name: Download Image Artifact
         if: ${{ inputs.build-type == 'image' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -152,7 +152,7 @@ jobs:
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl \
+              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl \
               --custom-trusted-root trusted_root.jsonl \
               --format json \
               --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
@@ -163,7 +163,7 @@ jobs:
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl \
+              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl \
               --custom-trusted-root trusted_root.jsonl \
               --format json \
               --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \

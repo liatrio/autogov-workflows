@@ -3,7 +3,7 @@ name: Build Entrypoint Caller Workflow
 on:
   workflow_dispatch:
   release:
-    types: [published]
+    types: [published] # specifically for tagging high permission images (e.g oci) w/ release tag
   push:
     branches: ['**']
     paths-ignore:

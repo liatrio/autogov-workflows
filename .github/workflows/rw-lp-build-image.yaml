@@ -75,4 +75,5 @@ jobs:
       attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestations-artifact-id }}
+      image-artifact-id: ${{ needs.attest-image.outputs.image-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}

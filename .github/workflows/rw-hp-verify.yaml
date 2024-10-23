@@ -109,7 +109,7 @@ jobs:
           done
       - name: Process Sigstore Bundle(s)
         if: ${{ inputs.build-type == 'blob' }}
-        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore_bundle.jsonl
+        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Online Verification of Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |

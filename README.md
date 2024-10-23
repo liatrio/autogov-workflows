@@ -665,11 +665,59 @@ We use the `gh attestation` commands from the [GitHub CLI](https://cli.github.co
 - **Verify Attestations**: Ensure the integrity and authenticity of artifacts by verifying their attestations. This can be done both online and offline, providing flexibility in different environments.
 - **Download Attestations**: Retrieve attestations for artifacts, which can then be used for further verification or auditing purposes.
 
-#### Significance of OCI Format vs Docker Format
+#### OCI Artifacts
+
+The Open Container Initiative (OCI) is an open governance structure for creating open industry standards around container formats and runtimes. For more information, visit the [Open Container Initiative website](https://opencontainers.org/).
+
+The attest GitHub Actions effectively "sign" the images with OCI artifact attestations linking the image to a specific workflow run that built it and has the necessary metadata (e.g. source repo, commit SHA, etc ) to prove/attest to provenance (or SBOM, metadata, test-result) is legitimate.
+
+There are three clues as to whether you are dealing with OCI artifacts in a workflow specifically for high permission image builds:
+
+- The GitHub Action that is part of the workflow pushes an image (e.g. `push-to-registry` is `true`)
+- `permissions.packages.read/write` exists
+- Any `oci://` URIs whereby we write and pull attestation data to and from GitHub Container Registry (e.g. using the GitHub CLI)
+
+##### Significance of OCI Format vs Docker Format
 
 Within the workflow you will notice a section for the `build-image` step that defines the type or format for the image output. The Docker format can sometimes cause errors especially when exporting multi-platform images (e.g. `docker exporter does not support exporting manifest lists`), which pushes others to the OCI format which is more standardized and compatible across various container runtimes (e.g., Docker, Kubernetes).
 
-- **OCI (Open Container Initiative)**: The Open Container Initiative (OCI) is an open governance structure for creating open industry standards around container formats and runtimes. For more information, visit the [Open Container Initiative website](https://opencontainers.org/).
+##### Other Ways to Inspect and Download Image Attestations
+
+Using Docker we can interact and inspect the attestations that have been attached to our container images:
+
+```bash
+❯ docker manifest inspect ghcr.io/<repo>@<image_digest>
+```
+
+```json
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.oci.image.index.v1+json",
+   "manifests": [
+      {
+         "mediaType": "application/vnd.oci.image.manifest.v1+json",
+         "size": 2005,
+         "digest": "sha256:<sha_digest>",
+         "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+         }
+      },
+...
+      {
+         "mediaType": "application/vnd.oci.image.manifest.v1+json",
+         "size": 566,
+         "digest": "sha256:<sha_digest>",
+         "platform": {
+            "architecture": "unknown",
+            "os": "unknown"
+         }
+      }
+   ]
+}
+```
+
+From there, you can continue to drill into each attestation by inspecting each respective sha256 digest finding the type of attestation (e.g. `application/vnd.in-toto+json`):
 
 ### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
 
