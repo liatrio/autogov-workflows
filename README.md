@@ -96,7 +96,6 @@ runs:
 ```
 
 3. **Create Your Caller Workflows / Configure Inputs**:
-   For example create `.github/workflows/cw-build-image.yaml` for images or `.github/workflows/cw-build-blob.yaml` for blobs:
 
 Pick one of the following four jobs (e.g. job definitions) depending on desired build type and permissions:
 
@@ -197,6 +196,16 @@ GitHub recommends using [reusable workflows](https://github.com/slsa-framework/g
 This README outlines how our services can help your organization implement a Reusable Workflow to meet SLSA Build Level 3 requirements, ensuring a secure and compliant Software Development Life Cycle (SDLC).
 
 By implementing this reusable workflow, your organization can achieve SLSA Build Level 3 compliance, ensuring a secure and verifiable software development process. Our team is ready to assist you in integrating these automated governance technologies into your SDLC, enhancing the security and integrity of your software artifacts.
+
+### GitHub Artifact Attestations
+
+GitHub Artifact Attestations is a feature that enables developers to generate cryptographically signed attestations that verify the provenance of software artifacts created during CI/CD pipelines. These attestations are based on the Open Container Initiative (OCI) format and follow the SLSA (Supply Chain Levels for Software Artifacts) framework, but can also work against blob or files. Attestations provide verifiable metadata about how, when, and by whom an artifact was built, ensuring integrity and preventing tampering.
+
+By using any of GitHub's attest Actions, developers can automate the creation of attestations directly in their pipelines. These attestations are signed and associated with build artifacts, which can then be stored in OCI-compliant registries. The signatures can be verified using GitHub's own tools or [external tools like Sigstore's `cosign`](https://blog.sigstore.dev/cosign-verify-bundles/), ensuring that any unauthorized changes or modifications to the artifact can be detected.
+
+This offering is now generally available, as announced in June 2024, with public repositories using Sigstore’s public instance for signing, while private repositories are backed by GitHub’s private Sigstore instance. This ensures that all repositories can integrate artifact attestations into their workflows while maintaining the same level of cryptographic security.
+
+For more information, visit the [GitHub documentation on artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
 
 ### The SLSA Build Track
 
