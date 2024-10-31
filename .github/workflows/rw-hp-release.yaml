@@ -32,6 +32,11 @@ on:
         type: string
         description: The label of the workflow runner
         default: ubuntu-latest
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        required: false
+        type: string
 
 env:
   ARTIFACT_IDS: |
@@ -43,7 +48,6 @@ env:
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
   RESULTS_FOLDER: ./${{ inputs.build-type }}-results
-  GH_TOKEN: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
 
 permissions: {}
 
@@ -119,7 +123,7 @@ jobs:
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
         with:
-          github-token: ${{ env.GH_TOKEN }}
+          github-token: ${{ inputs.github-token || github.token }}
           changelog-generator-opt: emojis=true
           allow-initial-development-versions: true
       - name: Upload Results/Sigstore Bundle as Release Asset
@@ -131,4 +135,4 @@ jobs:
             ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
             ${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}
           tag_name: v${{ steps.go-semantic-release.outputs.version }}
-          token: ${{ env.GH_TOKEN }}
+          token: ${{ inputs.github-token || github.token }}

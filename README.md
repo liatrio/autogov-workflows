@@ -20,7 +20,7 @@
 1. **Configure Access**:
    Ensure you have the necessary permissions and tokens configured in your remote caller repository described in the [access section](#access) below.
    - **Permissions**: Ensure you have the [necessary permissions to run the workflows](#workflow-access).
-   - **Tokens**: Set up the [required tokens](#repository-access) for repo access.
+   - **Tokens**: Set up the [required tokens](#repository-access) for policy bundle access.
 2. **Create Your Local Composite Actions**:
    For example create `.github/actions/build-image/action.yaml` for images or `.github/actions/build-blob/action.yaml` for blobs:
 
@@ -37,6 +37,11 @@ inputs:
       Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
     default: "false"
     required: false
+  github-token:
+    description: >
+      The GitHub token set throughout the reuseable workflow including the composite (build) action.
+    required: false
+    default: ''
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
@@ -45,6 +50,14 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Get Next Semantic Release Tag
+      id: semantic-release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+      with:
+        dry: true
+        allow-initial-development-versions: true
+        github-token: ${{ inputs.github-token || github.token }}
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
@@ -53,8 +66,8 @@ runs:
         tags: |
           type=ref,event=branch
           type=sha
-          type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-          type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+          type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     - name: Set up QEMU
       uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
     - name: Set up Docker Buildx
@@ -64,7 +77,7 @@ runs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ github.token }}
+        password: ${{ inputs.github-token || github.token }}
     - name: Build and push Docker image
       uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
       id: build-image
@@ -765,13 +778,26 @@ liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@*,
 liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@*,
 ```
 
+It is also necessary to [allow access to workflows from other internal/private repositories](https://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository) to avoid having to provide further permissions with the fine grained personal access token discussed below.
+
 #### Repository Access
 
 Required token permissions for access to the following private repositories:
 
-A [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) especially if code repositories are owned by an organization. As mentioned in the Quick Start Guide, be sure to include the necessary token [in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
+A [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) is required for accessing the policy bundle specifically because it is internal/private and not public. As mentioned in the [Quick Start Guide](#quick-start-guide), be sure to include the necessary token/secret, `POLICY_REPO_ACCESS`, [in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) so that the [caller workflow](https://github.com/liatrio/demo-gh-autogov-caller-workflow), the workfow that calls the reuseable workflow, can access the policy repository.
 
-`RW_CW_POLICY_REPO_ACCESS`:
+- [Rego/OPA Policy Repository](https://github.com/liatrio/demo-gh-autogov-policy-library)
+
+The personal access token will need the following permissions to access the policy repository if the appropriate workflow access has been granted via the repository settings as [mentioned above](ttps://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository):
+
+- `Contents`
+  - read
+- `Metadata`
+  - read
+
+![Permissions](./assets/pat_permissions_wf_access.png)
+
+If the appropriate workflow access has **not** been granted via the repository settings then the personal access token will need further permissions as shown below:
 
 - `Actions`
   - read
@@ -784,11 +810,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
   - read
   - write
 
-![Permissions](./assets/pat_permissions.png)
-
-- [Reusable Workflows (this repo)](https://github.com/liatrio/demo-gh-autogov-workflows)
-- [Rego/OPA Policy](https://github.com/liatrio/demo-gh-autogov-policy-library)
-- Whatever the caller workflow is in order to trigger its relase (e.g. if running from this repo, this repo / otherwise the repo the reuseable workflow runs from; [Caller Workflow](https://github.com/liatrio/demo-gh-autogov-caller-workflow))
+![Permissions](./assets/pat_permissions_no_wf_access.png)
 
 ### Inputs
 
@@ -796,6 +818,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 - `subject-name` (required, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
 - `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/actions/build-blob/action.yaml`
 
@@ -811,6 +834,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-lp-build-image.yaml`
 
@@ -830,6 +854,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
@@ -837,6 +862,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-hp-verify.yaml`
 
@@ -845,7 +871,6 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
-- `all-attestations-artifact-id` (optional, string, default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 
@@ -857,6 +882,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `delete-images` (optional, boolean, default: false): If set to 'true', old images removed from GitHub Container Registry for the high permissions image builds.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
 - `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/demo-gh-autogov-policy-library/releases).
 
@@ -868,6 +894,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `attest-sbom-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (required, string): The artifact-id of the results artifacts.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 ### Outputs
 
@@ -904,6 +931,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
@@ -911,6 +939,7 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-lp-verify.yaml`
 
@@ -918,7 +947,6 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `subject-name` (optional, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
 - `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
-- `all-attestations-artifact-id` (optional, string, default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
@@ -928,7 +956,6 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `subject-name` (required if `build-type` is `image`, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
 - `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
-- `all-attestations-artifact-id` (optional, string, default: ${{ github.event.needs.build.outputs.all-attestations-artifact-id }})
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
@@ -937,9 +964,9 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 #### `.github/workflows/rw-lp-release.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
-- `all-attestations-artifact-id` (required, string): The artifact-id of the attestation artifacts.
 - `results-artifact-id` (required, string): The artifact-id of the results artifacts.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 ### Outputs
 
@@ -963,12 +990,10 @@ A [fine grained personal access token](https://docs.github.com/en/authentication
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
 - `image-artifact-id` (string): The artifact-id of the image artifacts.
-- `all-attestations-artifact-id` (string): The artifact-id of all attestation artifacts.
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the build artifacts.
-- `all-attestations-artifact-id` (string): The artifact-id of all attestation artifacts.
 
 #### `.github/workflows/rw-lp-verify.yaml`
 

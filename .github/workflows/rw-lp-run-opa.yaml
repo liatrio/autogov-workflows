@@ -44,7 +44,7 @@ permissions: {}
 
 env:
   GH_TOKEN: ${{ github.token }}
-  RW_CW_POLICY_REPO_ACCESS: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
+  POLICY_REPO_ACCESS: ${{ secrets.POLICY_REPO_ACCESS }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
@@ -104,7 +104,7 @@ jobs:
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ env.RW_CW_POLICY_REPO_ACCESS }}
+          export GH_TOKEN=${{ env.POLICY_REPO_ACCESS }}
           gh release download ${{ inputs.policy-bundle-version }} \
             --repo liatrio/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"

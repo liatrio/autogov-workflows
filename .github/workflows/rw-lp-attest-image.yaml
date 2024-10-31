@@ -35,6 +35,11 @@ on:
         required: false
         default: ubuntu-latest
         type: string
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        required: false
+        type: string
     outputs:
       image-artifact-id:
         description: The artifact-id of the image artifact.
@@ -131,7 +136,7 @@ jobs:
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
         with:
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: false
       - name: Rename Provenance Bundle
         run: |
@@ -281,7 +286,7 @@ jobs:
           output-file: sbom.cyclonedx.json
           upload-release-assets: false
           upload-artifact: false
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
       - name: Log SBOM File
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
@@ -290,7 +295,7 @@ jobs:
         with:
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
           sbom-path: sbom.cyclonedx.json
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: false
       - name: Rename SBOM Bundle
         run: |

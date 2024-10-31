@@ -25,6 +25,12 @@ on:
         required: false
         type: string
         default: ghcr.io
+      delete-images:
+        description: >
+          If set to 'true', old images removed from GitHub Container Registry for the high permissions image builds.
+        required: false
+        type: boolean
+        default: false
       blob-artifact-id:
         type: string
         description: The artifact-id of the build artifacts.
@@ -203,13 +209,11 @@ jobs:
       # image cleaner #
       # ______________#
       - name: Delete Stale Image(s)
-        if: ${{ inputs.build-type == 'image' }}
+        if: ${{ inputs.build-type == 'image' && inputs.delete-images == true }}
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         continue-on-error: true
         with:
           package-name: ${{ github.event.repository.name }}
-          package-type: "container"
+          package-type: 'container'
           owner: ${{ github.repository_owner }}
           min-versions-to-keep: 100
-          ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently only works against the sha https://github.com/actions/delete-package-versions/issues/121#issuecomment-2237110213
-          delete-only-untagged-versions: "true"

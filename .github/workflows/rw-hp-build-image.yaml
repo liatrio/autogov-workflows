@@ -10,6 +10,12 @@ on:
           path.
         required: true
         type: string
+      delete-images:
+        description: >
+          If set to 'true', old images removed from GitHub Container Registry for the high permissions image builds.
+        required: false
+        type: boolean
+        default: false
       use-low-perms:
         description: >
           Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
@@ -60,6 +66,7 @@ jobs:
       build-type: image
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
       policy-bundle-version: v0.6.0
+      delete-images: true
 
   release-image: #image
     permissions:

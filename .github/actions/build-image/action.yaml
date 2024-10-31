@@ -15,6 +15,11 @@ inputs:
       Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
     default: "false"
     required: false
+  github-token:
+    description: >
+      The GitHub token set throughout the reuseable workflow including the composite (build) action.
+    required: false
+    default: ''
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
@@ -23,6 +28,14 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Get Next Semantic Release Tag # premptively tags pushed/registry image w/ release tag
+      id: semantic-release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+      with:
+        dry: true
+        allow-initial-development-versions: true
+        github-token: ${{ inputs.github-token || github.token }}
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
@@ -31,8 +44,8 @@ runs:
         tags: |
           type=ref,event=branch
           type=sha
-          type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-          type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+          type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     - name: Set up QEMU
       uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
     - name: Set up Docker Buildx

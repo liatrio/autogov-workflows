@@ -35,6 +35,11 @@ on:
         required: false
         default: ubuntu-latest
         type: string
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        required: false
+        type: string
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -110,7 +115,7 @@ jobs:
         with:
           subject-name: ${{ inputs['subject-name'] }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename Provenance Bundle
         run: |
@@ -238,7 +243,7 @@ jobs:
           output-file: sbom.cyclonedx.json
           upload-release-assets: false
           upload-artifact: false
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
       - name: Log SBOM File
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
@@ -248,7 +253,7 @@ jobs:
           subject-name: ${{ inputs['subject-name'] }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           sbom-path: sbom.cyclonedx.json
-          github-token: ${{ github.token }}
+          github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename SBOM Bundle
         run: |

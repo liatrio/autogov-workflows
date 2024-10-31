@@ -2,8 +2,6 @@ name: Build Entrypoint Caller Workflow
 
 on:
   workflow_dispatch:
-  release:
-    types: [published] # specifically for tagging high permission images (e.g oci) w/ release tag
   push:
     branches: ['**']
     paths-ignore:
@@ -24,6 +22,7 @@ jobs:
     with:
       subject-name: ghcr.io/${{ github.repository }}
       cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      delete-images: true
 
   # attest-image-lp: #image
   #   permissions:
