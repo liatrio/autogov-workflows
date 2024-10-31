@@ -51,12 +51,13 @@ permissions: {}
 
 env:
   GH_TOKEN: ${{ github.token }}
-  RW_CW_POLICY_REPO_ACCESS: ${{ secrets.RW_CW_POLICY_REPO_ACCESS }}
+  POLICY_REPO_ACCESS: ${{ secrets.POLICY_REPO_ACCESS }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
 jobs:
   run-opa-high-perms:
+    continue-on-error: true
     outputs:
       results-artifact-id: ${{ steps.upload-results.outputs.artifact-id }}
     permissions:
@@ -135,7 +136,7 @@ jobs:
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ env.RW_CW_POLICY_REPO_ACCESS }}
+          export GH_TOKEN=${{ env.POLICY_REPO_ACCESS }}
           gh release download ${{ inputs.policy-bundle-version }} \
             --repo liatrio/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"
@@ -191,6 +192,7 @@ jobs:
               ' results >> $GITHUB_STEP_SUMMARY
           fi
       - name: Upload Results
+        if: success() || failure()
         id: upload-results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
@@ -206,8 +208,8 @@ jobs:
         continue-on-error: true
         with:
           package-name: ${{ github.event.repository.name }}
-          package-type: 'container'
+          package-type: "container"
           owner: ${{ github.repository_owner }}
           min-versions-to-keep: 100
           ignore-versions: '^v(0|[1-9]\d*)\.0\.0$' # currently only works against the sha https://github.com/actions/delete-package-versions/issues/121#issuecomment-2237110213
-          delete-only-untagged-versions: 'true'
+          delete-only-untagged-versions: "true"

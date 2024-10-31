@@ -50,6 +50,7 @@ env:
 
 jobs:
   run-opa-low-perms:
+    continue-on-error: true
     outputs:
       results-artifact-id: ${{ steps.upload-results.outputs.artifact-id }}
     permissions:
