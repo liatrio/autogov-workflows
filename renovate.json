@@ -7,23 +7,17 @@
         ":semanticPrefixFixDepsChoreOthers",
         "helpers:pinGitHubActionDigests"
       ],
-      "extractVersion": "^(?<version>v\\d+\\.\\d+\\.\\d+)$",
-      "versioning": "regex:^v?(?<major>\\d+)(\\.(?<minor>\\d+)\\.(?<patch>\\d+))?$"
-    },
-    {
       "matchDepTypes": [
         "action"
       ],
-      "pinDigests": true,
-      "labels": [
-        "gha"
-      ]
+      "pinDigests": true
     }
   ],
   "schedule": [
     "before 5am every weekday"
   ],
   "labels": [
-    "renovate"
+    "renovate",
+    "gha"
   ]
 }
