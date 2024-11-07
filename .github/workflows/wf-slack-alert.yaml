@@ -1,0 +1,106 @@
+name: Slack Alert Workflow
+
+on:
+  workflow_run:
+    workflows: ['Build Entrypoint Caller Workflow']
+    types: [completed]
+    branches: main
+
+env:
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: send slack alert
+        run: |
+          if ! job_id=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .id'); then
+              echo "Failed to get job ID"
+              job_id="unknown"
+          fi
+
+          if ! failing_step=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .name'); then
+              echo "Failed to get failing step"
+              failing_step="unknown"
+          fi
+
+          error_output=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .completed_at')
+          error_summary=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .conclusion')
+          failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/job/$job_id"
+
+          commit_msg=$(git log -1 --pretty=format:%s)
+          short_sha=$(git rev-parse --short HEAD)
+
+          curl -X POST -H 'Content-Type: application/json' $SLACK_WEBHOOK --data-binary @- << EOF
+          {
+              "attachments": [
+                  {
+                      "color": "#FF0000",
+                      "blocks": [
+                          {
+                              "type": "header",
+                              "text": {
+                                  "type": "plain_text",
+                                  "text": "🚨 Pipeline Failure",
+                                  "emoji": true
+                              }
+                          },
+                          {
+                              "type": "section",
+                              "fields": [
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "*Repository:*\n${{ github.repository }}"
+                                  },
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "*Failed Step:*\n\`$failing_step\`"
+                                  }
+                              ]
+                          },
+                          {
+                              "type": "section",
+                              "fields": [
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "*Triggered By:*\n${{ github.actor }}"
+                                  },
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "*Commit:*\n\`$short_sha\`"
+                                  }
+                              ]
+                          },
+                          {
+                              "type": "section",
+                              "text": {
+                                  "type": "mrkdwn",
+                                  "text": "*Last Commit Message:*\n\`\`\`$commit_msg\`\`\`"
+                              }
+                          },
+                          {
+                              "type": "section",
+                              "fields": [
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "<$failure_url|❌ View Failed Job>"
+                                  },
+                                  {
+                                      "type": "mrkdwn",
+                                      "text": "<https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}|:github: View Repository>"
+                                  }
+                              ]
+                          }
+                      ]
+                  }
+              ]
+          }
+          EOF
