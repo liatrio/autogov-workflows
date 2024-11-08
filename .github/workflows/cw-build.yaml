@@ -6,8 +6,9 @@ on:
     branches: ['**']
     paths-ignore:
       - .github/workflows/wf-slack-alert.yaml
-      - catalog-info.yaml
       - README.md
+      - catalog-info.yaml
+      - renovate.json
 
 permissions: {}
 

@@ -32,8 +32,6 @@ jobs:
               failing_step="unknown"
           fi
 
-          error_output=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .completed_at')
-          error_summary=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .conclusion')
           failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/job/$job_id"
 
           commit_msg=$(git log -1 --pretty=format:%s)
