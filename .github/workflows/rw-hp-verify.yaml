@@ -105,7 +105,7 @@ jobs:
         run: |
           cd ${{ env.ATTESTATIONS_FOLDER }}
           for ARTIFACT in ../${{ env.ARTIFACTS_FOLDER }}/*; do
-              gh attestation download "$ARTIFACT" -o ${{ github.repository_owner }}
+              gh attestation download "$ARTIFACT" --repo ${{ github.repository }}
           done
       - name: Process Sigstore Bundle(s)
         if: ${{ inputs.build-type == 'blob' }}
