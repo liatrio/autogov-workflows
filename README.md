@@ -108,6 +108,95 @@ runs:
         ${{ github.workflow_ref }} in the repo of ${{ github.repository }}" > i_am_another_blob
 ```
 
+Other examples like an npm package:
+
+OCI:
+
+```yaml
+inputs:
+...
+  node-version:
+    description: The Node.js version to use
+    required: false
+    default: '20'
+  registry-url:
+    description: The npm registry URL
+    required: false
+    default: 'https://npm.pkg.github.com'
+...
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        scope: '@${{ github.repository_owner }}'
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+    - name: Build package
+      shell: bash
+      run: npm run build
+...
+```
+
+Blob:
+
+```yaml
+    - name: Setup Node.js
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        scope: '@${{ github.repository_owner }}'
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+    - name: Build package
+      shell: bash
+      run: npm run build
+    - name: Pack npm package
+      shell: bash
+      run: npm pack
+```
+
+^ Ensure the value of `subject-path` is the output (e.g. or glob pattern) of the `npm`/`yarn pack` command (e.g. `liatrio-simple-greeter-1.0.0.tgz`).
+
+Examples of the associated `tsconfig.json` / `package.json` files respectively:
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts"
+  ]
+}
+```
+
+```json
+{
+    "name": "@liatrio/simple-greeter",
+    "version": "1.0.0",
+    "lockfileVersion": 3,
+    "requires": true,
+    "packages": {
+...
+    }
+}
+```
+
 3. **Create Your Caller Workflows / Configure Inputs**:
 
 Pick one of the following four jobs (e.g. job definitions) depending on desired build type and permissions:
@@ -699,6 +788,52 @@ There are three clues as to whether you are dealing with OCI artifacts in a work
 - `permissions.packages.read/write` exists
 - Any `oci://` URIs whereby we write and pull attestation data to and from GitHub Container Registry (e.g. using the GitHub CLI)
 
+An OCI Artifact's structure typically includes an Image Manifest or an Image Index, which can reference other OCI artifacts. These artifacts are stored and accessed in a content-addressable manner, either within registries or in on-disk storage, like an OCI-Layout directory.
+
+OCI artifacts can be identified by either a tag or a digest. The digest, an immutable hash of the artifact’s manifest or index, uniquely identifies the artifact version. In contrast, a tag is mutable, allowing updates to reference different versions over time.
+
+A tag links to a descriptor, a data structure that contains the digest for the associated manifest or index.
+
+![The OCI Design](./assets/oci_artifact_diagram.png)
+
+The OCI Image Format Spec can be found below:
+
+- [OCI Image Format Specification](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
+
+Sigstore Bundle example:
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+      "digest": "sha256:4bd9df17d3cfa8632690f6251b7dc6d2f7cebd60313c49bea4092b9489e2d4a4",
+      "size": 4967
+    }
+  ],
+  "subject": {
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "digest": "sha256:010511b82573da0735bbbc09ab0b1b9e9218732306d96b81beb694cfe431a499",
+    "size": 523
+  }
+}
+```
+
+- `artifactType` defines the Sigstore bundle’s media type, useful for registry compatibility.
+- The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
+- The `layers` array holds the Sigstore bundle content, with its size and hash.
+`subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
+
+The OCI image format allows the Sigstore bundle to be stored and managed alongside other OCI-compliant artifacts, facilitating interoperability across OCI registries, with some registries requiring slight adjustments to media type strings for compatibility (e.g. ECR via RFC 6838 / doesn’t support parameters like `;version=0.2` / simplify to `application/vnd.dev.sigstore.bundle.v02+json` to be compliant).
+
 ##### Significance of OCI Format vs Docker Format
 
 Within the workflow you will notice a section for the `build-image` step that defines the type or format for the image output. The Docker format can sometimes cause errors especially when exporting multi-platform images (e.g. `docker exporter does not support exporting manifest lists`), which pushes others to the OCI format which is more standardized and compatible across various container runtimes (e.g., Docker, Kubernetes).
@@ -709,31 +844,12 @@ Using Docker we can interact and inspect the attestations that have been attache
 
 ```bash
 ❯ docker manifest inspect ghcr.io/<repo>@<image_digest>
-```
-
-```json
 {
    "schemaVersion": 2,
    "mediaType": "application/vnd.oci.image.index.v1+json",
    "manifests": [
       {
-         "mediaType": "application/vnd.oci.image.manifest.v1+json",
-         "size": 2005,
-         "digest": "sha256:<sha_digest>",
-         "platform": {
-            "architecture": "amd64",
-            "os": "linux"
-         }
-      },
 ...
-      {
-         "mediaType": "application/vnd.oci.image.manifest.v1+json",
-         "size": 566,
-         "digest": "sha256:<sha_digest>",
-         "platform": {
-            "architecture": "unknown",
-            "os": "unknown"
-         }
       }
    ]
 }
@@ -858,7 +974,7 @@ If the appropriate workflow access has **not** been granted via the repository s
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
-- `subject-path` (required, string, default: 'i_am_blob'): Path to the artifact serving as the subject of the attestation.
+- `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
@@ -935,7 +1051,7 @@ If the appropriate workflow access has **not** been granted via the repository s
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
-- `subject-path` (required, string, default: 'i_am_blob'): Path to the artifact serving as the subject of the attestation.
+- `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.

@@ -9,8 +9,6 @@ on:
           specify exactly one of "subject-path" or "subject-digest". May contain a
           glob pattern or list of paths (total subject count cannot exceed 2500).
           examples: https://github.com/actions/attest-build-provenance?tab=readme-ov-file#examples
-        default: |
-          i_am_blob
         required: true
         type: string
       cert-identity:
