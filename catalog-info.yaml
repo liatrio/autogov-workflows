@@ -1,0 +1,14 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: liatrio-gh-autogov-workflows
+    description: "Dedicated reusable automated governance workflows for internal Liatrio use.
+  annotations:
+    github.com/project-slug: liatrio/liatrio-gh-autogov-workflows
+  tags:
+    - autogov
+spec:
+  type: library
+  lifecycle: in-progress
+  owner: tag-autogov
