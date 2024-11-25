@@ -3,10 +3,11 @@ name: Build Entrypoint Caller Workflow
 on:
   workflow_dispatch:
   push:
-    branches: ['**']
+    branches: ["**"]
     paths-ignore:
       - .github/workflows/wf-slack-alert.yaml
       - README.md
+      - CONTRIBUTING.md
       - catalog-info.yaml
       - renovate.json
 
