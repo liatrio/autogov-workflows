@@ -24,7 +24,7 @@ jobs:
     secrets: inherit
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
       delete-images: true
 
   # attest-image-lp: #image
@@ -37,7 +37,7 @@ jobs:
   #   secrets: inherit
   #   with:
   #     subject-name: ghcr.io/${{ github.repository }}
-  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@${{ github.ref }}
   #     use-low-perms: true
 
   # attest-blob-hp: #blob
@@ -52,7 +52,7 @@ jobs:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
 
   # attest-blob-lp: #blob
   #   permissions:
@@ -65,4 +65,4 @@ jobs:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}
