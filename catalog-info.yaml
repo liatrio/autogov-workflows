@@ -1,18 +1,13 @@
----
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: demo-gh-autogov-workflows
-  description: Repo to host reusable GitHub Actions workflows for GitHub attest action autogov solution.
+  name: liatrio-gh-autogov-workflows
+  description: Dedicated reusable automated governance workflows for internal Liatrio use.
   annotations:
-    github.com/project-slug: liatrio/demo-gh-autogov-workflows
+    github.com/project-slug: liatrio/liatrio-gh-autogov-workflows
   tags:
-    - automated-governance
-    - demo
-    - github-actions
-    - workflow
+    - autogov
 spec:
-  type: other
-  lifecycle: experimental
+  type: library
+  lifecycle: in-progress
   owner: tag-autogov
-  system: demo-gh-attest-autogov
