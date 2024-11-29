@@ -45,7 +45,7 @@ To add a new artifact creation and attestation you will add the following to the
 1. Update the outputs of the workflow_call
    - add new artifact attestation to outputs of `rw-*-attest-*.yaml` : `attest-<new-artifact>-attestations-artifact-id`
 
-1. Create a policy for this artifact's attestation in the [Demo policy library](https://github.com/liatrio/demo-gh-autogov-policy-library)
+1. Create a policy for this artifact's attestation in the [policy library](https://github.com/liatrio/liatrio-rego-policy-library)
    - this step can be started before or after the merge of new attestation artifact creation job  *(it might be helpful to start writing the policy to help determine what information you need in the attestation as determined by the new predicate)*
    - it's important to take action on the attestations, or else they are just noise
 

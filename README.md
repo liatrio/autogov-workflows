@@ -902,7 +902,7 @@ Required token permissions for access to the following private repositories:
 
 A [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) is required for accessing the policy bundle specifically because it is internal/private and not public. As mentioned in the [Quick Start Guide](#quick-start-guide), be sure to include the necessary token/secret, `POLICY_REPO_ACCESS`, [in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) so that the [caller workflow](https://github.com/liatrio/demo-gh-autogov-caller-workflow), the workfow that calls the reuseable workflow, can access the policy repository.
 
-- [Rego/OPA Policy Repository](https://github.com/liatrio/demo-gh-autogov-policy-library)
+- [Rego/OPA Policy Repository](https://github.com/liatrio/liatrio-rego-policy-library)
 
 The personal access token will need the following permissions to access the policy repository if the appropriate workflow access has been granted via the repository settings as [mentioned above](ttps://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository):
 
@@ -1000,7 +1000,7 @@ If the appropriate workflow access has **not** been granted via the repository s
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `delete-images` (optional, boolean, default: false): If set to 'true', old images removed from GitHub Container Registry for the high permissions image builds.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
-- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/demo-gh-autogov-policy-library/releases).
+- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/liatrio-rego-policy-library/releases).
 
 #### `.github/workflows/rw-hp-release.yaml`
 
@@ -1075,7 +1075,7 @@ If the appropriate workflow access has **not** been granted via the repository s
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
-- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/demo-gh-autogov-policy-library/releases).
+- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/liatrio-rego-policy-library/releases).
 
 #### `.github/workflows/rw-lp-release.yaml`
 

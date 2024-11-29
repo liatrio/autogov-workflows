@@ -45,7 +45,7 @@ on:
         type: string
         default: 0.67.1
       policy-bundle-version:
-        description: The version of the policy bundle to download from https://github.com/liatrio/demo-gh-autogov-policy-library.
+        description: The version of the policy bundle to download from https://github.com/liatrio/liatrio-rego-policy-library.
         required: false
         type: string
     outputs:
@@ -144,7 +144,7 @@ jobs:
           set +x
           export GH_TOKEN=${{ env.POLICY_REPO_ACCESS }}
           gh release download ${{ inputs.policy-bundle-version }} \
-            --repo ${{ github.repository_owner }}/demo-gh-autogov-policy-library \
+            --repo ${{ github.repository_owner }}/liatrio-rego-policy-library \
             --pattern "bundle.tar.gz"
       - name: Run OPA Evals
         id: run-opa
