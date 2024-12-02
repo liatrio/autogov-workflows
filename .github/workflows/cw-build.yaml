@@ -3,18 +3,22 @@ name: Build Entrypoint Caller Workflow
 on:
   workflow_dispatch:
   push:
-    branches: ["**"]
+    branches: ['**']
     paths-ignore:
       - .github/workflows/wf-slack-alert.yaml
       - README.md
       - CONTRIBUTING.md
       - catalog-info.yaml
       - renovate.json
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
 
 permissions: {}
 
 jobs:
   attest-image-hp: #image
+    if: github.event.pull_request.draft == false
     permissions:
       id-token: write
       attestations: write
@@ -28,6 +32,7 @@ jobs:
       delete-images: true
 
   # attest-image-lp: #image
+  #   if: github.event.pull_request.draft == false
   #   permissions:
   #     id-token: write
   #     attestations: write
@@ -41,6 +46,7 @@ jobs:
   #     use-low-perms: true
 
   # attest-blob-hp: #blob
+  #   if: github.event.pull_request.draft == false
   #   permissions:
   #     id-token: write
   #     attestations: write
@@ -55,6 +61,7 @@ jobs:
   #     cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
 
   # attest-blob-lp: #blob
+  #   if: github.event.pull_request.draft == false
   #   permissions:
   #     id-token: write
   #     attestations: write
