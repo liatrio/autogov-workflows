@@ -4,7 +4,7 @@
 
 ### In a no trust workflow
 
-Developers must not influence the commands used to create artifacts or their attestations if the artifacts' integrity and contents are to be trusted as this helps address [SLSA level 3's focus](https://slsa.dev/spec/v1.0/levels) on preventing tampering during the build or artifact creation.
+Developers **must not influence the commands** used to create artifacts or their attestations if the artifacts' integrity and contents are to be trusted as this helps address [SLSA level 3's focus](https://slsa.dev/spec/v1.0/levels) on preventing tampering during the build or artifact creation.
 
 ### Life of an artifact in an autogov pipeline
 
