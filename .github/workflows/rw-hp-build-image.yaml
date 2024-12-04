@@ -65,7 +65,7 @@ jobs:
     with:
       build-type: image
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      policy-bundle-version: v0.6.1
+      policy-bundle-version: v0.6.5
       delete-images: true
 
   release-image: #image

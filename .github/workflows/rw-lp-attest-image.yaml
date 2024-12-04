@@ -185,45 +185,78 @@ jobs:
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Generate Metadata Attestation
+        shell: bash
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
-          echo '{
-            "_type": "https://in-toto.io/Statement/v0.1",
-            "metadata": {
-              "workflowData": {
-                "workflowRefPath": "${{ github.workflow_ref }}",
-                "branch": "${{ github.ref_name }}",
-                "buildWorkflowRunId": "${{ github.run_id }}",
-                "event": "${{ github.event_name }}",
-                "inputs": ${{ toJson(inputs) }}
-              },
-              "commitData": {
-                "commitSHA": "${{ github.sha }}",
-                "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
-              },
-              "repositoryData": {
-                "repository": "${{ github.repository }}",
-                "repositoryId": "${{ github.repository_id }}",
-                "githubServerURL": "${{ github.server_url }}"
-              },
-              "ownerData": {
-                "owner": "${{ github.repository_owner }}",
-                "ownerId": "${{ github.repository_owner_id }}"
-              },
-              "jobData": {
-                "jobId": "${{ github.job }}",
-                "runNumber": "${{ github.run_number }}",
-                "action": "${{ github.action }}",
-                "actor": "${{ github.actor }}",
-                "status": "${{ job.status }}"
-              },
-              "runnerData": {
-                "os": "${{ runner.os }}",
-                "name": "${{ runner.name }}",
-                "arch": "${{ runner.arch }}",
-                "environment": "${{ runner.environment }}"
+          VERSION="${GITHUB_SHA:0:7}-${GITHUB_RUN_NUMBER}"
+
+          cat << EOF > metadata.json
+          {
+            "artifact": {
+              "version": "${VERSION}",
+              "digest": "${{ needs.build-image-low-perms.outputs.image-digest }}",
+              "created": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "type": "container-image",
+              "registry": "local",
+              "fullName": "${{ inputs.subject-name }}"
+            },
+            "repositoryData": {
+              "repository": "${{ github.repository }}",
+              "repositoryId": "${{ github.repository_id }}",
+              "githubServerURL": "${{ github.server_url }}"
+            },
+            "ownerData": {
+              "owner": "${{ github.repository_owner }}",
+              "ownerId": "${{ github.repository_owner_id }}"
+            },
+            "runnerData": {
+              "os": "${{ runner.os }}",
+              "arch": "${{ runner.arch }}",
+              "environment": "${{ runner.environment }}"
+            },
+            "workflowData": {
+              "workflowRefPath": "${{ github.workflow_ref }}",
+              "inputs": ${{ toJson(inputs) }},
+              "branch": "${{ github.ref_name }}",
+              "event": "${{ github.event_name }}"
+            },
+            "jobData": {
+              "runNumber": "${{ github.run_number }}",
+              "runId": "${{ github.run_id }}",
+              "status": "${{ job.status }}",
+              "triggeredBy": "${{ github.actor }}",
+              "startedAt": "${{ github.event.workflow_run.created_at }}",
+              "completedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            },
+            "commitData": {
+              "sha": "${{ github.sha }}",
+              "timestamp": "${{ github.event.head_commit.timestamp }}"
+            },
+            "organization": {
+              "name": "${{ github.repository_owner }}"
+            },
+            "compliance": {
+              "policyRef": "https://github.com/liatrio/demo-gh-autogov-policy-library",
+              "controlIds": [
+                "${{ github.repository_owner }}-PROVENANCE-001",
+                "${{ github.repository_owner }}-SBOM-002",
+                "${{ github.repository_owner }}-METADATA-003"
+              ]
+            },
+            "security": {
+              "permissions": {
+                "id-token": "write",
+                "attestations": "write",
+                "packages": "read",
+                "contents": "read"
               }
             }
-          }' > metadata.json && cat metadata.json | jq -r
+          }
+          EOF
+
+          echo "Generated metadata:"
+          cat metadata.json | jq '.'
       - name: Attest Metadata
         uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         id: attest-metadata

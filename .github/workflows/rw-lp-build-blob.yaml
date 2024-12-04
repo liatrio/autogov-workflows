@@ -56,7 +56,7 @@ jobs:
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
-      policy-bundle-version: v0.6.1
+      policy-bundle-version: v0.6.5
 
   release-blob: #blob
     permissions:

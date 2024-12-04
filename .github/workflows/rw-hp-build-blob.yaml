@@ -54,7 +54,7 @@ jobs:
     with:
       build-type: blob
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      policy-bundle-version: v0.6.1
+      policy-bundle-version: v0.6.5
 
   release-blob: #blob
     permissions:
