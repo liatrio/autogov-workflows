@@ -124,7 +124,7 @@ jobs:
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
-          scope: amber-beasley-liatrio/learning-actions
+          scope: liatrio-gh-autogov-workflows
           # only reads files from main branch
           identity: main-semantic-release
       - name: Run go-semantic-release
