@@ -123,7 +123,6 @@ jobs:
         id: octo-sts
         with:
           scope: liatrio/liatrio-gh-autogov-workflows
-          # only reads files from main branch
           identity: main-semantic-release
       - name: Run go-semantic-release
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
