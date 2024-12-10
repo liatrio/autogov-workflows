@@ -245,7 +245,7 @@ jobs:
           echo "Generated metadata:"
           cat metadata.json | jq '.'
       - name: Attest Metadata
-        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
         id: attest-metadata
         with:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
