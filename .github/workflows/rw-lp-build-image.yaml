@@ -21,10 +21,6 @@ on:
         default: false
         required: false
         type: boolean
-      policy-bundle-version:
-        description: The version of the policy bundle to download from https://github.com/liatrio/liatrio-rego-policy-library.
-        required: false
-        type: string
 
 permissions: {}
 
@@ -66,7 +62,6 @@ jobs:
       attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestations-artifact-id }}
-      policy-bundle-version: ${{ inputs.policy-bundle-version }}
 
   release-image: #image
     permissions:

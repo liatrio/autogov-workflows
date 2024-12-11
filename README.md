@@ -998,7 +998,6 @@ If the appropriate workflow access has **not** been granted via the repository s
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
-- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/liatrio-rego-policy-library/releases).
 
 #### `.github/workflows/rw-hp-release.yaml`
 
@@ -1073,7 +1072,6 @@ If the appropriate workflow access has **not** been granted via the repository s
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `opa-version` (required, string, default: '0.67.1'): The version of Open Policy Agent (OPA) to use.
-- `policy-bundle-version` (optional, string, default: 'v0.5.2'): The version of the policy bundle to use. If none is included, [the latest release will be used](https://github.com/liatrio/liatrio-rego-policy-library/releases).
 
 #### `.github/workflows/rw-lp-release.yaml`
 
