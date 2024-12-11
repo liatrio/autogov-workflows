@@ -31,10 +31,6 @@ on:
         required: false
         type: string
         default: 0.67.1
-      policy-bundle-version:
-        description: The version of the policy bundle to download from https://github.com/liatrio/demo-gh-autogov-policy-library.
-        required: false
-        type: string
     outputs:
       results-artifact-id:
         description: The image digest of the image that was built from the build-image job.
@@ -105,7 +101,7 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ env.POLICY_REPO_ACCESS }}
-          gh release download ${{ inputs.policy-bundle-version }} \
+          gh release download \
             --repo ${{ github.repository_owner }}/demo-gh-autogov-policy-library \
             --pattern "bundle.tar.gz"
       - name: Run OPA Evals
