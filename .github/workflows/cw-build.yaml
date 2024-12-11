@@ -29,7 +29,7 @@ jobs:
     with:
       subject-name: ghcr.io/${{ github.repository }}
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
-      policy-bundle-version: v0.1.1
+      policy-bundle-version: v0.2.0
 
   # attest-image-lp: #image
   #   if: github.event.pull_request.draft == false
