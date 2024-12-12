@@ -22,7 +22,7 @@ jobs:
     permissions:
       id-token: write
       attestations: write
-      packages: write # necessary if build-type is image
+      packages: write
       contents: write
     uses: ./.github/workflows/rw-hp-build-image.yaml
     secrets: inherit
@@ -49,7 +49,7 @@ jobs:
   #   permissions:
   #     id-token: write
   #     attestations: write
-  #     packages: write # necessary if build-type is image
+  #     packages: read
   #     contents: write
   #   uses: ./.github/workflows/rw-hp-build-blob.yaml
   #   secrets: inherit

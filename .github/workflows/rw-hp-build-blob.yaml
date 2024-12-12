@@ -35,7 +35,7 @@ jobs:
     permissions:
       id-token: write
       attestations: read
-      packages: read # necessary if build-type is image
+      packages: read
     needs: [attest-blob]
     uses: ./.github/workflows/rw-hp-verify.yaml
     secrets: inherit
@@ -47,7 +47,7 @@ jobs:
   run-opa-blob: #blob
     permissions:
       attestations: read
-      packages: write # to delete stale images while we build solution
+      packages: read
     needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit

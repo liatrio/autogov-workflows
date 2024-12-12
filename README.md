@@ -217,13 +217,13 @@ jobs:
     permissions:
       id-token: write
       attestations: write
-      packages: write # to delete stale images while we build solution
+      packages: write
       contents: write
-    uses: ./.github/workflows/rw-hp-build-image.yaml
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
   attest-image-lp: #image
     permissions:
@@ -231,39 +231,39 @@ jobs:
       attestations: write
       packages: read
       contents: write
-    uses: ./.github/workflows/rw-lp-build-image.yaml
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
       use-low-perms: true
 
   attest-blob-hp: #blob
     permissions:
       id-token: write
       attestations: write
-      packages: write # to delete stale images while we build solution
+      packages: read
       contents: write
-    uses: ./.github/workflows/rw-hp-build-blob.yaml
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-path: |
         i_am_blob
         i_am_another_blob
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
   attest-blob-lp: #blob
     permissions:
       id-token: write
       attestations: write
       contents: write
-    uses: ./.github/workflows/rw-lp-build-blob.yaml
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-path: |
         i_am_blob
         i_am_another_blob
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }} # The ref here is meant for a quick getting started path; branches/tags can also be used, but a commit SHA from an official release is recommended.
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
 ```
 
@@ -1140,11 +1140,11 @@ attest-image: #image
     attestations: write
     packages: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 #### `rw-hp-build-blob.yaml`
@@ -1154,14 +1154,14 @@ attest-image: #blob
   permissions:
     id-token: write
     attestations: write
-    packages: write # necessary if build-type is image
+    packages: read
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-path: |
       i_am_blob
       i_am_another_blob
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 #### `rw-lp-build-image.yaml`
@@ -1173,7 +1173,7 @@ attest-image: #image
     attestations: write
     packages: read
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-name: ghcr.io/${{ github.repository }}
 ```
@@ -1186,12 +1186,12 @@ attest-image: #blob
     id-token: write
     attestations: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-path: |
       i_am_blob
       i_am_another_blob
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ### Attest Workflows
@@ -1203,9 +1203,9 @@ attest-image: #image
   permissions:
     id-token: write
     attestations: write
-    packages: write # necessary if build-type is image
+    packages: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-name: ghcr.io/${{ github.repository }}
 ```
@@ -1218,8 +1218,7 @@ attest-image: #image
       id-token: write
       attestations: write
       contents: read
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
-    with:
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blolb.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
       subject-path: |
         i_am_blob
         i_am_another_blob
@@ -1234,7 +1233,7 @@ attest-image: #image
     attestations: write
     packages: read
     contents: read
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     with:
       subject-name: ghcr.io/${{ github.repository }}
       use-low-perms: true
@@ -1248,7 +1247,7 @@ attest-image: #image
       id-token: write
       attestations: write
       contents: read
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     with:
       subject-path: |
         i_am_blob
@@ -1264,7 +1263,7 @@ verify-<build-type>:
     attestations: read
     packages: read
   needs: [attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-verify.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1272,7 +1271,7 @@ verify-<build-type>:
     or
     blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ```yaml:.github/workflows/rw-lp-verify.yaml
@@ -1282,7 +1281,7 @@ verify-<build-type>:
     attestations: read
     packages: read
   needs: [attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-verify.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1292,7 +1291,7 @@ verify-<build-type>:
     attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
     attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
     attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ### Run OPA Workflow
@@ -1304,7 +1303,7 @@ run-opa-<build-type>:
     id-token: write
     packages: read
   needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-run-opa.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-run-opa.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1320,7 +1319,7 @@ run-opa-<build-type>:
     id-token: write
     packages: read
   needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-run-opa.yaml@<github_branch/tag/commit_sha> # Remember to include a branch, tag or a commit SHA from an official release.
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-run-opa.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1336,7 +1335,7 @@ release-<build-type>:
   permissions:
     contents: write
   needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
-  uses: ./.github/workflows/rw-hp-release.yaml
+  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-hp-release.yaml
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1351,7 +1350,7 @@ release-<build-type>:
   permissions:
     contents: write
   needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
-  uses: ./.github/workflows/rw-lp-release.yaml
+  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-lp-release.yaml
   secrets: inherit
   with:
     build-type: <build-type>
