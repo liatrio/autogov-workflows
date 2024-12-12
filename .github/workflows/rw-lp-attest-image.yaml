@@ -135,6 +135,7 @@ jobs:
         id: attest-build-provenance
         uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
         with:
+          subject-name: ${{ inputs.subject-name }}
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: false
@@ -261,6 +262,7 @@ jobs:
         uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
         id: attest-metadata
         with:
+          subject-name: ${{ inputs.subject-name }}
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: metadata.json
@@ -326,6 +328,7 @@ jobs:
         id: attest-sbom
         uses: actions/attest-sbom@cbfd0027ae731a5892db25ecd226930d7ffd19eb # v2.1.0
         with:
+          subject-name: ${{ inputs.subject-name }}
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
           sbom-path: sbom.cyclonedx.json
           github-token: ${{ inputs.github-token || github.token }}

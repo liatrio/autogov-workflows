@@ -58,7 +58,7 @@ jobs:
       results-artifact-id: ${{ steps.upload-results.outputs.artifact-id }}
     permissions:
       attestations: read
-      packages: write # to delete stale images while we build solution
+      packages: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted

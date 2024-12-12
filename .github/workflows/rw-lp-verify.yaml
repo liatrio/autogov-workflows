@@ -100,12 +100,7 @@ jobs:
       - name: Process Sigstore Bundle for Offline Blob Verification
         if: ${{ inputs.build-type == 'blob' }}
         run: |
-          while IFS= read -r line; do
-              subject_name=$(echo "$line" | jq -r '.dsseEnvelope.payload' | base64 -d | jq -r '.subject[0].name')
-              output_file="${subject_name}_bundle.jsonl"
-              echo "$line" >> ${{ env.ATTESTATIONS_FOLDER }}/"$output_file"
-              echo "Appended JSON object to $output_file"
-          done < ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
+          cp ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl
           cd ${{ env.ATTESTATIONS_FOLDER }}
           rm attest-*.jsonl sigstore-bundle.jsonl
       - name: Download Image Artifact
@@ -176,14 +171,12 @@ jobs:
         run: |
           set +x
           for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
-            BASE_NAME=$(basename "$ARTIFACT")
-            BUNDLE_FILE="${{ env.ATTESTATIONS_FOLDER }}/${BASE_NAME}_bundle.jsonl"
             gh attestation verify \
               $ARTIFACT \
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
-              --cert-identity ${{ inputs.cert-identity }} \
-              --bundle $BUNDLE_FILE \
+              --cert-identity "${{ inputs.cert-identity }}" \
+              --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
               --custom-trusted-root trusted_root.jsonl \
               --format json \
               --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
@@ -194,7 +187,7 @@ jobs:
               --deny-self-hosted-runners \
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle $BUNDLE_FILE \
+              --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
               --custom-trusted-root trusted_root.jsonl \
               --format json \
               --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
