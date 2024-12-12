@@ -1154,7 +1154,7 @@ attest-image: #blob
   permissions:
     id-token: write
     attestations: write
-    packages: write # necessary if build-type is image
+    packages: read
     contents: write
   uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
@@ -1203,7 +1203,7 @@ attest-image: #image
   permissions:
     id-token: write
     attestations: write
-    packages: write # necessary if build-type is image
+    packages: write
     contents: write
   uses: liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
@@ -1272,7 +1272,7 @@ verify-<build-type>:
     or
     blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
-    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ```yaml:.github/workflows/rw-lp-verify.yaml
@@ -1292,7 +1292,7 @@ verify-<build-type>:
     attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
     attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
     attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
-    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<github_branch/tag/commit_sha> # Remember to include the "full" branch, tag or commit SHA reference such as `refs/heads/main` for the main branch.
+    cert-identity: https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release.
 ```
 
 ### Run OPA Workflow
