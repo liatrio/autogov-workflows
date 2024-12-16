@@ -121,6 +121,11 @@ jobs:
 
             await artifactClient.downloadArtifact(artifactId, { path: process.env.RESULTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.RESULTS_FOLDER}`);
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio/liatrio-gh-autogov-workflows
+          identity: main-semantic-release
       - name: Run go-semantic-release
         uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
         id: go-semantic-release
