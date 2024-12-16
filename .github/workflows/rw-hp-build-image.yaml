@@ -53,6 +53,7 @@ jobs:
     permissions:
       attestations: read
       packages: read
+      id-token: write
     needs: [verify-image, attest-image]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit
