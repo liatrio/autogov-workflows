@@ -897,21 +897,6 @@ It is also necessary to [allow access to workflows from other internal/private r
 
 #### Repository Access
 
-Required token permissions for access to the following private repositories:
-
-A [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) is required for accessing the policy bundle specifically because it is internal/private and not public. As mentioned in the [Quick Start Guide](#quick-start-guide), be sure to include the necessary token/secret, `POLICY_REPO_ACCESS`, [in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) so that your caller workflow, the workfow that calls the reuseable workflow, can access the policy repository. You can refer to our [demo caller workflow](https://github.com/liatrio/demo-gh-autogov-caller-workflow) for further examples.
-
-- [Rego/OPA Policy Repository](https://github.com/liatrio/liatrio-rego-policy-library)
-
-The personal access token will need the following permissions to access the policy repository if the appropriate workflow access has been granted via the repository settings as [mentioned above](ttps://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository):
-
-- `Contents`
-  - read
-- `Metadata`
-  - read
-
-![Permissions](./assets/pat_permissions_wf_access.png)
-
 If the appropriate workflow access has **not** been granted via the repository settings then the personal access token will need further permissions as shown below:
 
 - `Actions`

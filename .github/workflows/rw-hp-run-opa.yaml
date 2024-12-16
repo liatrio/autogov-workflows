@@ -47,7 +47,6 @@ permissions: {}
 
 env:
   GH_TOKEN: ${{ github.token }}
-  POLICY_REPO_ACCESS: ${{ secrets.POLICY_REPO_ACCESS }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
@@ -59,6 +58,7 @@ jobs:
     permissions:
       attestations: read
       packages: read
+      id-token: write
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -129,10 +129,16 @@ jobs:
           > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
           rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
+      - name: Generate Read Bundle Token
+        id: generate_token
+        uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        with:
+          scope: liatrio
+          identity: rego-policy-library # liatrio/.github/chainguard/rego-policy-library.sts.yaml
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ env.POLICY_REPO_ACCESS }}
+          export GH_TOKEN=${{ steps.generate_token.outputs.token }}
           gh release download \
             --repo ${{ github.repository_owner }}/liatrio-rego-policy-library \
             --pattern "bundle.tar.gz"

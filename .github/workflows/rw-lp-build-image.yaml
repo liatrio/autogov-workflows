@@ -54,6 +54,7 @@ jobs:
   run-opa-image: #image
     permissions:
       contents: read
+      id-token: write
     needs: [verify-image, attest-image]
     uses: ./.github/workflows/rw-lp-run-opa.yaml
     secrets: inherit
