@@ -269,7 +269,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Generate SBOM
-        uses: anchore/sbom-action@55dc4ee22412511ee8c3142cbea40418e6cec693 # v0.17.8
+        uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75 # v0.17.9
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
           format: cyclonedx-json
