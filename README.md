@@ -305,7 +305,7 @@ GitHub Artifact Attestations is a feature that enables developers to generate cr
 
 By using any of GitHub's attest Actions, developers can automate the creation of attestations directly in their pipelines. These attestations are signed and associated with build artifacts, which can then be stored in OCI-compliant registries. The signatures can be verified using GitHub's own tools or [external tools like Sigstore's `cosign`](https://blog.sigstore.dev/cosign-verify-bundles/), ensuring that any unauthorized changes or modifications to the artifact can be detected.
 
-This offering is now generally available, as announced in June 2024, with public repositories using Sigstore’s public instance for signing, while private repositories are backed by GitHub’s private Sigstore instance. This ensures that all repositories can integrate artifact attestations into their workflows while maintaining the same level of cryptographic security.
+This offering is now generally available, as announced in June 2024, with public repositories using Sigstore's public instance for signing, while private repositories are backed by GitHub's private Sigstore instance. This ensures that all repositories can integrate artifact attestations into their workflows while maintaining the same level of cryptographic security.
 
 For more information, visit the [GitHub documentation on artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
 
@@ -419,7 +419,118 @@ cert-identity:
 
 Our approach guarantees that both the source repository and the signer workflow originate from approved branches or tags, providing confidence that the artifact was built to meet SLSA Level 3 requirements as long as whomever is verifying is diligent and remembers to include the `cert-identity` (e.g. also known as `signer-workflow`) flag via the gh-cli.
 
-It is also possible to use Sigstore's own [cosign](https://github.com/sigstore/cosign) to [verify bundles](https://blog.sigstore.dev/cosign-verify-bundles/) though this is [currently not documented](https://github.com/actions/attest-build-provenance/issues/162) particularly well since GitHub's Artifact Attestations offering is [still in beta](https://github.blog/news-insights/product-news/introducing-artifact-attestations-now-in-public-beta/). Other in the Sigstore Community are [also voicing the need for this capability](https://github.com/sigstore/sigstore-rs/issues/393) using some of Sigstore's Libraries. We hope to [look further into verifying using other means such as cosign](https://github.com/liatrio/demo-gh-autogov-workflows/issues/153) to see if there are further benefits (e.g. specifying the `github.ref` for the cert-identity flag natively).
+### Verification Using Cosign
+
+It is also possible to use Sigstore's own [cosign](https://github.com/sigstore/cosign) to [verify bundles](https://blog.sigstore.dev/cosign-verify-bundles/) though this is [currently not documented](https://github.com/actions/attest-build-provenance/issues/162) and only through `cosign verify-blob-attestation` which requires other tools (regctl or Docker) to verify images in order to grab the necessary OCI artifacts.
+
+*To be further agnostic, the below steps will not use the `gh attestation` command.*
+
+#### Verification Prerequisites
+
+1. Install cosign:
+
+```shell
+# Using Homebrew
+brew install cosign
+
+# Or download directly from GitHub releases
+# Visit: https://github.com/sigstore/cosign/releases
+```
+
+2. Create a trusted root file:
+
+```shell
+# Create the trusted root file for GitHub's Fulcio instance
+gh attestation trusted-root | jq '.|select(.certificateAuthorities[0].uri=="fulcio.githubapp.com")' > github-trusted-root.json
+```
+
+3. Ensure you are authenticated with ghcr.io via Docker using a PAT with the package read permission:
+
+```shell
+# Login using PAT as the password
+docker login ghcr.io
+```
+
+##### Image Verification Prerequisites
+
+Before verifying image/OCI attestations, you'll need:
+
+Install regctl (if using the regctl method):
+
+```shell
+# Using Homebrew
+brew install regclient
+
+# Or download directly from GitHub releases
+# Visit: https://github.com/regclient/regclient/releases
+```
+
+###### Verifying Images Using regctl
+
+```shell
+# Get the manifest
+regctl manifest get --format raw-body ghcr.io/liatrio/demo-gh-autogov-workflows@<image_digest> > manifest.json
+
+# Calculate digest
+DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
+
+# Get the attestation bundle
+regctl artifact get ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST} > bundle.json
+
+# Verify the attestation
+cosign verify-blob-attestation \
+  --bundle bundle.json \
+  --trusted-root github-trusted-root.json \
+  --new-bundle-format \
+  --use-signed-timestamps \
+  --insecure-ignore-sct \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  manifest.json
+```
+
+###### Verifying Images Using Docker
+
+If you don't have regctl installed, you can use standard Docker commands:
+
+```shell
+# Get the manifest
+docker manifest inspect ghcr.io/liatrio/demo-gh-autogov-workflows@<image_digest> > manifest.json
+
+# Calculate digest
+DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
+
+# Pull and extract the attestation bundle
+docker pull ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST}
+docker save ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST} -o bundle.tar
+tar -xf bundle.tar
+cat manifest.json | jq '.[0].Config' | xargs cat > bundle.json
+
+# Verify the attestation
+cosign verify-blob-attestation \
+  --bundle bundle.json \
+  --trusted-root github-trusted-root.json \
+  --new-bundle-format \
+  --use-signed-timestamps \
+  --insecure-ignore-sct \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  manifest.json
+```
+
+##### Verifying Blob Attestations
+
+```shell
+cosign verify-blob-attestation \
+  --trusted-root github-trusted-root.json \
+  --bundle bundle.jsonl \
+  --use-signed-timestamps \
+  --insecure-ignore-sct \
+  --new-bundle-format \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${github.ref}" \
+  <path_to_blob>
+```
 
 ### L3: Isolation of Build from Attest
 
@@ -514,7 +625,7 @@ This happens because:
 
 - Compression Differences: The image tarball generated by docker save is uncompressed, while the images pushed to registries are typically compressed (e.g., with gzip). The compression changes the contents and results in different digests.
 - Layer Digests: Docker calculates the digest of each layer independently, and any difference in how layers are packaged or compressed (as with a tarball vs. pushed layers) will result in different final digests.
-- Metadata: There can be slight differences in the metadata, such as timestamps and other details, that are included in the image manifest when pushing to a registry versus what’s exported in the tarball.
+- Metadata: There can be slight differences in the metadata, such as timestamps and other details, that are included in the image manifest when pushing to a registry versus what's exported in the tarball.
 
 So, while you can work towards making the image as reproducible as possible, the differences in how Docker handles the compression and layers when saving versus pushing mean that the digests will almost always be different. An additional step could be to compare the individual layer digests instead of the overall image digest, as they will likely match across both the tarball and the pushed image.
 
@@ -576,7 +687,7 @@ To meet SLSA Build Level 1 requirements, we ensure that the build process is una
 
 #### Checkout by SHA
 
-We also take the step to checkout the source repo by commit SHA, rather than only by the ref (branch or tag) of the calling workflow. This mitigates [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) scenarios where the calling workflow may be triggered by a `push` event, for example, there may be subsequent pushes between then and the time the job is able to checkout the source code.
+We also take the step to checkout the source repo by commit SHA, rather than only by the ref (branch or tag) of the calling workflow. This mitigates [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of_use) scenarios where the calling workflow may be triggered by a `push` event, for example, there may be subsequent pushes between then and the time the job is able to checkout the source code.
 
 ```yaml
 - name: Checkout code
@@ -790,7 +901,7 @@ There are three clues as to whether you are dealing with OCI artifacts in a work
 
 An OCI Artifact's structure typically includes an Image Manifest or an Image Index, which can reference other OCI artifacts. These artifacts are stored and accessed in a content-addressable manner, either within registries or in on-disk storage, like an OCI-Layout directory.
 
-OCI artifacts can be identified by either a tag or a digest. The digest, an immutable hash of the artifact’s manifest or index, uniquely identifies the artifact version. In contrast, a tag is mutable, allowing updates to reference different versions over time.
+OCI artifacts can be identified by either a tag or a digest. The digest, an immutable hash of the artifact's manifest or index, uniquely identifies the artifact version. In contrast, a tag is mutable, allowing updates to reference different versions over time.
 
 A tag links to a descriptor, a data structure that contains the digest for the associated manifest or index.
 
@@ -827,12 +938,12 @@ Sigstore Bundle example:
 }
 ```
 
-- `artifactType` defines the Sigstore bundle’s media type, useful for registry compatibility.
+- `artifactType` defines the Sigstore bundle's media type, useful for registry compatibility.
 - The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
 - The `layers` array holds the Sigstore bundle content, with its size and hash.
 `subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
 
-The OCI image format allows the Sigstore bundle to be stored and managed alongside other OCI-compliant artifacts, facilitating interoperability across OCI registries, with some registries requiring slight adjustments to media type strings for compatibility (e.g. ECR via RFC 6838 / doesn’t support parameters like `;version=0.2` / simplify to `application/vnd.dev.sigstore.bundle.v02+json` to be compliant).
+The OCI image format allows the Sigstore bundle to be stored and managed alongside other OCI-compliant artifacts, facilitating interoperability across OCI registries, with some registries requiring slight adjustments to media type strings for compatibility (e.g. ECR via RFC 6838 / doesn't support parameters like `;version=0.2` / simplify to `application/vnd.dev.sigstore.bundle.v02+json` to be compliant).
 
 ##### Significance of OCI Format vs Docker Format
 
