@@ -897,6 +897,8 @@ It is also necessary to [allow access to workflows from other internal/private r
 
 #### Repository Access
 
+> access can be handled either through PAT or Chainguard's Octo-STS (Octo-STS is the recommended option)
+
 If the appropriate workflow access has **not** been granted via the repository settings then the personal access token will need further permissions as shown below:
 
 - `Actions`
@@ -911,6 +913,20 @@ If the appropriate workflow access has **not** been granted via the repository s
   - write
 
 ![Permissions](./assets/pat_permissions_no_wf_access.png)
+
+OR
+
+Add a `.github/chainguard/main-semantic-release.sts.yaml` file to your repo
+
+```yaml
+issuer: https://token.actions.githubusercontent.com
+# subject pattern is defining what repo and branch is allowed to generate a token at the permission level set below
+subject_pattern: "repo:liatrio/<your-repo>:ref:refs/heads/main"
+
+permissions:
+  contents: write
+  packages: write
+```
 
 ### Inputs
 
