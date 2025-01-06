@@ -53,6 +53,9 @@ on:
       attest-sbom-attestations-artifact-id:
         description: The artifact-id of the SBOM attestation artifact.
         value: ${{ jobs.attest-sbom-high-perms.outputs.sbom-artifact-id }}
+      attest-dependency-scan-attestations-artifact-id:
+        description: The artifact-id of the dependency scan attestation artifact.
+        value: ${{ jobs.attest-dependency-scan-high-perms.outputs.dependency-scan-artifact-id }}
 
 permissions: {}
 
@@ -299,3 +302,96 @@ jobs:
           name: image-sbom-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
           if-no-files-found: error
+
+  attest-dependency-scan-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
+    outputs:
+      dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
+    steps:
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Scan current project
+        uses: anchore/scan-action@v3
+        id: anchore-scan
+        with:
+          path: "."
+          output-format: "json"
+          fail-build: "false"
+      - name: Generate Predicate JSON
+        run: |
+          # Load values from results.json
+          SCANNER_VERSION=$(jq -r '.descriptor.version' results.json)
+          SCANNER_URI="https://github.com/anchore/grype/releases/tag/v$SCANNER_VERSION"
+          DB_URI=$(jq -r '.descriptor.configuration.db."update-url"' results.json)
+          DB_VERSION=$(jq -r '.descriptor.db.schemaVersion' results.json)
+          DB_LAST_UPDATE=$(jq -r '.descriptor.db.built' results.json)
+          SCAN_STARTED_ON=$(jq -r '.descriptor.db.built' results.json)
+          SCAN_FINISHED_ON=$(jq -r '.descriptor.timestamp' results.json)
+
+          # Collect vulnerabilities with updated severity structure
+          jq -n --arg scannerUri "$SCANNER_URI" \
+                --arg scannerVersion "$SCANNER_VERSION" \
+                --arg dbUri "$DB_URI" \
+                --arg dbVersion "$DB_VERSION" \
+                --arg dbLastUpdate "$DB_LAST_UPDATE" \
+                --arg scanStartedOn "$SCAN_STARTED_ON" \
+                --arg scanFinishedOn "$SCAN_FINISHED_ON" \
+                --argjson results "$(jq '[.matches[] | {
+                  id: .vulnerability.id,
+                  severity: [
+                    { "method": "nvd", "score": .vulnerability.severity },
+                    { "method": "cvss_score", "score": (.vulnerability.cvss[0].metrics.baseScore | tostring) }
+                  ]
+                }]' results.json)" \
+                '{
+                  scanner: {
+                    uri: $scannerUri,
+                    version: $scannerVersion,
+                    db: {
+                      uri: $dbUri,
+                      version: $dbVersion,
+                      lastUpdate: $dbLastUpdate
+                    },
+                    result: $results
+                  },
+                  metadata: {
+                    scanStartedOn: $scanStartedOn,
+                    scanFinishedOn: $scanFinishedOn
+                  }
+                }' > dep-scan.json
+          echo "Generated dependency scanning results:"
+          cat dep-scan.json | jq '.'
+      - name: Attest Dependency Scan
+        uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
+        id: attest-dep-scan
+        with:
+          subject-name: ${{ inputs['subject-name'] }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
+          predicate-path: dep-scan.json
+          push-to-registry: true
+      - name: Rename Dependency Scan Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+      - name: Upload Dependency Scan Sigstore Bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        id: upload-metadata
+        with:
+          name: image-dep-scan-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+          if-no-files-found: error
+          

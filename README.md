@@ -989,6 +989,7 @@ actions/attest@*,
 actions/checkout@*,
 actions/github-script@*,
 actions/upload-artifact@*,
+anchore/scan-action@*,
 anchore/sbom-action@*,
 docker/build-push-action@*,
 docker/login-action@*,
@@ -1129,6 +1130,7 @@ permissions:
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+- `attest-dependency-scan-attestations-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
@@ -1136,6 +1138,7 @@ permissions:
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+- `attest-dependency-scan-attestations-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
 #### `.github/workflows/rw-hp-verify.yaml`
 
