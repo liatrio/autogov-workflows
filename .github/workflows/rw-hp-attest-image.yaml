@@ -314,6 +314,11 @@ jobs:
     outputs:
       dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
     steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
       - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -324,13 +329,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Scan current project
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@abae793926ec39a78ab18002bc7fc45bbbd94342 # v6.0.0
         id: anchore-scan
         with:
-          path: "."
+          image: ${{ inputs.subject-name }}
           output-format: "json"
+          output-file: "results.json"
           fail-build: "false"
-      - name: Generate Predicate JSON
+      - name: Generate Dependency Scan Attestation
         run: |
           # Load values from results.json
           SCANNER_VERSION=$(jq -r '.descriptor.version' results.json)
