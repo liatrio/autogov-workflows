@@ -443,7 +443,7 @@ jobs:
         with:
           subject-name: ${{ inputs.subject-name }}
           subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
-          predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: dep-scan.json
           push-to-registry: false
       - name: Rename Dependency Scan Bundle

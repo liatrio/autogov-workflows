@@ -426,7 +426,7 @@ jobs:
         uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
         id: attest-dep-scan
         with:
-          predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: dep-scan.json
           push-to-registry: false
           subject-path: ${{ join(env.ARTIFACTS_FOLDER, '\n') }}
