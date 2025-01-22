@@ -469,13 +469,13 @@ brew install regclient
 
 ```shell
 # Get the manifest
-regctl manifest get --format raw-body ghcr.io/liatrio/demo-gh-autogov-workflows@<image_digest> > manifest.json
+regctl manifest get --format raw-body ghcr.io/liatrio/liatrio-gh-autogov-workflows@<image_digest> > manifest.json
 
 # Calculate digest
 DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
 
 # Get the attestation bundle
-regctl artifact get ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST} > bundle.json
+regctl artifact get ghcr.io/liatrio/liatrio-gh-autogov-workflows:${DIGEST} > bundle.json
 
 # Verify the attestation
 cosign verify-blob-attestation \
@@ -485,7 +485,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
   manifest.json
 ```
 
@@ -495,14 +495,14 @@ If you don't have regctl installed, you can use standard Docker commands:
 
 ```shell
 # Get the manifest
-docker manifest inspect ghcr.io/liatrio/demo-gh-autogov-workflows@<image_digest> > manifest.json
+docker manifest inspect ghcr.io/liatrio/liatrio-gh-autogov-workflows@<image_digest> > manifest.json
 
 # Calculate digest
 DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
 
 # Pull and extract the attestation bundle
-docker pull ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST}
-docker save ghcr.io/liatrio/demo-gh-autogov-workflows:${DIGEST} -o bundle.tar
+docker pull ghcr.io/liatrio/liatrio-gh-autogov-workflows:${DIGEST}
+docker save ghcr.io/liatrio/liatrio-gh-autogov-workflows:${DIGEST} -o bundle.tar
 tar -xf bundle.tar
 cat manifest.json | jq '.[0].Config' | xargs cat > bundle.json
 
@@ -514,7 +514,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
   manifest.json
 ```
 
@@ -528,7 +528,7 @@ cosign verify-blob-attestation \
   --insecure-ignore-sct \
   --new-bundle-format \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${github.ref}" \
   <path_to_blob>
 ```
 
