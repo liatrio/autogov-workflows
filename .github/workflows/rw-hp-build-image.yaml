@@ -74,3 +74,10 @@ jobs:
       attest-metadata-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestations-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
+  
+  echo-new-version:
+    runs-on: ubuntu-latest
+    needs: [release-image]
+    steps:
+      - name: Echo new version
+        run: echo "New version is ${{ needs.release-image.outputs.semantic-release-version }}"
