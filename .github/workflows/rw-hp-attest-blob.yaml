@@ -315,7 +315,7 @@ jobs:
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         id: attest-sbom
-        uses: actions/attest-sbom@cbfd0027ae731a5892db25ecd226930d7ffd19eb # v2.1.0
+        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
         with:
           subject-path: ${{ join(env.ARTIFACTS_FOLDER, '\n') }}
           sbom-path: sbom.cyclonedx.json
