@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - name: send slack alert
         run: |
-          if ! job_id=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .id'); then
+          if ! job_id=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .databaseId'); then
               echo "Failed to get job ID"
               job_id="unknown"
           fi
@@ -32,7 +32,11 @@ jobs:
               failing_step="unknown"
           fi
 
-          failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/job/$job_id"
+          if [ "$job_id" != "unknown" ]; then
+              failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/job/${job_id}"
+          else
+              failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
+          fi
 
           commit_msg=$(git log -1 --pretty=format:%s)
           short_sha=$(git rev-parse --short HEAD)

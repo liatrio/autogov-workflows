@@ -53,6 +53,9 @@ on:
       attest-sbom-attestations-artifact-id:
         description: The artifact-id of the SBOM attestation artifact.
         value: ${{ jobs.image-attest-sbom-low-perms.outputs.build-artifact-id }}
+      attest-dependency-scan-attestations-artifact-id:
+        description: The artifact-id of the dependency scan attestation artifact.
+        value: ${{ jobs.image-attest-dependency-scan-low-perms.outputs.dependency-scan-artifact-id }}
 
 permissions: {}
 
@@ -343,4 +346,114 @@ jobs:
         with:
           name: image-sbom-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+          if-no-files-found: error
+
+  image-attest-dependency-scan-low-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-image-low-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    outputs:
+      dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: ${{ runner.environment == 'github-hosted' }}
+      - name: Scan current project
+        uses: anchore/scan-action@abae793926ec39a78ab18002bc7fc45bbbd94342 # v6.0.0
+        id: anchore-scan
+        with:
+          path: "."
+          output-format: "json"
+          output-file: "results.json"
+          fail-build: "false"
+      - name: Generate Dependency Scan Attestation
+        run: |
+          # Load values from results.json
+          SCANNER_VERSION=$(jq -r '.descriptor.version' results.json)
+          SCANNER_URI="https://github.com/anchore/grype/releases/tag/v$SCANNER_VERSION"
+          DB_URI=$(jq -r '.descriptor.configuration.db."update-url"' results.json)
+          DB_VERSION=$(jq -r '.descriptor.db.schemaVersion' results.json)
+          DB_LAST_UPDATE=$(jq -r '.descriptor.db.built' results.json)
+          SCAN_STARTED_ON=$(jq -r '.descriptor.db.built' results.json)
+          SCAN_FINISHED_ON=$(jq -r '.descriptor.timestamp' results.json)
+
+          # Collect vulnerabilities with updated severity structure
+          jq -n --arg scannerUri "$SCANNER_URI" \
+                --arg scannerVersion "$SCANNER_VERSION" \
+                --arg dbUri "$DB_URI" \
+                --arg dbVersion "$DB_VERSION" \
+                --arg dbLastUpdate "$DB_LAST_UPDATE" \
+                --arg scanStartedOn "$SCAN_STARTED_ON" \
+                --arg scanFinishedOn "$SCAN_FINISHED_ON" \
+                --argjson results "$(jq '[.matches[] | {
+                  id: .vulnerability.id,
+                  severity: [
+                    { "method": "nvd", "score": .vulnerability.severity },
+                    { "method": "cvss_score", "score": (.vulnerability.cvss[0].metrics.baseScore | tostring) }
+                  ]
+                }]' results.json)" \
+                '{
+                  scanner: {
+                    uri: $scannerUri,
+                    version: $scannerVersion,
+                    db: {
+                      uri: $dbUri,
+                      version: $dbVersion,
+                      lastUpdate: $dbLastUpdate
+                    },
+                    result: $results
+                  },
+                  metadata: {
+                    scanStartedOn: $scanStartedOn,
+                    scanFinishedOn: $scanFinishedOn
+                  }
+                }' > dep-scan.json
+          echo "Generated dependency scanning results:"
+          cat dep-scan.json | jq '.'
+      - name: Install actions/artifact Library
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: npm install @actions/artifact@2.1.11
+      - name: Download Image Artifact
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_ID: ${{ needs.build-image-low-perms.outputs.image-artifact-id }}
+        with:
+          script: |
+            const { DefaultArtifactClient } = require('@actions/artifact');
+            const artifactClient = new DefaultArtifactClient();
+            const artifactId = process.env.ARTIFACT_ID;
+
+            if (!artifactId) {
+              throw new Error('Artifact ID is not defined');
+            }
+
+            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
+            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+      - name: Attest Dependency Scan
+        uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
+        id: attest-dep-scan
+        with:
+          subject-name: ${{ inputs.subject-name }}
+          subject-path: ${{ format('{0}/{1}', env.ARTIFACTS_FOLDER , 'image.tar') }}
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
+          predicate-path: dep-scan.json
+          push-to-registry: false
+      - name: Rename Dependency Scan Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+      - name: Upload Dependency Scan Sigstore Bundle
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        id: upload-metadata
+        with:
+          name: image-dep-scan-attestation-low-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
           if-no-files-found: error

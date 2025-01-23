@@ -167,37 +167,37 @@ jobs:
       - name: Format Results
         if: success() || failure()
         run: |
-          jq '{
-            result: (
-              if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then "FAILED" else "PASSED" end
-            ),
+          RESULT_STATUS=$(jq -r 'if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then "FAILED" else "PASSED" end' policy-evaluation.json)
+          echo "RESULT_STATUS=$RESULT_STATUS" >> $GITHUB_ENV
+          jq --arg status "$RESULT_STATUS" '{
+            result: $status,
             violations: (
               if ([.result[].expressions[].value | recurse(.[]?) | arrays | length > 0] | any) then
                 [.result[].expressions[].value | recurse(.[]?) | objects | to_entries[] |
-                 {policy: .key, message: .value | arrays | .[] | strings}]
+                  {policy: .key, message: .value | arrays | .[] | strings}]
               else
                 []
               end
             )
-          }' policy-evaluation.json > results
-          cat results | jq -r
+          }' policy-evaluation.json > results-${RESULT_STATUS}
+          cat results-${RESULT_STATUS} | jq -r
           echo "### Policy Evaluation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Result: $(jq -r '.result' results)" >> $GITHUB_STEP_SUMMARY
+          echo "#### Result: $(jq -r '.result' results-${RESULT_STATUS})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ $(jq '.violations | length' results) -gt 0 ]; then
+          if [ $(jq '.violations | length' results-${RESULT_STATUS}) -gt 0 ]; then
               echo "#### Violations:" >> $GITHUB_STEP_SUMMARY
               jq -r '
               reduce .violations[] as $v ({}; .[$v.policy] += [$v.message])
               | to_entries[]
               | .key + ":\n" + (.value | map("- " + .) | join("\n")) + "\n"
-              ' results >> $GITHUB_STEP_SUMMARY
+              ' results-${RESULT_STATUS} >> $GITHUB_STEP_SUMMARY
           fi
       - name: Upload Results
         if: success() || failure()
         id: upload-results
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-results' || inputs.build-type == 'blob' && 'blob-results' }}
-          path: results
+          name: ${{ inputs.build-type == 'image' && 'image-results-' || inputs.build-type == 'blob' && 'blob-results-' }}${{ env.RESULT_STATUS }}
+          path: results-${{ env.RESULT_STATUS }}
           if-no-files-found: error
