@@ -30,12 +30,6 @@ jobs:
       subject-name: ghcr.io/${{ github.repository }}
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
 
-  echo-new-version:
-    runs-on: ubuntu-latest
-    needs: [attest-image-hp]
-    steps:
-      - name: Echo new version
-        run: echo "New version is ${{ needs.attest-image-hp.outputs.semantic-release-version }}"
   # attest-image-lp: #image
   #   if: github.event.pull_request.draft == false
   #   permissions:
