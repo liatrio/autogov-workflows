@@ -10,12 +10,6 @@ on:
           path.
         required: true
         type: string
-      use-low-perms:
-        description: >
-          Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
-        default: false
-        required: false
-        type: boolean
       cert-identity:
         type: string
         description: >
@@ -34,7 +28,6 @@ jobs:
     uses: ./.github/workflows/rw-hp-attest-image.yaml
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      use-low-perms: ${{ inputs.use-low-perms }}
 
   verify-image: #image
     permissions:
