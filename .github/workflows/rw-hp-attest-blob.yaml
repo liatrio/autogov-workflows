@@ -249,7 +249,7 @@ jobs:
           echo "Generated metadata:"
           cat metadata.json | jq '.'
       - name: Attest Metadata
-        uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
+        uses: actions/attest@0fae56888724ae3bba68e14ff82712d5c3d8e1f0 # v2.2.0
         id: attest-metadata
         with:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
@@ -404,7 +404,7 @@ jobs:
           echo "Generated dependency scanning results:"
           cat dep-scan.json | jq '.'
       - name: Attest Dependency Scan
-        uses: actions/attest@63d2e98e267398337e9a17ec68a5c8d936cb9247 # v2.1.0
+        uses: actions/attest@0fae56888724ae3bba68e14ff82712d5c3d8e1f0 # v2.2.0
         id: attest-dep-scan
         with:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
