@@ -15,12 +15,6 @@ on:
         required: false
         default: ghcr.io
         type: string
-      use-low-perms:
-        description: >
-          Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
-        default: false
-        required: false
-        type: boolean
       show-summary:
         description: >
           Whether to attach a list of generated attestations to the workflow run
@@ -88,7 +82,6 @@ jobs:
         uses: ./.github/actions/build-image
         with:
           subject-name: ${{ inputs.subject-name }}
-          use-low-perms: ${{ inputs.use-low-perms }}
 
   attest-build-high-perms:
     runs-on: ${{ inputs.workflow-runner-label }}

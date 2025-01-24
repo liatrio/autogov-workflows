@@ -10,12 +10,6 @@ on:
           path.
         required: true
         type: string
-      use-low-perms:
-        description: >
-          Enables the use of less permissions such as not reaching out to container registries to access image attestations in the case of build-type being image and in the case of both build-types, pulling GitHub's trusted root for offline verification.
-        default: false
-        required: false
-        type: boolean
       image-artifact-name:
         description: The name of artifact for the image built from the build-image action.
         default: image-build-artifact-low-perms
@@ -89,7 +83,6 @@ jobs:
         uses: ./.github/actions/build-image
         with:
           subject-name: ${{ inputs.subject-name }}
-          use-low-perms: ${{ inputs.use-low-perms }}
       - name: Upload Image
         id: upload-image
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0

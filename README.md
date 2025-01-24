@@ -32,9 +32,6 @@ inputs:
     description: The name for the image.
     required: true
     default: ghcr.io/${{ github.repository }}
-  use-low-perms:
-    description: >
-      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
     default: "false"
     required: false
   github-token:
@@ -84,7 +81,7 @@ runs:
       with:
         context: .
         file: Dockerfile
-        push: ${{ inputs.use-low-perms == 'false' && 'true' || inputs.use-low-perms == 'true' && 'false' }}
+        push: 'true'
         platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
@@ -236,7 +233,6 @@ jobs:
     with:
       subject-name: ghcr.io/${{ github.repository }}
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
-      use-low-perms: true
 
   attest-blob-hp: #blob
     permissions:
@@ -1045,7 +1041,6 @@ permissions:
 #### `.github/actions/build-image/action.yaml`
 
 - `subject-name` (required, string, default: 'ghcr.io/${{ github.repository }}'): Subject name as it should appear in the attestation.
-- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
 #### `.github/actions/build-blob/action.yaml`
@@ -1055,7 +1050,6 @@ permissions:
 #### `.github/workflows/rw-hp-build-image.yaml`
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
-- `use-low-perms` (optional, boolean, default: false): Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
@@ -1067,7 +1061,6 @@ permissions:
 #### `.github/workflows/rw-lp-build-image.yaml`
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
-- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
@@ -1079,7 +1072,6 @@ permissions:
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
-- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
@@ -1156,7 +1148,6 @@ permissions:
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
-- `use-low-perms` (optional, boolean, default: false): Enables / Disables push to registry for the composite action; more for demo purposes.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
@@ -1351,7 +1342,6 @@ attest-image: #image
   uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     with:
       subject-name: ghcr.io/${{ github.repository }}
-      use-low-perms: true
 ```
 
 #### `rw-lp-attest-blob.yaml`
@@ -1531,4 +1521,3 @@ If you encounter any issues not covered here, please open an issue on our [GitHu
 - [Build Your Own Builder (BYOB) Framework](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#build-your-own-builder-byob-framework)
 - [Provenance Build Definition](https://slsa.dev/spec/v1.0/provenance#BuildDefinition)
 - [Provenance Model/Schema](https://slsa.dev/spec/v1.0/provenance#model)
-

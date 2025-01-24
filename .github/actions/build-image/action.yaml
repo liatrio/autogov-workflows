@@ -10,16 +10,11 @@ inputs:
     description: The name for the image.
     required: true
     default: ghcr.io/${{ github.repository }}
-  use-low-perms:
-    description: >
-      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
-    default: "false"
-    required: false
   github-token:
     description: >
       The GitHub token set throughout the reuseable workflow including the composite (build) action.
     required: false
-    default: ''
+    default: ""
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
@@ -62,7 +57,7 @@ runs:
       with:
         context: .
         file: Dockerfile
-        push: ${{ inputs.use-low-perms == 'false' && 'true' || inputs.use-low-perms == 'true' && 'false' }}
+        push: "true"
         platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
