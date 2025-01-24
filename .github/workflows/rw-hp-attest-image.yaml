@@ -114,7 +114,7 @@ jobs:
           password: ${{ github.token }}
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
         with:
           subject-name: ${{ inputs['subject-name'] }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
