@@ -67,6 +67,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    outputs:
+      semantic-release-version: ${{ steps.go-semantic-release.outputs.semantic-release-version }}
     steps:
       - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
