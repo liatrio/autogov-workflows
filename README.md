@@ -528,6 +528,131 @@ cosign verify-blob-attestation \
   <path_to_blob>
 ```
 
+### Verification Using ORAS
+
+In addition to using Cosign and the GitHub CLI, you can use ORAS (OCI Registry As Storage) commands to inspect and verify artifact attestations. This is particularly useful for understanding the relationship between image digests and their associated attestation layers.
+
+#### Understanding OCI Layers and Attestations
+
+When working with container images and their attestations in an OCI registry, you might notice additional digests that don't seem to correspond to an actual image. These are typically artifact manifests containing attestations. Here's how to inspect them:
+
+1. First, install ORAS:
+
+```bash
+# Using Homebrew
+brew install oras-cli
+
+# Or download from GitHub releases
+# Visit: https://github.com/oras-project/oras/releases
+```
+
+2. Use ORAS to discover referrers (attestations) of an image:
+
+```bash
+oras discover ghcr.io/your-org/your-repo@<image_digest>
+```
+
+For example, examining attestations for our policy library image:
+
+```bash
+❯ oras manifest fetch ghcr.io/liatrio/liatrio-rego-policy-library:sha256-d3e372efc3aa38f81c1d7c30b1cb9d77195c6f6456cced7a3b36f333ee220492 | jq -r
+{
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "schemaVersion": 2,
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:ec4898a09dd73d59882d82c3b02cd78e9ce471ccf3f28472563c9b250d1964e9",
+      "size": 814,
+      "artifactType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "annotations": {
+        "org.opencontainers.image.created": "2025-01-24T20:47:58.951Z",
+        "dev.sigstore.bundle.content": "dsse-envelope",
+        "dev.sigstore.bundle.predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    // ... other attestation layers ...
+  ]
+}
+```
+
+Example of Sigstore Bundle Attestation / `application/vnd.dev.sigstore.bundle.v0.3+json`:
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+      "digest": "sha256:4bd9df17d3cfa8632690f6251b7dc6d2f7cebd60313c49bea4092b9489e2d4a4",
+      "size": 4967
+    }
+  ],
+  "subject": {
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "digest": "sha256:010511b82573da0735bbbc09ab0b1b9e9218732306d96b81beb694cfe431a499",
+    "size": 523
+  }
+}
+```
+
+- `artifactType` defines the Sigstore bundle's media type, useful for registry compatibility.
+- The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
+- The `layers` array holds the Sigstore bundle content, with its size and hash.
+`subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
+
+#### Important Notes About Attestation Layers
+
+1. **Image Manifests**: You can use a variety of tools to inspect the actual image manifest such as Docker:
+
+```bash
+❯ docker manifest inspect ghcr.io/your-org/your-repo:sha256-<attestation_digest>
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.oci.image.index.v1+json",
+   "manifests": [
+      {
+...
+      }
+   ]
+}
+```
+
+But, if you try to pull an unsupported OCI artifact via Docker you'll get:
+
+```bash
+❯ docker pull ghcr.io/your-org/your-repo:sha256-<attestation_digest>
+sha256-<attestation_digest>: Pulling from <repo>>
+unsupported media type application/vnd.oci.empty.v1+json
+```
+
+2. **Attestation Manifests**: The additional digests you see in the registry that don't correspond to actual images are artifact manifests containing attestations. While these won't be visible through standard Docker commands, they can be inspected using ORAS:
+
+```bash
+# This will fail as it's an attestation manifest, not an image
+❯ docker inspect ghcr.io/your-org/your-repo:sha256-<attestation_digest>
+[]
+Error: No such object
+
+# Use ORAS instead to discover attestation relationships
+❯ oras discover ghcr.io/your-org/your-repo:sha256-<attestation_digest>
+```
+
+3. **Layer Types**: In the manifest, you'll notice different `artifactType` values corresponding to different attestations:
+   - `application/vnd.dev.sigstore.bundle.v0.3+json`: Sigstore bundle format
+   - `https://slsa.dev/provenance/v1`: SLSA provenance attestation
+   - `https://cosign.sigstore.dev/attestation/v1`: Cosign attestation
+   - `https://cyclonedx.org/bom`: SBOM attestation
+
+For more detailed information about ORAS commands and capabilities, refer to the [ORAS documentation](https://oras.land/docs/commands/oras_discover/).
+
 ### L3: Isolation of Build from Attest
 
 To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), we ensure that builds and their artifacts are isolated from one another, as well as ensuring artifacts are securely uploaded and downloaded, preventing other jobs from inadvertently or maliciously altering them.
@@ -887,7 +1012,7 @@ We use the `gh attestation` commands from the [GitHub CLI](https://cli.github.co
 
 The Open Container Initiative (OCI) is an open governance structure for creating open industry standards around container formats and runtimes. For more information, visit the [Open Container Initiative website](https://opencontainers.org/).
 
-The attest GitHub Actions effectively "sign" the images with OCI artifact attestations linking the image to a specific workflow run that built it and has the necessary metadata (e.g. source repo, commit SHA, etc ) to prove/attest to provenance (or SBOM, metadata, test-result) is legitimate.
+The attest GitHub Actions effectively "sign" the images with OCI artifact attestations linking the image to a specific workflow run that built it and has the necessary metadata (e.g. source repo, commit SHA, etc) to prove/attest to provenance (or SBOM, metadata, test-result) is legitimate.
 
 There are three clues as to whether you are dealing with OCI artifacts in a workflow specifically for high permission image builds:
 
@@ -897,72 +1022,28 @@ There are three clues as to whether you are dealing with OCI artifacts in a work
 
 An OCI Artifact's structure typically includes an Image Manifest or an Image Index, which can reference other OCI artifacts. These artifacts are stored and accessed in a content-addressable manner, either within registries or in on-disk storage, like an OCI-Layout directory.
 
+![The OCI Design](./assets/oci_artifact_diagram.png)
+
 OCI artifacts can be identified by either a tag or a digest. The digest, an immutable hash of the artifact's manifest or index, uniquely identifies the artifact version. In contrast, a tag is mutable, allowing updates to reference different versions over time.
 
 A tag links to a descriptor, a data structure that contains the digest for the associated manifest or index.
 
-![The OCI Design](./assets/oci_artifact_diagram.png)
+##### Understanding Attestation Digests in GitHub Container Registry
+
+When viewing your container images in GitHub Container Registry, you might notice additional digests that don't correspond to actual images:
+
+![Recent Tagged Image Versions](./assets/recent_tagged_image_versions.png)
+
+These additional digests represent attestation manifests - metadata about your image that proves its authenticity and provenance. While they appear alongside your image digests, they serve a different purpose:
+
+![Additional Digest Example](./assets/additional_digest_example.png)
+
+To inspect and verify these attestation digests, see the [Verification Using ORAS](#verification-using-oras) section above.
 
 The OCI Image Format Spec can be found below:
 
-- [OCI Image Format Specification](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
-
-Sigstore Bundle example:
-
-```json
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.manifest.v1+json",
-  "artifactType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
-  "config": {
-    "mediaType": "application/vnd.oci.empty.v1+json",
-    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-    "size": 2
-  },
-  "layers": [
-    {
-      "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
-      "digest": "sha256:4bd9df17d3cfa8632690f6251b7dc6d2f7cebd60313c49bea4092b9489e2d4a4",
-      "size": 4967
-    }
-  ],
-  "subject": {
-    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-    "digest": "sha256:010511b82573da0735bbbc09ab0b1b9e9218732306d96b81beb694cfe431a499",
-    "size": 523
-  }
-}
-```
-
-- `artifactType` defines the Sigstore bundle's media type, useful for registry compatibility.
-- The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
-- The `layers` array holds the Sigstore bundle content, with its size and hash.
-`subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
-
-The OCI image format allows the Sigstore bundle to be stored and managed alongside other OCI-compliant artifacts, facilitating interoperability across OCI registries, with some registries requiring slight adjustments to media type strings for compatibility (e.g. ECR via RFC 6838 / doesn't support parameters like `;version=0.2` / simplify to `application/vnd.dev.sigstore.bundle.v02+json` to be compliant).
-
-##### Significance of OCI Format vs Docker Format
-
-Within the workflow you will notice a section for the `build-image` step that defines the type or format for the image output. The Docker format can sometimes cause errors especially when exporting multi-platform images (e.g. `docker exporter does not support exporting manifest lists`), which pushes others to the OCI format which is more standardized and compatible across various container runtimes (e.g., Docker, Kubernetes).
-
-##### Other Ways to Inspect and Download Image Attestations
-
-Using Docker we can interact and inspect the attestations that have been attached to our container images:
-
-```bash
-❯ docker manifest inspect ghcr.io/<repo>@<image_digest>
-{
-   "schemaVersion": 2,
-   "mediaType": "application/vnd.oci.image.index.v1+json",
-   "manifests": [
-      {
-...
-      }
-   ]
-}
-```
-
-From there, you can continue to drill into each attestation by inspecting each respective sha256 digest finding the type of attestation (e.g. `application/vnd.in-toto+json`):
+- [OCI Image Format Specification](<https://github.com/opencontainers/image-spec/tree/main>?
+tab=readme-ov-file#oci-image-format-specification)
 
 ### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
 

@@ -379,7 +379,7 @@ jobs:
         with:
           subject-name: ${{ inputs['subject-name'] }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
-          predicate-type: 'https://in-toto.io/attestation/vulns/v0.1'
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: dep-scan.json
           push-to-registry: true
       - name: Rename Dependency Scan Bundle
