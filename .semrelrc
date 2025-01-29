@@ -1,0 +1,13 @@
+{
+  "plugins": {
+    "hooks": {
+      "names": [
+        "exec"
+      ],
+      "options": {
+        "exec_on_success": "echo v{{.PrevRelease.Version}} '->' v{{.NewRelease.Version}}",
+        "exec_on_no_release": "echo {{.Reason}}: {{.Message}}"
+      }
+    }
+  }
+}

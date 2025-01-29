@@ -134,7 +134,7 @@ jobs:
           scope: ${{ github.repository }}
           identity: main-semantic-release
       - name: Run go-semantic-release
-        uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+        uses: go-semantic-release/action@6399bad14d72a3eb2c04da4b7b927fcbf2fd6c72 # v2.31.0
         id: go-semantic-release
         with:
           github-token: ${{ inputs.github-token || github.token }}
