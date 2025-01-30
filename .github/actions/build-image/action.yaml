@@ -26,7 +26,7 @@ runs:
     - name: Get Next Semantic Release Tag # premptively tags pushed/registry image w/ release tag
       id: semantic-release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+      uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
       with:
         dry: true
         allow-initial-development-versions: true
