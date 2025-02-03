@@ -109,7 +109,7 @@ jobs:
         run: |
           set +x
           echo "${{ steps.generate_token.outputs.token }}" | oras pull \
-            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library/bundle:latest \
+            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library:latest \
             --password-stdin
       - name: Run OPA Evals
         id: run-opa
@@ -170,4 +170,3 @@ jobs:
           name: ${{ inputs.build-type == 'image' && 'image-results-' || inputs.build-type == 'blob' && 'blob-results-' }}${{ env.RESULT_STATUS }}
           path: results-${{ env.RESULT_STATUS }}
           if-no-files-found: error
-

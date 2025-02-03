@@ -141,7 +141,7 @@ jobs:
         run: |
           set +x
           echo "${{ steps.generate_token.outputs.token }}" | oras pull \
-            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library/bundle:latest \
+            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library:latest \
             --password-stdin
       - name: Run OPA Evals
         id: run-opa
