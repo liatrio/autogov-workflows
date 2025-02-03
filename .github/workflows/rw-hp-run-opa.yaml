@@ -138,10 +138,9 @@ jobs:
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ steps.generate_token.outputs.token }}
-          gh release download \
-            --repo ${{ github.repository_owner }}/liatrio-rego-policy-library \
-            --pattern "bundle.tar.gz"
+          echo "${{ steps.generate_token.outputs.token }}" | oras pull \
+            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library/bundle:latest \
+            --password-stdin
       - name: Run OPA Evals
         id: run-opa
         run: |
