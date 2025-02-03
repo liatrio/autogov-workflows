@@ -170,3 +170,4 @@ jobs:
           name: ${{ inputs.build-type == 'image' && 'image-results-' || inputs.build-type == 'blob' && 'blob-results-' }}${{ env.RESULT_STATUS }}
           path: results-${{ env.RESULT_STATUS }}
           if-no-files-found: error
+
