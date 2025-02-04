@@ -129,19 +129,19 @@ jobs:
           > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
           rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
-      - name: Generate Read Bundle Token
-        id: generate_token
-        uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          scope: liatrio
-          identity: rego-policy-library # liatrio/.github/chainguard/rego-policy-library.sts.yaml
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Setup ORA
+        uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
       - name: Download Policy Bundle
         run: |
           set +x
-          export GH_TOKEN=${{ steps.generate_token.outputs.token }}
-          gh release download \
-            --repo ${{ github.repository_owner }}/liatrio-rego-policy-library \
-            --pattern "bundle.tar.gz"
+          oras pull \
+            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library:latest
       - name: Run OPA Evals
         id: run-opa
         run: |
