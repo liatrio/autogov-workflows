@@ -103,14 +103,11 @@ jobs:
         with:
           scope: liatrio
           identity: rego-policy-library # liatrio/.github/chainguard/rego-policy-library.sts.yaml
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: octo-sts
-          password: ${{ steps.generate_token.outputs.token }}
       - name: Setup ORA
         uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
+      - name: ORAS Login
+        run: |
+          echo "${{ steps.generate_token.outputs.token }}" | oras login ghcr.io --username octo-sts --password-stdin
       - name: Download Policy Bundle
         run: |
           set +x
