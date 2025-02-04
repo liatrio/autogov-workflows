@@ -97,17 +97,11 @@ jobs:
           > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
           rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
-      - name: Generate Read Bundle Token
-        id: generate_token
-        uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
-        with:
-          scope: liatrio
-          identity: rego-policy-library # liatrio/.github/chainguard/rego-policy-library.sts.yaml
       - name: Setup ORA
         uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
       - name: ORAS Login
         run: |
-          echo "${{ steps.generate_token.outputs.token }}" | oras login ghcr.io --username octo-sts --password-stdin
+          echo "${{ github.token }}" | oras login ghcr.io --username ${{ github.actor }} --password-stdin
       - name: Download Policy Bundle
         run: |
           set +x
