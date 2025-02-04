@@ -97,7 +97,7 @@ jobs:
           > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
           rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
-      - name: Log in to GitHub Container Registry
+      - name: Log into GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
