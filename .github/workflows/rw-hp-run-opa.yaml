@@ -129,11 +129,14 @@ jobs:
           > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
           rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Setup ORA
         uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
-      - name: ORAS Login
-        run: |
-          echo "${{ github.token }}" | oras login ghcr.io --username ${{ github.actor }} --password-stdin
       - name: Download Policy Bundle
         run: |
           set +x
