@@ -28,7 +28,7 @@ jobs:
     permissions:
       id-token: write
       attestations: write
-      contents: write
+      contents: read
     uses: ./.github/workflows/rw-hp-attest-blob.yaml
     with:
       subject-path: |

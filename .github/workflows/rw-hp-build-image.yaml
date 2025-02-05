@@ -28,7 +28,7 @@ jobs:
       id-token: write
       attestations: write
       packages: write
-      contents: write
+      contents: read
     uses: ./.github/workflows/rw-hp-attest-image.yaml
     with:
       subject-name: ghcr.io/${{ github.repository }}

@@ -60,9 +60,8 @@ env:
 jobs:
   build-high-perms:
     permissions:
-      contents: write
+      contents: read
       packages: write
-      id-token: write
     runs-on: ${{ inputs.workflow-runner-label }}
     outputs:
       image-digest: ${{ steps.build-image.outputs.image-digest }}
