@@ -60,7 +60,7 @@ env:
 jobs:
   build-high-perms:
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
     runs-on: ${{ inputs.workflow-runner-label }}
