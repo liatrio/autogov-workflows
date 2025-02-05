@@ -64,6 +64,7 @@ jobs:
   build-high-perms:
     permissions:
       contents: read
+      id-token: write
     runs-on: ${{ inputs.workflow-runner-label }}
     outputs:
       blob-artifact-id: ${{ steps.upload-blob.outputs.artifact-id }}
