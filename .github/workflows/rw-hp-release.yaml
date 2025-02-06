@@ -141,11 +141,17 @@ jobs:
             @semantic-release/git
             @semantic-release/changelog
             @semantic-release/exec
-            @semantic-release/github {
-              "assets": [
-                {"path": "${{ env.RESULTS_FOLDER }}/*", "label": "OPA Results"},
-                {"path": "${{ env.ATTESTATIONS_FOLDER }}/*.jsonl", "label": "Attestations"},
-                {"path": "${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}", "label": "Blob Artifacts"}
+            @semantic-release/github
+          extends: |
+            {
+              "plugins": [
+                ["@semantic-release/github", {
+                  "assets": [
+                    {"path": "${{ env.RESULTS_FOLDER }}/*", "label": "OPA Results"},
+                    {"path": "${{ env.ATTESTATIONS_FOLDER }}/*.jsonl", "label": "Attestations"},
+                    {"path": "${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}", "label": "Blob Artifacts"}
+                  ]
+                }]
               ]
             }
           dry_run: false
