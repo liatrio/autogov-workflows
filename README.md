@@ -1540,7 +1540,7 @@ Because there exists use cases for updating a file as part of the release proces
 
 To use cycjimmy semantic release to update a file, you can utilize a `.releasrc` file and configure plugins for the semantic-release action.
 
-The following `.releaserc.yaml` file configure semantic release to update a file `manifests/dev/kustomization.yaml` with the new version.
+The following `.releaserc.yaml` file will configure semantic release to update a file, `manifests/dev/kustomization.yaml`, with the new version.
 
 The new tagged version of the source code will include the commit that bumps the version in the `manifests/dev/kustomization.yaml` file.
 
