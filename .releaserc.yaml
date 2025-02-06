@@ -1,0 +1,15 @@
+branches: ["main"]
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/changelog"
+  - "@semantic-release/git"
+  - - "@semantic-release/github"
+    - assets:
+        - path: "${process.env.RESULTS_FOLDER}/*"
+          label: "OPA Results"
+        - path: "${process.env.ATTESTATIONS_FOLDER}/*.jsonl"
+          label: "Attestations"
+        - path: "${process.env.ARTIFACTS_FOLDER}/*"
+          label: "Blob Artifacts"
+          when: "${process.env.BUILD_TYPE === 'blob' && process.env.BLOB_ARTIFACT_ID}"
