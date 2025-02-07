@@ -1066,44 +1066,31 @@ actions/attest@*,
 actions/checkout@*,
 actions/github-script@*,
 actions/upload-artifact@*,
-anchore/scan-action@*,
 anchore/sbom-action@*,
+anchore/scan-action@*,
+cycjimmy/semantic-release-action@*,
 docker/build-push-action@*,
 docker/login-action@*,
 docker/metadata-action@*,
 docker/setup-buildx-action@*,
 docker/setup-qemu-action@*,
+github/dependabot-action@*,
 go-semantic-release/action@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@*,
+liatrio/demo-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@*,
+octo-sts/action@*,
 open-policy-agent/setup-opa@*,
+oras-project/setup-oras@*,
 softprops/action-gh-release@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-image.yaml@*,
 ```
 
 It is also necessary to [allow access to workflows from other internal/private repositories](https://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository) to avoid having to provide further permissions with the fine grained personal access token discussed below.
 
 #### Repository Access
 
-> access can be handled either through PAT or Chainguard's Octo-STS (Octo-STS is the recommended option)
-
-If the appropriate workflow access has **not** been granted via the repository settings then the personal access token will need further permissions as shown below:
-
-- `Actions`
-  - read
-- `Contents`
-  - read
-  - write
-- `Metadata`
-  - read
-- `Workflows`
-  - read
-  - write
-
-![Permissions](./assets/pat_permissions_no_wf_access.png)
-
-OR
+> access is handled through Chainguard's Octo-STS (Octo-STS is the recommended option)
 
 Add a `.github/chainguard/main-semantic-release.sts.yaml` file to your repo
 
@@ -1544,6 +1531,37 @@ release-<build-type>:
     attest-metadata-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestations-artifact-id }}
     attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
+```
+### Special Usage of Semantic Release
+
+Because there exists use cases for updating a file as part of the release process, we have opted to use the [cycjimmy semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
+
+> for example, a repo may contain both app source code and manifest files, and the release process may need to update the manifest with the new version.
+
+To use cycjimmy semantic release to update a file, you can utilize a `.releasrc` file and configure plugins for the semantic-release action.
+
+The following `.releaserc.yaml` file will configure semantic release to update a file, `manifests/dev/kustomization.yaml`, with the new version.
+
+The new tagged version of the source code will include the commit that bumps the version in the `manifests/dev/kustomization.yaml` file.
+
+```.releasrc.yaml
+branches: ["main"]
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/changelog"
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        sed -i "s/newTag: .*/newTag: ${nextRelease.version}/" manifests/dev/kustomization.yaml
+  - - "@semantic-release/git"
+    - assets:
+        - manifests/dev/kustomization.yaml
+      message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+  - - "@semantic-release/github"
+    - successComment: false
+      failTitle: false
+      failComment: false
+      labels: ["automated"]
 ```
 
 ## Troubleshooting
