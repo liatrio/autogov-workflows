@@ -142,8 +142,8 @@ jobs:
         with:
           extra_plugins: |
             @semantic-release/git
-            @semantic-release/changelog
             @semantic-release/exec
+            conventional-changelog-conventionalcommits
           dry_run: false
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
