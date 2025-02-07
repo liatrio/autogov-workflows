@@ -144,7 +144,6 @@ jobs:
             @semantic-release/git
             @semantic-release/exec
             conventional-changelog-conventionalcommits
-          dry_run: false
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
           GIT_AUTHOR_NAME: github-actions[bot]
