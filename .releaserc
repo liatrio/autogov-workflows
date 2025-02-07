@@ -1,0 +1,19 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    ["@semantic-release/commit-analyzer", {
+      "preset": "conventionalcommits"
+    }],
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits",
+      "parserOpts": {
+        "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
+      },
+      "writerOpts": {
+        "commitsSort": ["subject", "scope"],
+        "emojis": true
+      }
+    }]
+  ],
+  "allowInitialDevelopmentVersions": true
+}

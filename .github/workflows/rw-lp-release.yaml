@@ -146,7 +146,6 @@ jobs:
             @semantic-release/git
             @semantic-release/changelog
             @semantic-release/exec
-          dry_run: false
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
           GIT_AUTHOR_NAME: github-actions[bot]
