@@ -1,19 +1,16 @@
 {
   "branches": ["main"],
   "plugins": [
-    ["@semantic-release/commit-analyzer", {
-      "preset": "conventionalcommits"
-    }],
+    "@semantic-release/commit-analyzer",
     ["@semantic-release/release-notes-generator", {
       "preset": "conventionalcommits",
-      "parserOpts": {
-        "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
-      },
-      "writerOpts": {
-        "commitsSort": ["subject", "scope"],
-        "emojis": true
+      "presetConfig": {
+        "types": [
+          {"type": "feat", "section": "✨ Features"},
+          {"type": "fix", "section": "🐛 Bug Fixes"},
+          {"type": "chore", "section": "🔧 Maintenance"}
+        ]
       }
-    }]
+    }],
   ],
-  "allowInitialDevelopmentVersions": true
 }
