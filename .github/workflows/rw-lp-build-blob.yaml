@@ -14,7 +14,7 @@ on:
       cert-identity:
         type: string
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
     outputs:
       semantic-release-version:
@@ -30,6 +30,7 @@ jobs:
       attestations: write
       contents: read
     uses: ./.github/workflows/rw-lp-attest-blob.yaml
+    secrets: inherit
     with:
       subject-path: |
         i_am_blob
@@ -42,7 +43,6 @@ jobs:
     uses: ./.github/workflows/rw-lp-verify.yaml
     secrets: inherit
     with:
-      build-type: blob
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
@@ -56,7 +56,6 @@ jobs:
     uses: ./.github/workflows/rw-lp-run-opa.yaml
     secrets: inherit
     with:
-      build-type: blob
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
@@ -68,7 +67,6 @@ jobs:
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit
     with:
-      build-type: blob
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
       attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}

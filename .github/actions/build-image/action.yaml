@@ -9,7 +9,11 @@ inputs:
   subject-name:
     description: The name for the image.
     required: true
-    default: ghcr.io/${{ github.repository }}
+    default: ${{ github.repository }}
+  registry:
+    description: Container registry to push image.
+    required: false
+    default: ghcr.io
   github-token:
     description: >
       The GitHub token set throughout the reuseable workflow including the composite (build) action.
@@ -35,7 +39,7 @@ runs:
       id: meta
       uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
       with:
-        images: ${{ inputs.subject-name }}
+        images: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
         tags: |
           type=ref,event=branch
           type=sha
@@ -48,16 +52,16 @@ runs:
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
       with:
-        registry: ghcr.io
+        registry: ${{ inputs.registry }}
         username: ${{ github.actor }}
-        password: ${{ github.token }}
+        password: ${{ inputs.github-token || github.token }}
     - name: Build and push Docker image
       uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
       id: build-image
       with:
         context: .
         file: Dockerfile
-        push: "true"
+        push: true
         platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

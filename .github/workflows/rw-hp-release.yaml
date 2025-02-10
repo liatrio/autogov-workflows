@@ -77,7 +77,7 @@ jobs:
           persist-credentials: false
       - name: Install actions/artifact Library
         if: ${{ runner.environment == 'github-hosted'}}
-        run: npm install @actions/artifact@2.1.11
+        run: npm install @actions/artifact@2.2.1
       - name: Create Artifacts Folder
         if: ${{ inputs.build-type == 'blob' }}
         run: mkdir ${{ env.ARTIFACTS_FOLDER }}
