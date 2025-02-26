@@ -1,0 +1,11 @@
+{
+  "branches": ["main"],
+  "plugins": {
+    "hooks": {
+      "names": ["exec"],
+      "options": {
+        "exec_on_success": "sed -i \"s/ENV VERSION=\\\".*\\\"/ENV VERSION=\\\"{{.NewRelease.Version}}\\\"/\" Dockerfile"
+      }
+    }
+  }
+}

@@ -53,7 +53,6 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
-  VERIFY_REPO_ACCESS: ${{ secrets.VERIFY_REPO_ACCESS }}
 
 jobs:
   verify-high-perms:

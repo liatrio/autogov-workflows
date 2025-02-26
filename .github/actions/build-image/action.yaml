@@ -18,7 +18,7 @@ inputs:
     description: >
       The GitHub token set throughout the reuseable workflow including the composite (build) action.
     required: false
-    default: ""
+    default: ''
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.

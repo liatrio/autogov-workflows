@@ -132,9 +132,16 @@ jobs:
           rm -f ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
           echo "Processed Sigstore bundle:"
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
       - name: Setup ORA
         uses: oras-project/setup-oras@5c0b487ce3fe0ce3ab0d034e63669e426e294e4d # v1.2.2
       - name: Download Policy Bundle
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
           oras pull \
