@@ -3,18 +3,11 @@ name: Verify Low Permissions Reuseable Workflow
 on:
   workflow_call:
     inputs:
-      build-type:
-        description: 'Specify the type of build: "image" or "blob".'
-        required: true
-        type: string
-      image-artifact-id:
-        type: string
-        description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'image' && github.event.needs.build-low-perms.outputs.image-artifact-id }}
       blob-artifact-id:
         type: string
         description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'blob' && github.event.needs.build-low-perms.outputs.blob-artifact-id }}
+        required: true
+        default: ${{ github.event.needs.build-low-perms.outputs.blob-artifact-id }}
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
         default: ${{ github.event.needs.attest-build-low-perms.outputs.attest-build-attestation-artifact-id }}
@@ -30,8 +23,14 @@ on:
       cert-identity:
         type: string
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        default: ''
+        required: false
+        type: string
       workflow-runner-label:
         type: string
         description: The label of the workflow runner
@@ -41,7 +40,7 @@ on:
 permissions: {}
 
 env:
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
 
@@ -56,16 +55,6 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Validate Inputs
-        if: ${{ runner.environment == 'github-hosted' }}
-        run: |
-          if [[ "${{ inputs.build-type }}" == "image" && -z "${{ inputs.image-artifact-id }}" ]]; then
-            echo "Error: image-artifact-id is required for build-type 'image'."
-            exit 1
-          elif [[ "${{ inputs.build-type }}" == "blob" && -z "${{ inputs.blob-artifact-id}}" ]]; then
-            echo "Error: blob-artifact-id is required for build-type 'blob'."
-            exit 1
-          fi
       - name: Download Trusted Roots
         run: gh attestation trusted-root > trusted_root.jsonl
       - name: Install actions/artifact Library
@@ -98,30 +87,11 @@ jobs:
         run: |
           cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Process Sigstore Bundle for Offline Blob Verification
-        if: ${{ inputs.build-type == 'blob' }}
         run: |
           cp ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl
           cd ${{ env.ATTESTATIONS_FOLDER }}
           rm attest-*.jsonl sigstore-bundle.jsonl
-      - name: Download Image Artifact
-        if: ${{ inputs.build-type == 'image' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          ARTIFACT_ID: ${{ inputs.image-artifact-id }}
-        with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Download Blob Artifact(s)
-        if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
           ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
@@ -137,37 +107,7 @@ jobs:
 
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
-      - name: Offline Verification of Image Attestation(s)
-        if: ${{ inputs.build-type == 'image' }}
-        run: |
-          set +x
-          for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
-              --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl \
-              --custom-trusted-root trusted_root.jsonl \
-              --format json \
-              --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ github.ref }}$"
-
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
-              --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl \
-              --custom-trusted-root trusted_root.jsonl \
-              --format json \
-              --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-            | grep -E \
-                'image-artifact-name|subject-name|registry|workflow-runner-label|show-summary' | \
-              jq -r
-          done
       - name: Offline Verification of Blob Attestation(s)
-        if: ${{ inputs.build-type == 'blob' }}
         run: |
           set +x
           for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do

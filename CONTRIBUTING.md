@@ -144,12 +144,24 @@ flowchart TD
 
 3. Set  `predicateType` and `subject` by supplying them as arguments to the action [actions/attest](https://github.com/actions/attest). All the arguments/fields supplied to the action should look something like the following.
 
+Example of Attesting Image:
     ```yaml
     - name: Attest Example Data
         uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
-        id: attest-example-data
-        subject-name: ${{ inputs['subject-name'] }} # or manually set name
-        subject-path: '<PATH TO ARTIFACT>' # build artifact we are associating the attestation to. If image, use `subject-digest` instead
+        id: attest-image-data
+        subject-name: ${{ format('{0}/{1}', inputs.registry, github.repository) }}
+        subject-digest: ${{ needs.build-<perms>.outputs.image-digest }}
+        predicate-type: '<PREDICATE URI>' # example: 'https://cosign.sigstore.dev/attestation/v1'
+        predicate-path: '<PATH TO PREDICATE>' # example.json
+        push-to-registry: true
+    ```
+
+Example of Attesting Blob:
+    ```yaml
+    - name: Attest Example Data
+        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        id: attest-blob-data
+        subject-path: ${{ inputs.subject-path }}
         predicate-type: '<PREDICATE URI>' # example: 'https://cosign.sigstore.dev/attestation/v1'
         predicate-path: '<PATH TO PREDICATE>' # example.json
         push-to-registry: true

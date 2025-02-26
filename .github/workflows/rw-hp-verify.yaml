@@ -12,41 +12,48 @@ on:
           Subject name as it should appear in the attestation. Required unless
           "subject-path" is specified, in which case it will be inferred from the
           path.
-        default: ghcr.io/${{ github.repository }}
+        default: ${{ github.repository }}
         required: false
         type: string
       image-digest:
-        type: string
         description: The digest of the image that was built and pushed
-        required: false
         default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }}
+        required: false
+        type: string
       registry:
         description: >
           The container registry to use.
+        default: ghcr.io
         required: false
         type: string
-        default: 'ghcr.io'
       blob-artifact-id:
-        type: string
         description: The artifact-id of the build artifacts.
         default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
-      cert-identity:
         type: string
+      cert-identity:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
         required: true
-      workflow-runner-label:
         type: string
-        description: The label of the workflow runner
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        default: ''
         required: false
+        type: string
+      workflow-runner-label:
+        description: The label of the workflow runner
         default: ubuntu-latest
+        required: false
+        type: string
 
 permissions: {}
 
 env:
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
+  VERIFY_REPO_ACCESS: ${{ secrets.VERIFY_REPO_ACCESS }}
 
 jobs:
   verify-high-perms:
@@ -77,12 +84,12 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ github.token }}
+          password: ${{ inputs.github-token || github.token }}
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Install actions/artifact Library
         if: ${{ inputs.build-type == 'blob' }}
-        run: npm install @actions/artifact@2.1.11
+        run: npm install @actions/artifact@2.2.1
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -110,53 +117,34 @@ jobs:
       - name: Process Sigstore Bundle(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
-      - name: Online Verification of Image Attestation(s)
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-verify
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download \
+            --repo liatrio/autogov-verify \
+            --pattern "autogov-verify"
+          chmod +x autogov-verify
+      - name: Verify Attestation
         if: ${{ inputs.build-type == 'image' }}
         run: |
           set +x
-          gh attestation verify \
-            oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
-            --repo ${{ github.repository }} \
-            --deny-self-hosted-runners \
-            --cert-identity \
-            "${{ inputs.cert-identity }}" \
-            --format json \
-            --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-          | grep "^${{ github.ref }}$"
-
-          gh attestation verify \
-            oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
-            --repo ${{ github.repository }} \
-            --deny-self-hosted-runners \
-            --cert-identity \
-            "${{ inputs.cert-identity }}" \
-            --format json \
-            --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-          | grep -E \
-            'subject-name|registry|workflow-runner-label|show-summary' | \
-            jq -r
+          ./autogov-verify \
+            --artifact-digest ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}@${{ inputs.image-digest }} \
+            --cert-identity "${{ inputs.cert-identity }}" \
+            --expected-ref "${{ github.ref }}"
       - name: Online Verification of Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           set +x
           for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
-              --cert-identity "${{ inputs.cert-identity }}" \
-              --format json \
-              --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ github.ref }}$"
-
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
-              --cert-identity "${{ inputs.cert-identity }}" \
-              --format json \
-              --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-            | grep -E \
-              'blob-artifact-name|subject-path|workflow-runner-label|show-summary' | \
-            jq -r
+              ./autogov-verify \
+                --blob-path ${ARTIFACT} \
+                --cert-identity "${{ inputs.cert-identity }}" \
+                --expected-ref "${{ github.ref }}"
           done

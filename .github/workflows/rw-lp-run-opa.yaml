@@ -3,10 +3,6 @@ name: OPA Evaluation Low Permissions Reuseable Workflow
 on:
   workflow_call:
     inputs:
-      build-type:
-        description: 'Specify the type of build: "image" or "blob".'
-        required: true
-        type: string
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
         required: true
@@ -30,10 +26,10 @@ on:
         description: The OPA version to use.
         required: false
         type: string
-        default: 0.67.1
+        default: v1.1.0
     outputs:
       results-artifact-id:
-        description: The image digest of the image that was built from the build-image job.
+        description: The artifact-id of the opa eval results artifact.
         value: ${{ jobs.run-opa-low-perms.outputs.results-artifact-id }}
 
 permissions: {}
@@ -42,6 +38,8 @@ env:
   GH_TOKEN: ${{ github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
+  WORKFLOWS_REPO: liatrio-gh-autogov-workflows
+  POLICY_REPO_NAME: liatrio-rego-policy-library
 
 jobs:
   run-opa-low-perms:
@@ -58,14 +56,13 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-
       - name: Setup OPA
         if: ${{ runner.environment == 'github-hosted' }}
         uses: open-policy-agent/setup-opa@34a30e8a924d1b03ce2cf7abe97250bbb1f332b5 # v2.2.0
         with:
           version: ${{ inputs.opa-version }}
       - name: Install actions/artifact Library
-        run: npm install @actions/artifact@2.1.11
+        run: npm install @actions/artifact@2.2.1
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)
@@ -93,9 +90,13 @@ jobs:
       - name: Process Sigstore Bundle(s) for OPA Eval
         run: |
           set +x
-          jq -s . ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl \
-          > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json
-          rm ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
+          echo "Processing Sigstore bundles from ${{ env.ATTESTATIONS_FOLDER }}"
+          if ! jq -s . ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json; then
+            echo "Error: Failed to process Sigstore bundles"
+            exit 1
+          fi
+          rm -f ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
+          echo "Processed Sigstore bundle:"
           cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
       - name: Log into GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -110,24 +111,39 @@ jobs:
           set +x
           oras pull \
             ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library:latest
+      - name: Enable Dev Mode
+        if: github.repository == format('{0}/{1}', github.repository_owner, env.WORKFLOWS_REPO)
+        run: |
+          echo "Running in Dev Mode - creating dev-mode-bundle.json"
+          jq 'map(. + {"ignore_dependency_vulnerabilities": true})' \
+            ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
+            > ${{ env.ATTESTATIONS_FOLDER }}/dev-mode-bundle.json
+          echo "Dev Sigstore bundle created successfully"
+          cat ${{ env.ATTESTATIONS_FOLDER }}/dev-mode-bundle.json | jq -r
       - name: Run OPA Evals
         id: run-opa
+        env:
+          OPA_INPUT: ${{ env.ATTESTATIONS_FOLDER }}/${{ github.repository == format('{0}/{1}', github.repository_owner, env.WORKFLOWS_REPO) && 'dev-mode-bundle.json' || 'sigstore-bundle.json' }}
         run: |
           set -x
+          echo "Using input file: $OPA_INPUT"
           opa eval \
             --fail \
-            --input ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
+            --input "$OPA_INPUT" \
             --bundle "bundle.tar.gz" \
             "data.governance.allow" >\
           policy-evaluation.json
           cat policy-evaluation.json | jq -r
       - name: Output Violations if failed
         if: ${{ failure() && steps.run-opa.outcome == 'failure' }}
+        env:
+          OPA_INPUT: ${{ env.ATTESTATIONS_FOLDER }}/${{ github.repository == format('{0}/{1}', github.repository_owner, env.WORKFLOWS_REPO) && 'dev-mode-bundle.json' || 'sigstore-bundle.json' }}
         run: |
           set -x
+          echo "Using input file: $OPA_INPUT"
           opa eval \
             --fail \
-            --input ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
+            --input "$OPA_INPUT" \
             --bundle "bundle.tar.gz" \
             "data.governance.violations" >\
           policy-evaluation.json
@@ -164,8 +180,8 @@ jobs:
       - name: Upload Results
         if: success() || failure()
         id: upload-results
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
-          name: ${{ inputs.build-type == 'image' && 'image-results-' || inputs.build-type == 'blob' && 'blob-results-' }}${{ env.RESULT_STATUS }}
+          name: blob-results-${{ env.RESULT_STATUS }}
           path: results-${{ env.RESULT_STATUS }}
           if-no-files-found: error

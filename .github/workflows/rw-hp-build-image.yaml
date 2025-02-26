@@ -10,11 +10,16 @@ on:
           path.
         required: true
         type: string
-      cert-identity:
+      registry:
+        description: Container registry to push image.
+        default: ghcr.io
+        required: true
         type: string
+      cert-identity:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
         required: true
+        type: string
     outputs:
       semantic-release-version:
         description: The semantic release version of the image.
@@ -30,8 +35,10 @@ jobs:
       packages: write
       contents: read
     uses: ./.github/workflows/rw-hp-attest-image.yaml
+    secrets: inherit
     with:
-      subject-name: ghcr.io/${{ github.repository }}
+      subject-name: ${{ github.repository }}
+      registry: ${{ inputs.registry }}
 
   verify-image: #image
     permissions:
@@ -43,6 +50,7 @@ jobs:
     secrets: inherit
     with:
       build-type: image
+      registry: ${{ inputs.registry }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
       cert-identity: ${{ inputs.cert-identity }}
 
@@ -56,6 +64,7 @@ jobs:
     secrets: inherit
     with:
       build-type: image
+      registry: ${{ inputs.registry }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
 
   release-image: #image

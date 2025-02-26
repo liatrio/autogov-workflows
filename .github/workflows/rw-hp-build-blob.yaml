@@ -30,6 +30,7 @@ jobs:
       attestations: write
       contents: read
     uses: ./.github/workflows/rw-hp-attest-blob.yaml
+    secrets: inherit
     with:
       subject-path: |
         i_am_blob

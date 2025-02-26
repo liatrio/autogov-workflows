@@ -3,18 +3,11 @@ name: Release Low Permissions Reuseable Workflow
 on:
   workflow_call:
     inputs:
-      build-type:
-        description: 'Specify the type of build: "image" or "blob".'
-        required: true
-        type: string
-      image-artifact-id:
-        type: string
-        description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'image' && github.event.needs.build-low-perms.outputs.image-artifact-id }}
       blob-artifact-id:
         type: string
         description: The artifact-id of the build artifacts.
-        default: ${{ inputs.build-type == 'blob' && github.event.needs.build-low-perms.outputs.blob-artifact-id }}
+        required: true
+        default: ${{ github.event.needs.build-low-perms.outputs.blob-artifact-id }}
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
         default: ${{ github.event.needs.attest-build-low-perms.outputs.attest-build-attestation-artifact-id }}
@@ -51,12 +44,11 @@ env:
     ${{ inputs.attest-build-attestation-artifact-id }}
     ${{ inputs.attest-metadata-attestations-artifact-id }}
     ${{ inputs.attest-sbom-attestations-artifact-id }}
-  BLOB_ARTIFACT_ID: ${{ inputs.build-type == 'blob' && inputs.blob-artifact-id || '' }}
-  IMAGE_ARTIFACT_ID: ${{ inputs.build-type == 'image' && inputs.image-artifact-id || '' }}
+  BLOB_ARTIFACT_ID: ${{ inputs.blob-artifact-id || '' }}
   RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
-  RESULTS_FOLDER: ./${{ inputs.build-type }}-results
+  RESULTS_FOLDER: ./blob-results
 
 permissions: {}
 
@@ -81,7 +73,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Install actions/artifact Library
-        run: npm install @actions/artifact@2.1.11
+        run: npm install @actions/artifact@2.2.1
         if: ${{ runner.environment == 'github-hosted'}}
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
@@ -108,8 +100,7 @@ jobs:
           script: |
             const { DefaultArtifactClient } = require('@actions/artifact');
             const artifactClient = new DefaultArtifactClient();
-            // Determine the artifact ID based on the build type
-            const artifactId = process.env.BLOB_ARTIFACT_ID || process.env.IMAGE_ARTIFACT_ID;
+            const artifactId = process.env.BLOB_ARTIFACT_ID;
 
             if (!artifactId) {
               throw new Error('Artifact ID is not defined');
