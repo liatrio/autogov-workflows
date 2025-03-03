@@ -203,7 +203,7 @@ jobs:
             --subject-path ${{ env.ARTIFACTS_FOLDER }}
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@0fae56888724ae3bba68e14ff82712d5c3d8e1f0 # v2.2.0
+        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
         id: attest-metadata
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
@@ -352,7 +352,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@0fae56888724ae3bba68e14ff82712d5c3d8e1f0 # v2.2.0
+        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
         id: attest-dep-scan
         with:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
