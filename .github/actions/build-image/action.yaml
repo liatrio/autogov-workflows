@@ -3,7 +3,7 @@ name: Build Image Composite Action
 description: >-
   A composite action that is placed in ./.github/actions/build-image/action.yaml whereby
   ./.github/workflows/rw-<permissions_path>-attest-image.yaml will trigger this action to build an image. The steps
-  can be adjusted per the users need just as long as the output is the image digest.
+  can be adjusted per the user's need just as long as the output is the image digest.
 
 inputs:
   subject-name:
