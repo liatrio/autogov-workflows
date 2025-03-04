@@ -1,6 +1,6 @@
 FROM ghcr.io/liatrio/python:3.12-slim
 
-ENV VERSION="0.1.0"
+ENV VERSION="0.3.1"
 
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.description="Demo application"
