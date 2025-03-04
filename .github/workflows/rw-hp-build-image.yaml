@@ -20,6 +20,10 @@ on:
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml
         required: true
         type: string
+    outputs:
+      semantic-release-version:
+        description: The semantic release version of the image.
+        value: ${{ jobs.release-image.outputs.semantic-release-version }}
 
 permissions: {}
 
@@ -52,9 +56,9 @@ jobs:
 
   run-opa-image: #image
     permissions:
-      id-token: write
       attestations: read
       packages: read
+      id-token: write
     needs: [verify-image, attest-image]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit

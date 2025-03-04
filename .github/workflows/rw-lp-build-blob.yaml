@@ -16,6 +16,10 @@ on:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
+    outputs:
+      semantic-release-version:
+        description: The semantic release version of the blob.
+        value: ${{ jobs.release-blob.outputs.semantic-release-version }}
 
 permissions: {}
 
