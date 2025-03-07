@@ -1,9 +1,9 @@
-FROM ghcr.io/liatrio/python:3.12-slim
+FROM ghcr.io/liatrio/python:3.13.2-alpine3.21
 
-ENV VERSION="0.3.1"
+ENV VERSION="0.3.3"
 
 LABEL org.opencontainers.image.version="${VERSION}"
-LABEL org.opencontainers.image.description="Demo application"
+LABEL org.opencontainers.image.description="Dedicated reusable automated governance workflows for internal Liatrio use."
 LABEL org.opencontainers.image.authors="AutoGov"
 
 RUN pip install --no-cache-dir Flask && \
