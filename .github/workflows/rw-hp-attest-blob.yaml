@@ -128,7 +128,7 @@ jobs:
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
+        uses: actions/attest-build-provenance@bd77c077858b8d561b7a36cbe48ef4cc642ca39d # v2.2.2
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           github-token: ${{ inputs.github-token || github.token }}
