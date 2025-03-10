@@ -1076,19 +1076,35 @@ It is also necessary to [allow access to workflows from other internal/private r
 
 #### Repository Access
 
-> access is handled through Chainguard's Octo-STS (Octo-STS is the recommended option)
+> access is handled through Chainguard's Octo-STS (the recommended option) / an alternative is creating a [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) that has read permissions for the repository and [add the appropriate secret and environment variable(s)]([in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)).
 
-Add a `.github/chainguard/main-semantic-release.sts.yaml` file to your repo
+Basic read access can be provided using the default config found under the [.github directory](https://github.com/liatrio/.github/blob/main/.github/chainguard/autogov-infra.sts.yaml) for the organization:
 
 ```yaml
 issuer: https://token.actions.githubusercontent.com
-# subject pattern is defining what repo and branch is allowed to generate a token at the permission level set below
-subject_pattern: "repo:liatrio/<your-repo>:ref:refs/heads/main"
+subject_pattern: "repo:liatrio/.*"
 
+permissions:
+  contents: read
+
+repositories:
+  - liatrio-rego-policy-library
+  - demo-gh-autogov-policy-library
+  - autogov-helper
+  - autogov-verify
+```
+
+For any additional permissions, a local `*.sts.yaml` can be created. For example, the creation of the release tag uses the `.github/chainguard/main-semantic-release.sts.yaml` file:
+
+```yaml
+issuer: https://token.actions.githubusercontent.com
+subject_pattern: "repo:liatrio/<your-repo>:ref:refs/heads/main"
 permissions:
   contents: write
   packages: write
 ```
+
+More information about `octo-sts` can be found [here](https://github.com/octo-sts/app) and info about the `octo-sts/action` can be found [here](octo-sts/action).
 
 ### Inputs
 
@@ -1467,37 +1483,14 @@ release-<build-type>:
     attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
+
 ### Special Usage of Semantic Release
 
-Because there exists use cases for updating a file as part of the release process, we have opted to use the [cycjimmy semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
+To update a file as part of a release, you can utilize a `.semrelrc` file and configure the exec plugin for the [go-semantic-release action](https://github.com/go-semantic-release/action/).
 
-> for example, a repo may contain both app source code and manifest files, and the release process may need to update the manifest with the new version.
+The [.semrelrc](./.semrelrc) configures go-semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
 
-To use cycjimmy semantic release to update a file, you can utilize a `.releasrc` file and configure plugins for the semantic-release action.
-
-The following `.releaserc.yaml` file will configure semantic release to update a file, `manifests/dev/kustomization.yaml`, with the new version.
-
-The new tagged version of the source code will include the commit that bumps the version in the `manifests/dev/kustomization.yaml` file.
-
-```.releasrc.yaml
-branches: ["main"]
-plugins:
-  - "@semantic-release/commit-analyzer"
-  - "@semantic-release/release-notes-generator"
-  - "@semantic-release/changelog"
-  - - "@semantic-release/exec"
-    - prepareCmd: |
-        sed -i "s/newTag: .*/newTag: ${nextRelease.version}/" manifests/dev/kustomization.yaml
-  - - "@semantic-release/git"
-    - assets:
-        - manifests/dev/kustomization.yaml
-      message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-  - - "@semantic-release/github"
-    - successComment: false
-      failTitle: false
-      failComment: false
-      labels: ["automated"]
-```
+The new tagged version of the source code will include the updated file.
 
 ## Troubleshooting
 
