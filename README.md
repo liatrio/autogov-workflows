@@ -1076,19 +1076,35 @@ It is also necessary to [allow access to workflows from other internal/private r
 
 #### Repository Access
 
-> access is handled through Chainguard's Octo-STS (Octo-STS is the recommended option)
+> access is handled through Chainguard's Octo-STS, but you can also create a [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) that has read permissions for the repository you need access to as well as the appropriate secret environment variables would also need to be created(Octo-STS is the recommended option).
 
-Add a `.github/chainguard/main-semantic-release.sts.yaml` file to your repo
+Basic read access can be provided using the default config found under the [.github directory](https://github.com/liatrio/.github/blob/main/.github/chainguard/autogov-infra.sts.yaml) for the organization:
 
 ```yaml
 issuer: https://token.actions.githubusercontent.com
-# subject pattern is defining what repo and branch is allowed to generate a token at the permission level set below
-subject_pattern: "repo:liatrio/<your-repo>:ref:refs/heads/main"
+subject_pattern: "repo:liatrio/.*"
 
+permissions:
+  contents: read
+
+repositories:
+  - liatrio-rego-policy-library
+  - demo-gh-autogov-policy-library
+  - autogov-helper
+  - autogov-verify
+```
+
+For any additional permissions, a local `*.sts.yaml` can be created. For example, the creation of the release tag uses the `.github/chainguard/main-semantic-release.sts.yaml` file:
+
+```yaml
+issuer: https://token.actions.githubusercontent.com
+subject_pattern: "repo:liatrio/<your-repo>:ref:refs/heads/main"
 permissions:
   contents: write
   packages: write
 ```
+
+More information about `octo-sts` can be found [here](https://github.com/octo-sts/app) and info about the `octo-sts/action` can be found [here](octo-sts/action).
 
 ### Inputs
 
