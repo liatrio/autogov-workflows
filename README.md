@@ -1484,13 +1484,54 @@ release-<build-type>:
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
-### Special Usage of Semantic Release
+#### Automating Version Updates with .semrelrc
 
-To update a file as part of a release, you can utilize a `.semrelrc` file and configure the exec plugin for the [go-semantic-release action](https://github.com/go-semantic-release/action/).
+To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.semrelrc` file and configure the exec plugin for the [go-semantic-release action](https://github.com/go-semantic-release/action/).
 
-The [.semrelrc](./.semrelrc) configures go-semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
+This approach ensures that all version references are consistently updated with each release, maintaining synchronization across your codebase.
 
-The new tagged version of the source code will include the updated file.
+The example in this repo uses the [.semrelrc](./.semrelrc) to configure go-semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
+
+Here's how it works:
+
+1. **Configuration**: Create a `.semrelrc` file in your repository root with the following structure:
+
+   ```json
+   {
+     "branches": ["main"],
+     "plugins": {
+       "hooks": {
+         "names": ["exec"],
+         "options": {
+           "exec_on_success": "COMMAND_TO_UPDATE_FILES"
+         }
+       }
+     }
+   }
+   ```
+
+2. **Command Execution**: When a new version is released, the `exec_on_success` command is executed, allowing you to update version numbers in any files.
+
+3. **Version Template**: Use `{{.NewRelease.Version}}` in your command to reference the new version number.
+
+4. **File Updates**: The release workflow detects changes made by the command and commits them in a single commit with all modified files.
+
+5. **Tag Update**: The tag is automatically updated to point to the new commit containing all version updates.
+
+Example commands for different file types:
+
+- Update a Dockerfile: `"exec_on_success": "sed -i \"s/ENV VERSION=\\\".*\\\"/ENV VERSION=\\\"{{.NewRelease.Version}}\\\"/\" Dockerfile"`
+- Update multiple files: `"exec_on_success": "find . -name \"*.yaml\" -exec sed -i \"s/version: [0-9]\\\\.[0-9]\\\\.[0-9]/version: {{.NewRelease.Version}}/\" {} \\;"`
+- Update a specific pattern: `"exec_on_success": "find policies -name \"*.rego\" -exec sed -i \"s/#  version: [0-9]\\\\.[0-9]\\\\.[0-9]/#  version: {{.NewRelease.Version}}/\" {} \\;"`
+
+> **Note on Escaping Characters**: Since go-semantic-release uses Go templating, proper escaping is crucial in the `exec_on_success` command. Special characters need double escaping - once for JSON and once for the shell command:
+>
+> - Backslashes need to be escaped as `\\` in JSON
+> - For regex patterns with backslashes (like `\d` or `\.`), use four backslashes: `\\\\`
+> - Double quotes within the command need to be escaped as `\"`
+> - The Go template syntax `{{.NewRelease.Version}}` should remain unescaped
+>
+> For example, to match a version pattern like `1.2.3` in a regex, use `[0-9]\\\\.[0-9]\\\\.[0-9]` instead of `[0-9]\.[0-9]\.[0-9]`
 
 ## Troubleshooting
 
