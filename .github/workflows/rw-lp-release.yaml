@@ -153,52 +153,114 @@ jobs:
               return;
             }
 
-            if (modifiedFiles.length > 1) {
-              console.log(`⚠️ Multiple files were modified: ${modifiedFiles.join(', ')}`);
-              console.log(`⚠️ Note: This workflow will only process the first file (${modifiedFiles[0]})`);
+            console.log(`Found ${modifiedFiles.length} modified files: ${modifiedFiles.join(', ')}`);
+
+            const version = '${{ steps.go-semantic-release.outputs.version }}';
+            if (!version) {
+              console.log('No version found, skipping file updates and tag creation');
+              return;
             }
 
-            const modifiedFile = modifiedFiles[0];
-            console.log(`Updating file: ${modifiedFile}`);
+            const branch = context.ref.replace('refs/heads/', '');
+            console.log(`Using branch: ${branch}`);
 
             try {
-              const content = fs.readFileSync(modifiedFile, 'utf8');
-
-              const branch = context.ref.replace('refs/heads/', '');
-              console.log(`Using branch: ${branch}`);
-
-              const fileUpdateResponse = await github.rest.repos.createOrUpdateFileContents({
+              const { data: refData } = await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                path: modifiedFile,
-                message: `chore(release): update files for release v${{ steps.go-semantic-release.outputs.version }} 🤖 [skip ci]`,
-                content: Buffer.from(content).toString('base64'),
-                sha: (await github.rest.repos.getContent({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  path: modifiedFile
-                })).data.sha,
-                branch: branch
+                ref: `heads/${branch}`
               });
+              const latestCommitSha = refData.object.sha;
+              
+              const { data: commitData } = await github.rest.git.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: latestCommitSha
+              });
+              const baseTreeSha = commitData.tree.sha;
+
+              const treeItems = [];
+              let errorCount = 0;
+              
+              for (const filePath of modifiedFiles) {
+                console.log(`Processing file: ${filePath}`);
+
+                try {
+                  const content = fs.readFileSync(filePath, 'utf8');
+                  
+                  const { data: blobData } = await github.rest.git.createBlob({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    content: Buffer.from(content).toString('base64'),
+                    encoding: 'base64'
+                  });
+
+                  treeItems.push({
+                    path: filePath,
+                    mode: '100644',
+                    type: 'blob',
+                    sha: blobData.sha
+                  });
+                  
+                  console.log(`Added ${filePath} to the commit tree`);
+                } catch (error) {
+                  console.log(`Error processing file ${filePath}: ${error.message}`);
+                  errorCount++;
+                }
+              }
+
+              if (treeItems.length === 0) {
+                console.error('❌ ERROR: Failed to process any files');
+                process.exit(1);
+              }
+
+              if (errorCount > 0) {
+                console.warn(`⚠️ WARNING: ${errorCount} files could not be processed`);
+              }
+
+              const { data: newTree } = await github.rest.git.createTree({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base_tree: baseTreeSha,
+                tree: treeItems
+              });
+
+              const { data: newCommit } = await github.rest.git.createCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                message: `chore(release): update files for release v${version} 🤖 [skip ci]`,
+                tree: newTree.sha,
+                parents: [latestCommitSha]
+              });
+
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branch}`,
+                sha: newCommit.sha
+              });
+
+              console.log(`Created single commit ${newCommit.sha} with all file changes`);
 
               await new Promise(resolve => setTimeout(resolve, 3000));
 
-              console.log(`Updating tag to point to latest commit with file changes`);
+              console.log(`Updating tag to point to the new commit`);
               try {
                 await github.rest.git.updateRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  ref: 'tags/v${{ steps.go-semantic-release.outputs.version }}',
-                  sha: fileUpdateResponse.data.commit.sha,
+                  ref: `tags/v${version}`,
+                  sha: newCommit.sha,
                   force: true
                 });
                 console.log(`Tag update complete`);
               } catch (error) {
-                console.log(`Warning: Could not update tag: ${error.message}`);
+                console.error(`❌ ERROR: Could not update tag: ${error.message}`);
+                process.exit(1);
               }
             } catch (error) {
-              console.error(`Error: ${error.message}`);
-              throw error;
+              console.error(`❌ ERROR: ${error.message}`);
+              process.exit(1);
             }
       - name: Upload Results/Sigstore Bundle as Release Asset
         if: steps.go-semantic-release.outputs.version != ''
