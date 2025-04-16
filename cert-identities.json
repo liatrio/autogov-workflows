@@ -1,22 +1,25 @@
 {
   "latest": [
     {
-      "name": "HP Attest Image",
-      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@refs/heads/main",
-      "description": "High privilege workflow for attesting container images",
-      "added": "2024-10-22"
+      "name": "HP Attest Image v0.4.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@d709edc9cc501e27f390b7818c9262075ee9e0da",
+      "description": "High privilege workflow for attesting container images (latest stable release)",
+      "added": "2025-03-14",
+      "expires": "2026-03-14"
     },
     {
-      "name": "HP Attest Blob",
-      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@refs/heads/main",
-      "description": "High privilege workflow for attesting blob artifacts",
-      "added": "2024-10-22"
+      "name": "HP Attest Blob v0.4.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@d709edc9cc501e27f390b7818c9262075ee9e0da",
+      "description": "High privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-03-14",
+      "expires": "2026-03-14"
     },
     {
-      "name": "LP Attest Blob",
-      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@refs/heads/main",
-      "description": "Low privilege workflow for attesting blob artifacts",
-      "added": "2024-10-22"
+      "name": "LP Attest Blob v0.4.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@d709edc9cc501e27f390b7818c9262075ee9e0da",
+      "description": "Low privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-03-14",
+      "expires": "2026-03-14"
     }
   ],
   "approved": [
@@ -91,7 +94,7 @@
   ],
   "metadata": {
     "last_updated": "2025-03-14",
-    "version": "1.0.0",
-    "maintainer": "Liatrio"
+    "version": "v0.4.0",
+    "maintainer": "@liatrio/tag-autogov"
   }
 }
