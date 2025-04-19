@@ -405,6 +405,34 @@ cert-identity:
 
 Our approach guarantees that both the source repository and the signer workflow originate from approved branches or tags, providing confidence that the artifact was built to meet SLSA Level 3 requirements as long as whomever is verifying is diligent and remembers to include the `cert-identity` (e.g. also known as `signer-workflow`) flag via the gh-cli.
 
+#### Certificate Identities
+
+This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file contains:
+
+- **Latest**: Current reusable workflow identities at the current version
+- **Approved**: All approved workflow identities (includes previous valid versions)
+- **Revoked**: Identities that have been explicitly revoked and should not be used
+
+##### How Certificate Identities Work
+
+Certificate identities provide a way to verify that a workflow being called is an approved version. Each identity consists of:
+
+- A name (e.g., "HP-ATTEST-IMAGE")
+- A version (e.g., "0.5.1")
+- The full URL to the workflow file including the tag's commit SHA
+- Addition and expiration dates
+
+##### Certificate Identity Update Process
+
+When a new release is tagged (e.g., v0.5.1):
+
+1. The release creates a tag pointing to a specific commit
+2. The tag's commit SHA is recorded in the certificate identity entries
+3. An automated workflow updates `cert-identities.json` in a separate commit to main
+4. The original tag remains pointing to its initial commit (intentionally)
+
+When consuming these workflows, you should reference them using their full identity URL with commit SHA rather than using branch references, to ensure immutability and security:
+
 ### Verification Using Cosign
 
 It is also possible to use Sigstore's own [cosign](https://github.com/sigstore/cosign) to [verify bundles](https://blog.sigstore.dev/cosign-verify-bundles/) though this is [currently not documented](https://github.com/actions/attest-build-provenance/issues/162) and only through `cosign verify-blob-attestation` which requires other tools (regctl or Docker) to verify images in order to grab the necessary OCI artifacts.
@@ -1094,7 +1122,7 @@ repositories:
   - autogov-verify
 ```
 
-For any additional permissions, a local `*.sts.yaml` can be created. For example, the creation of the release tag uses the `.github/chainguard/main-semantic-release.sts.yaml` file:
+For any additional permissions, a local `*.sts.yaml` can be created. For example, the creation of the release tag uses the `.github/chainguard/release-ops.sts.yaml` file:
 
 ```yaml
 issuer: https://token.actions.githubusercontent.com
