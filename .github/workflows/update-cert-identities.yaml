@@ -3,8 +3,7 @@ name: Update Certificate Identities
 on:
   workflow_run:
     workflows:
-      - 'Release High Permissions Reuseable Workflow'
-      - 'Release Low Permissions Reuseable Workflow'
+      - 'Build Entrypoint Caller Workflow'
     types:
       - completed
     branches: [main]
