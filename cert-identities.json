@@ -1,6 +1,27 @@
 {
   "latest": [
     {
+      "name": "HP-ATTEST-BLOB v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "High privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "High privilege workflow for attesting container images (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
+    {
+      "name": "LP-ATTEST-BLOB v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "Low privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
+    {
       "name": "HP Attest Image v0.4.0",
       "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@d709edc9cc501e27f390b7818c9262075ee9e0da",
       "description": "High privilege workflow for attesting container images (latest stable release)",
@@ -23,6 +44,27 @@
     }
   ],
   "approved": [
+    {
+      "name": "HP-ATTEST-BLOB v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "High privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "High privilege workflow for attesting container images (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
+    {
+      "name": "LP-ATTEST-BLOB v0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@c1e3d457fee135860a2c7fec343111b02bbcc42e",
+      "description": "Low privilege workflow for attesting blob artifacts (latest stable release)",
+      "added": "2025-04-19",
+      "expires": "2026-04-19"
+    },
     {
       "name": "HP Attest Image v0.4.0",
       "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@d709edc9cc501e27f390b7818c9262075ee9e0da",
@@ -93,8 +135,8 @@
     }
   ],
   "metadata": {
-    "last_updated": "2025-03-14",
-    "version": "v0.4.0",
+    "last_updated": "2025-04-19",
+    "version": "v0.5.0",
     "maintainer": "@liatrio/tag-autogov"
   }
 }
