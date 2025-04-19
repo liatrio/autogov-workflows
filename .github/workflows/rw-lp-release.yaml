@@ -128,7 +128,7 @@ jobs:
         id: octo-sts
         with:
           scope: ${{ github.repository }}
-          identity: main-semantic-release
+          identity: release-ops
       - name: Run go-semantic-release
         uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
         id: go-semantic-release
