@@ -1,17 +1,13 @@
 name: Update Certificate Identities
 
 on:
-  workflow_run:
-    workflows:
-      - 'Build Entrypoint Caller Workflow'
-    types:
-      - completed
-    branches: [main]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       id-token: write
       contents: write
@@ -31,16 +27,25 @@ jobs:
           scope: ${{ github.repository }}
           identity: release-ops
 
-      - name: Get latest release version
+      - name: Get release version from tag
         id: get-version
         run: |
-          LATEST_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
-          echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest version: $LATEST_VERSION"
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Get tag SHA
+        id: get-tag-sha
+        run: |
+          TAG_SHA=$(git rev-parse $GITHUB_REF)
+          echo "TAG_SHA=$TAG_SHA" >> $GITHUB_ENV
+          echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
+          echo "Tag SHA: $TAG_SHA"
 
       - name: Update certificate identities
         run: |
+          export COMMIT_SHA="$TAG_SHA"
           ./scripts/update-cert-identities.sh "$VERSION"
 
       - name: Update files and tag
@@ -70,17 +75,16 @@ jobs:
             console.log(`Using branch: ${branch}`);
 
             try {
-              const { data: refData } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${branch}`
-              });
-              const latestCommitSha = refData.object.sha;
+              const tagSha = process.env.TAG_SHA;
+              if (!tagSha) {
+                console.error('❌ ERROR: TAG_SHA environment variable is not set');
+                process.exit(1);
+              }
               
               const { data: commitData } = await github.rest.git.getCommit({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                commit_sha: latestCommitSha
+                commit_sha: tagSha
               });
               const baseTreeSha = commitData.tree.sha;
 
@@ -135,7 +139,7 @@ jobs:
                 repo: context.repo.repo,
                 message: `chore(release): update certificate identities for v${version} 🤖 [skip ci]`,
                 tree: newTree.sha,
-                parents: [latestCommitSha]
+                parents: [tagSha]
               });
 
               await github.rest.git.updateRef({
@@ -149,7 +153,7 @@ jobs:
 
               await new Promise(resolve => setTimeout(resolve, 3000));
 
-              console.log(`Updating tag to point to the new commit`);
+              console.log(`Updating tag to point to the new commit with updated cert-identities`);
               try {
                 await github.rest.git.updateRef({
                   owner: context.repo.owner,
