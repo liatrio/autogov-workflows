@@ -12,6 +12,9 @@ jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      id-token: write
+      contents: write
 
     steps:
       - name: Checkout repository
