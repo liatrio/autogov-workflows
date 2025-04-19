@@ -75,27 +75,39 @@ for FILE in $RW_FILES; do
   DESCRIPTION="$PRIVILEGE workflow for $PURPOSE (latest stable release)"
 
   echo "Processing $ENTRY_NAME ($IDENTITY)"
+  
+  # get wf path w/o commit sha
+  WORKFLOW_PATH=$(echo "$IDENTITY" | cut -d '@' -f 1)
 
-  # adds to latest
+  # add new entries to both latest and approved
   jq \
     --arg name "$ENTRY_NAME" \
     --arg identity "$IDENTITY" \
     --arg description "$DESCRIPTION" \
     --arg added "$TODAY" \
     --arg expires "$EXPIRY_DATE" \
-    '.latest = [{"name": $name, "identity": $identity, "description": $description, "added": $added, "expires": $expires}] + (.latest | map(select(.name != $name)))' \
+    --arg workflow_path "$WORKFLOW_PATH" \
+    '.latest = (if .latest then .latest else [] end) | 
+     # removes previous entries from latest
+     .latest = (.latest | map(select((.identity | split("@")[0]) != $workflow_path))) |
+     # adds new entry to latest
+     .latest = [{"name": $name, "identity": $identity, "description": $description, "added": $added, "expires": $expires}] + .latest' \
     cert-identities.tmp.json >cert-identities.tmp2.json
 
   mv cert-identities.tmp2.json cert-identities.tmp.json
 
-  # adds to approved
+  # add to approved
   jq \
     --arg name "$ENTRY_NAME" \
     --arg identity "$IDENTITY" \
     --arg description "$DESCRIPTION" \
     --arg added "$TODAY" \
     --arg expires "$EXPIRY_DATE" \
-    '.approved = [{"name": $name, "identity": $identity, "description": $description, "added": $added, "expires": $expires}] + (.approved | map(select(.name != $name)))' \
+    '.approved = (if .approved then .approved else [] end) | 
+     # remove any existing entry with the same name
+     .approved = (.approved | map(select(.name != $name))) |
+     # add new entry to approved
+     .approved = [{"name": $name, "identity": $identity, "description": $description, "added": $added, "expires": $expires}] + .approved' \
     cert-identities.tmp.json >cert-identities.tmp2.json
 
   mv cert-identities.tmp2.json cert-identities.tmp.json
