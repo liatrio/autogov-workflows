@@ -28,7 +28,7 @@ jobs:
         id: octo-sts
         with:
           scope: ${{ github.repository }}
-          identity: cert-identities-update
+          identity: main-semantic-release
 
       - name: Get latest release version
         id: get-version
