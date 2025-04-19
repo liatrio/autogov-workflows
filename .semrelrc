@@ -4,10 +4,7 @@
     "hooks": {
       "names": ["exec"],
       "options": {
-        "exec_on_success": [
-          "./scripts/update-dockerfile.sh {{.NewRelease.Version}}",
-          "./scripts/update-cert-identities.sh {{.NewRelease.Version}}"
-        ]
+        "exec_on_success": "sed -i \"s/ENV VERSION=\\\".*\\\"/ENV VERSION=\\\"{{.NewRelease.Version}}\\\"/\" Dockerfile && RELEASE_VERSION={{.NewRelease.Version}} ./scripts/update-cert-identities.sh {{.NewRelease.Version}}"
       }
     }
   }
