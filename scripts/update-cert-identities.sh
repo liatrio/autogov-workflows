@@ -108,6 +108,42 @@ for FILE in $RW_FILES; do
   mv cert-identities.tmp2.json cert-identities.tmp.json
 done
 
+# move expired entries from approved to revoked
+echo "Checking for expired certificate identities..."
+
+# get today's date in seconds since epoch for comparison
+TODAY_SECONDS=$(date -d "$TODAY" +%s)
+
+jq \
+  --arg today "$TODAY" \
+  --argjson today_seconds "$TODAY_SECONDS" \
+  '# convert date to seconds
+   def date_to_seconds(date_str): 
+     if date_str == null or date_str == "" then null 
+     else (date_str | strptime("%Y-%m-%d") | mktime) 
+     end;
+
+   # check expired
+   def is_expired(entry):
+     entry.expires != null and entry.expires != "" and
+     (date_to_seconds(entry.expires) < $today_seconds);
+
+   # new revoked list w/ expired
+   .revoked = (if .revoked then .revoked else [] end) |
+   # get expired entries from approved
+   .expired_entries = (.approved | map(select(is_expired(.)))) |
+   # add revoked field to expired entries
+   .expired_entries = (.expired_entries | map(. + {"revoked": $today, "reason": "Certificate expired"}))
+   # add expired entries to revoked
+   | .revoked = .revoked + .expired_entries
+   # remove expired entries from approved
+   | .approved = (.approved | map(select(is_expired(.) | not)))
+   # remove temp expired_entries field
+   | del(.expired_entries)' \
+  cert-identities.tmp.json >cert-identities.tmp2.json
+
+mv cert-identities.tmp2.json cert-identities.tmp.json
+
 # updates metadata
 jq \
   --arg last_updated "$TODAY" \
