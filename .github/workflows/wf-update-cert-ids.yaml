@@ -3,8 +3,8 @@ name: Update Certificate Identities
 on:
   workflow_run:
     workflows:
-      - 'Release High Privilege Workflows'
-      - 'Release Low Privilege Workflows'
+      - 'Release High Permissions Reuseable Workflow'
+      - 'Release Low Permissions Reuseable Workflow'
     types:
       - completed
     branches:
