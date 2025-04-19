@@ -5,8 +5,7 @@
       "names": ["exec"],
       "options": {
         "exec_on_success": [
-          "./scripts/update-dockerfile.sh {{.NewRelease.Version}}",
-          "./scripts/update-cert-identities.sh {{.NewRelease.Version}}"
+          "bash -c 'VERSION={{.NewRelease.Version}} ./scripts/release-updates.sh'"
         ]
       }
     }
