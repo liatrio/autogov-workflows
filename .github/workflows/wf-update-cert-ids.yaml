@@ -1,13 +1,19 @@
 name: Update Certificate Identities
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows:
+      - 'Release High Privilege Workflows'
+      - 'Release Low Privilege Workflows'
+    types:
+      - completed
+    branches:
+      - 'main'
 
 jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       id-token: write
       contents: write
@@ -27,18 +33,19 @@ jobs:
           scope: ${{ github.repository }}
           identity: release-ops
 
-      - name: Get release version from tag
+      - name: Get latest release version
         id: get-version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Release version: $VERSION"
+          LATEST_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
+          echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest version: $LATEST_VERSION"
 
       - name: Get tag SHA
         id: get-tag-sha
         run: |
-          TAG_SHA=$(git rev-parse $GITHUB_REF)
+          TAG=$(git describe --tags --abbrev=0)
+          TAG_SHA=$(git rev-list -n 1 $TAG)
           echo "TAG_SHA=$TAG_SHA" >> $GITHUB_ENV
           echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
           echo "Tag SHA: $TAG_SHA"
