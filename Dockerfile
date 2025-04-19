@@ -1,6 +1,6 @@
 FROM ghcr.io/liatrio/python:3.13.2-alpine3.21
 
-ENV VERSION="0.4.1"
+ENV VERSION="0.4.2"
 
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.description="Dedicated reusable automated governance workflows for internal Liatrio use."
