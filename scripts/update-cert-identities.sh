@@ -85,7 +85,9 @@ for FILE in $RW_FILES; do
     '.approved = (if .approved then .approved else [] end) |
      .latest = (if .latest then .latest else [] end) |
      # move previous versions of this workflow from latest to approved
-     .approved = (.latest | map(select((.identity | split("@")[0]) == $workflow_path))) + .approved' \
+     # and update description from "latest stable release" to "previous stable release"
+     .approved = (.latest | map(select((.identity | split("@")[0]) == $workflow_path) | 
+                 . + {description: (.description | gsub("\\(latest stable release\\)"; "(previous stable release)"))})) + .approved' \
     cert-identities.tmp.json >cert-identities.tmp2.json
 
   mv cert-identities.tmp2.json cert-identities.tmp.json
