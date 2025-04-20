@@ -410,21 +410,28 @@ Our approach guarantees that both the source repository and the signer workflow 
 This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file contains:
 
 - **Latest**: Current reusable workflow identities at the current version
-- **Approved**: All approved workflow identities (includes both current and previous versions)
+- **Approved**: All approved workflow identities (includes previous valid versions)
 - **Revoked**: Identities that have been explicitly revoked and should not be used
-
-The certificate identities file is automatically updated during the semantic release process. When a new version is released, all reusable workflows (files matching `.github/workflows/rw-*.yaml`) are added to the certificate identities file with their full commit SHA identities.
 
 ##### How Certificate Identities Work
 
 Certificate identities provide a way to verify that a workflow being called is an approved version. Each identity consists of:
 
-- A unique name (e.g., "HP ATTEST IMAGE v0.4.0")
-- The full URL to the workflow file including its commit SHA
-- A description of its purpose
+- A name (e.g., "HP-ATTEST-IMAGE")
+- A version (e.g., "0.5.1")
+- The full URL to the workflow file including the tag's commit SHA
 - Addition and expiration dates
 
-When consuming these workflows, you should reference them using their full identity URL with commit SHA rather than using branch references, to ensure immutability and security.
+##### Certificate Identity Update Process
+
+When a new release is tagged (e.g., v0.5.1):
+
+1. The release creates a tag pointing to a specific commit
+2. The tag's commit SHA is recorded in the certificate identity entries
+3. An automated workflow updates `cert-identities.json` in a separate commit to main
+4. The original tag remains pointing to its initial commit (intentionally)
+
+When consuming these workflows, you should reference them using their full identity URL with commit SHA rather than using branch references, to ensure immutability and security:
 
 ### Verification Using Cosign
 

@@ -27,8 +27,17 @@ if [ -z "$RW_FILES" ]; then
   exit 0
 fi
 
-# get current commit sha
-COMMIT_SHA=$(git rev-parse HEAD)
+# get the commit sha tag points to, we want to use the tag's original commit sha,
+# not the sha of the commit that will be created by this update
+COMMIT_SHA=$(git rev-list -n 1 "$VERSION" 2>/dev/null)
+
+# tag should always exist
+if [ -z "$COMMIT_SHA" ]; then
+  echo "ERROR: Could not find tag $VERSION. Aborting certificate identity update."
+  exit 1
+fi
+
+echo "Using commit SHA: $COMMIT_SHA for version $VERSION"
 TODAY=$(date +%Y-%m-%d)
 EXPIRY_DATE=$(date -d "+1 year" +%Y-%m-%d)
 
@@ -71,10 +80,8 @@ for FILE in $RW_FILES; do
   IDENTITY="https://github.com/liatrio/liatrio-gh-autogov-workflows/$FILE@$COMMIT_SHA"
 
   DISPLAY_NAME=$(echo "$WF_NAME" | tr '[:lower:]' '[:upper:]' | sed 's/RW-//')
-  ENTRY_NAME="$DISPLAY_NAME v$VERSION"
-  DESCRIPTION="$PRIVILEGE workflow for $PURPOSE (latest stable release)"
 
-  echo "Processing $ENTRY_NAME ($IDENTITY)"
+  echo "Processing $DISPLAY_NAME v$VERSION ($IDENTITY)"
 
   # get wf path w/o commit sha
   WORKFLOW_PATH=$(echo "$IDENTITY" | cut -d '@' -f 1)
@@ -85,18 +92,16 @@ for FILE in $RW_FILES; do
     '.approved = (if .approved then .approved else [] end) |
      .latest = (if .latest then .latest else [] end) |
      # move previous versions of this workflow from latest to approved
-     # and update description from "latest stable release" to "previous stable release"
-     .approved = (.latest | map(select((.identity | split("@")[0]) == $workflow_path) | 
-                 . + {description: (.description | gsub("\\(latest stable release\\)"; "(previous stable release)"))})) + .approved' \
+     .approved = (.latest | map(select((.identity | split("@")[0]) == $workflow_path))) + .approved' \
     cert-identities.tmp.json >cert-identities.tmp2.json
 
   mv cert-identities.tmp2.json cert-identities.tmp.json
 
   # update latest with new version / remove old versions
   jq \
-    --arg name "$ENTRY_NAME" \
+    --arg name "$DISPLAY_NAME" \
+    --arg version "$VERSION" \
     --arg identity "$IDENTITY" \
-    --arg description "$DESCRIPTION" \
     --arg added "$TODAY" \
     --arg expires "$EXPIRY_DATE" \
     --arg workflow_path "$WORKFLOW_PATH" \
@@ -104,7 +109,7 @@ for FILE in $RW_FILES; do
      # removes previous entries from latest
      .latest = (.latest | map(select((.identity | split("@")[0]) != $workflow_path))) |
      # adds new entry to latest
-     .latest = [{"name": $name, "identity": $identity, "description": $description, "added": $added, "expires": $expires}] + .latest' \
+     .latest = [{"name": $name, "version": $version, "identity": $identity, "added": $added, "expires": $expires}] + .latest' \
     cert-identities.tmp.json >cert-identities.tmp2.json
 
   mv cert-identities.tmp2.json cert-identities.tmp.json

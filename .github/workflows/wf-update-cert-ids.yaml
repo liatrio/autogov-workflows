@@ -176,20 +176,9 @@ jobs:
 
               await new Promise(resolve => setTimeout(resolve, 3000));
 
-              console.log(`Updating tag to point to the new commit with updated cert-identities`);
-              try {
-                await github.rest.git.updateRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `tags/v${version}`,
-                  sha: newCommit.sha,
-                  force: true
-                });
-                console.log(`Tag update complete`);
-              } catch (error) {
-                console.error(`❌ ERROR: Could not update tag: ${error.message}`);
-                process.exit(1);
-              }
+              console.log(`Successfully updated cert-identities.json in main branch`);
+              console.log(`IMPORTANT: Tag v${version} remains pointing to its original commit - this is intentional`);
+              console.log(`Certificate identities are now updated but not included in the release tag itself`);
             } catch (error) {
               console.error(`❌ ERROR: ${error.message}`);
               process.exit(1);
