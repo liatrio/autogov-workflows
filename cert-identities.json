@@ -1,16 +1,39 @@
 {
   "latest": [
     {
-      "name": "HP-ATTEST-IMAGE",
-      "version": "0.4.1",
-      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@65ef38e5f5afad1cf48363fd7723c634919a3323",
-      "added": "2025-03-14",
-      "expires": "2026-03-14"
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@0106bb8751772457e7d85408589d1f44807ec03e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
     },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@0106bb8751772457e7d85408589d1f44807ec03e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.5.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@0106bb8751772457e7d85408589d1f44807ec03e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    }
+  ],
+  "approved": [
     {
       "name": "HP-ATTEST-BLOB",
       "version": "0.4.1",
       "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@65ef38e5f5afad1cf48363fd7723c634919a3323",
+      "added": "2025-03-14",
+      "expires": "2026-03-14"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.4.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@65ef38e5f5afad1cf48363fd7723c634919a3323",
       "added": "2025-03-14",
       "expires": "2026-03-14"
     },
@@ -20,9 +43,7 @@
       "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@65ef38e5f5afad1cf48363fd7723c634919a3323",
       "added": "2025-03-14",
       "expires": "2026-03-14"
-    }
-  ],
-  "approved": [
+    },
     {
       "name": "HP-ATTEST-IMAGE",
       "version": "0.4.0",
@@ -93,8 +114,8 @@
     }
   ],
   "metadata": {
-    "last_updated": "2025-04-19",
-    "version": "v0.4.1",
+    "last_updated": "2025-04-21",
+    "version": "v0.5.0",
     "maintainer": "@liatrio/tag-autogov"
   }
 }
