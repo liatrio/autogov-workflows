@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# updates the certificate identities file using flattened format with single identities array
+# updates the certificate identities file, cert-identities.json.
 
 VERSION="$1"
 if [ -z "$VERSION" ]; then
@@ -10,7 +10,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-# check dependencies
+# dependency check
 if ! command -v jq &>/dev/null; then
   echo "Error: jq is required but not installed"
   echo "Please install jq: https://stedolan.github.io/jq/download/"
@@ -27,12 +27,13 @@ if [ -z "$RW_FILES" ]; then
   exit 0
 fi
 
-# get commit sha that tag points to (not the sha of commit created by this update)
+# get the commit sha tag points to, we want to use the tag's original commit sha,
+# not the sha of the commit that will be created by this update
 if [ -z "$COMMIT_SHA" ]; then
   echo "Getting commit SHA for tag $VERSION"
   COMMIT_SHA=$(git rev-list -n 1 "$VERSION" 2>/dev/null)
 
-  # ensure tag exists
+  # tag should always exist
   if [ -z "$COMMIT_SHA" ]; then
     echo "ERROR: Could not find tag $VERSION. Aborting certificate identity update."
     exit 1
@@ -218,7 +219,7 @@ fi
 # check for expired entries and move to revoked
 echo "Checking for expired certificate identities..."
 
-# convert today to seconds since epoch for comparison
+# get today's date in seconds since epoch for comparison
 if date -d "$TODAY" +%s &>/dev/null; then
   # Linux format
   TODAY_SECONDS=$(date -d "$TODAY" +%s)
@@ -236,7 +237,7 @@ jq \
      else (date_str | strptime("%Y-%m-%d") | mktime) 
      end;
 
-   # check if entry is expired
+   # check expired
    def is_expired(entry):
      entry.expires != null and entry.expires != "" and
      (date_to_seconds(entry.expires) < $today_seconds);
@@ -253,7 +254,7 @@ jq \
 
 mv cert-identities.tmp2.json cert-identities.tmp.json
 
-# update metadata
+# updates metadata
 jq \
   --arg last_updated "$TODAY" \
   --arg version "v$VERSION" \
@@ -263,7 +264,7 @@ jq \
 
 mv cert-identities.tmp2.json cert-identities.tmp.json
 
-# format final json and save
+# format json / update cert-identities.json
 jq . cert-identities.tmp.json >cert-identities.json
 rm cert-identities.tmp.json
 

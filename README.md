@@ -407,20 +407,22 @@ Our approach guarantees that both the source repository and the signer workflow 
 
 #### Certificate Identities
 
-This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file contains:
+This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file uses a flattened format with a single `identities` array, where each entry has a `status` field indicating whether it is:
 
-- **Latest**: Current reusable workflow identities at the current version
-- **Approved**: All approved workflow identities (includes previous valid versions)
-- **Revoked**: Identities that have been explicitly revoked and should not be used
+- **latest**: Current reusable workflow identities at the current version
+- **approved**: All approved workflow identities (includes previous valid versions)
+- **revoked**: Identities that have been explicitly revoked and should not be used
 
 ##### How Certificate Identities Work
 
 Certificate identities provide a way to verify that a workflow being called is an approved version. Each identity consists of:
 
-- A name (e.g., "HP-ATTEST-IMAGE")
 - A version (e.g., "0.5.1")
-- The full URL to the workflow file including the tag's commit SHA
-- Addition and expiration dates
+- A commit SHA
+- A status ("latest", "approved", or "revoked")
+- An array of workflow identities (URLs to workflow files including the tag's commit SHA)
+- Addition date and optional expiration date
+- Revocation details (date and reason) if status is "revoked"
 
 ##### Certificate Identity Update Process
 
