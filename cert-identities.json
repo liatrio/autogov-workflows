@@ -85,6 +85,90 @@
       "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@13beea17d7d364f50a6e16dfef3bc53147c4677e",
       "added": "2025-02-26",
       "expires": "2025-08-26"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.3.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@aea6a8487fdda7e533ef358cd9a4d4e9fce18c2e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.3.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@aea6a8487fdda7e533ef358cd9a4d4e9fce18c2e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.3.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@aea6a8487fdda7e533ef358cd9a4d4e9fce18c2e",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.3.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@8adc5a257dac59ec9f9941c26d1203ee34893b99",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.3.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@8adc5a257dac59ec9f9941c26d1203ee34893b99",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.3.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@8adc5a257dac59ec9f9941c26d1203ee34893b99",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.3.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@09126b60cf8331a875c351091640477541d60976",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.3.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@09126b60cf8331a875c351091640477541d60976",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.3.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@09126b60cf8331a875c351091640477541d60976",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.3.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@2dec446d8054efc5c5d51819e31e28dd16c0e4ca",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.3.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@2dec446d8054efc5c5d51819e31e28dd16c0e4ca",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.3.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@2dec446d8054efc5c5d51819e31e28dd16c0e4ca",
+      "added": "2025-04-21",
+      "expires": "2026-04-21"
     }
   ],
   "revoked": [
@@ -111,6 +195,534 @@
       "added": "2024-11-29",
       "revoked": "2025-01-30",
       "reason": "Multiple security fixes and bug fixes in later versions"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@d31cee93a556ce0fb65cbb03ab993385d0a02ba1",
+      "added": "2024-12-15",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@d31cee93a556ce0fb65cbb03ab993385d0a02ba1",
+      "added": "2024-12-15",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.0",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@d31cee93a556ce0fb65cbb03ab993385d0a02ba1",
+      "added": "2024-12-15",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@7ada6258c8ee8ac290f4d27635c6e1d6129db25f",
+      "added": "2024-12-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@7ada6258c8ee8ac290f4d27635c6e1d6129db25f",
+      "added": "2024-12-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@7ada6258c8ee8ac290f4d27635c6e1d6129db25f",
+      "added": "2024-12-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@c411b91ea163005f16ca62df9bf2682a15062e41",
+      "added": "2025-01-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@c411b91ea163005f16ca62df9bf2682a15062e41",
+      "added": "2025-01-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@c411b91ea163005f16ca62df9bf2682a15062e41",
+      "added": "2025-01-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@ecc12e03a3415b4343d31499a1e9b09e1c6273e2",
+      "added": "2025-01-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@ecc12e03a3415b4343d31499a1e9b09e1c6273e2",
+      "added": "2025-01-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@ecc12e03a3415b4343d31499a1e9b09e1c6273e2",
+      "added": "2025-01-20",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@6c1f7a5b9763b0ea3a3e1147ba55ade2be1d9c5a",
+      "added": "2025-01-25",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@6c1f7a5b9763b0ea3a3e1147ba55ade2be1d9c5a",
+      "added": "2025-01-25",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@6c1f7a5b9763b0ea3a3e1147ba55ade2be1d9c5a",
+      "added": "2025-01-25",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@33e7697ab0abbb382f60badd1441b5170d89eb35",
+      "added": "2025-01-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@33e7697ab0abbb382f60badd1441b5170d89eb35",
+      "added": "2025-01-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@33e7697ab0abbb382f60badd1441b5170d89eb35",
+      "added": "2025-01-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@fedcb84b7e44a79ccf98be9007c43a1e1644b575",
+      "added": "2025-02-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@fedcb84b7e44a79ccf98be9007c43a1e1644b575",
+      "added": "2025-02-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@fedcb84b7e44a79ccf98be9007c43a1e1644b575",
+      "added": "2025-02-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.2.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@c3a13257fb5a80167c6a1c388680290a141f9f0c",
+      "added": "2025-02-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.2.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@c3a13257fb5a80167c6a1c388680290a141f9f0c",
+      "added": "2025-02-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.2.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@c3a13257fb5a80167c6a1c388680290a141f9f0c",
+      "added": "2025-02-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@dc7cf6a4607996edac4c9dad151a336bdb3d37cd",
+      "added": "2024-11-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@dc7cf6a4607996edac4c9dad151a336bdb3d37cd",
+      "added": "2024-11-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.1",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@dc7cf6a4607996edac4c9dad151a336bdb3d37cd",
+      "added": "2024-11-30",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@91e8c3062f56a735099eeb4344b64210f16c82cf",
+      "added": "2024-12-01",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@91e8c3062f56a735099eeb4344b64210f16c82cf",
+      "added": "2024-12-01",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.2",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@91e8c3062f56a735099eeb4344b64210f16c82cf",
+      "added": "2024-12-01",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@685db9f46046d15f03bb7c514bc047cafc0f43c1",
+      "added": "2024-12-02",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@685db9f46046d15f03bb7c514bc047cafc0f43c1",
+      "added": "2024-12-02",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.3",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@685db9f46046d15f03bb7c514bc047cafc0f43c1",
+      "added": "2024-12-02",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@7bb461d4f2ca93a3ce8deaa70f5231f6a7676a81",
+      "added": "2024-12-03",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@7bb461d4f2ca93a3ce8deaa70f5231f6a7676a81",
+      "added": "2024-12-03",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.4",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@7bb461d4f2ca93a3ce8deaa70f5231f6a7676a81",
+      "added": "2024-12-03",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@53da4a9cf51d5a6871bb86f0807f6657408c80a9",
+      "added": "2024-12-04",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@53da4a9cf51d5a6871bb86f0807f6657408c80a9",
+      "added": "2024-12-04",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.5",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@53da4a9cf51d5a6871bb86f0807f6657408c80a9",
+      "added": "2024-12-04",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@032265a198a75e548e12f9052555142b45a357dd",
+      "added": "2024-12-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@032265a198a75e548e12f9052555142b45a357dd",
+      "added": "2024-12-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.6",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@032265a198a75e548e12f9052555142b45a357dd",
+      "added": "2024-12-05",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@960d69a8f59e2827ea0f702d152004c5c64e3cd0",
+      "added": "2024-12-06",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@960d69a8f59e2827ea0f702d152004c5c64e3cd0",
+      "added": "2024-12-06",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.7",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@960d69a8f59e2827ea0f702d152004c5c64e3cd0",
+      "added": "2024-12-06",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.8",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@4ca03af12134983b9369046a70a5d02f67b1fc1b",
+      "added": "2024-12-07",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.8",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@4ca03af12134983b9369046a70a5d02f67b1fc1b",
+      "added": "2024-12-07",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.8",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@4ca03af12134983b9369046a70a5d02f67b1fc1b",
+      "added": "2024-12-07",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.9",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@a3212fe73d209424ece77c41d1af544cfbfa5be6",
+      "added": "2024-12-08",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.9",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@a3212fe73d209424ece77c41d1af544cfbfa5be6",
+      "added": "2024-12-08",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.9",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@a3212fe73d209424ece77c41d1af544cfbfa5be6",
+      "added": "2024-12-08",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.10",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@cc0abc7d9df4191e15e7bcf12885d4dce9e14258",
+      "added": "2024-12-09",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.10",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@cc0abc7d9df4191e15e7bcf12885d4dce9e14258",
+      "added": "2024-12-09",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.10",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@cc0abc7d9df4191e15e7bcf12885d4dce9e14258",
+      "added": "2024-12-09",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.11",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@a6dd8043ae7d5c4534a8bce9ed46d83372d248cb",
+      "added": "2024-12-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.11",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@a6dd8043ae7d5c4534a8bce9ed46d83372d248cb",
+      "added": "2024-12-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.11",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@a6dd8043ae7d5c4534a8bce9ed46d83372d248cb",
+      "added": "2024-12-10",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.12",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@b8be74f2b7cd77da5e399b088b87d8a3773e0116",
+      "added": "2024-12-11",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.12",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@b8be74f2b7cd77da5e399b088b87d8a3773e0116",
+      "added": "2024-12-11",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.12",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@b8be74f2b7cd77da5e399b088b87d8a3773e0116",
+      "added": "2024-12-11",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.13",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@784a404d2ea88ae258af5afb49ccaaeae9305181",
+      "added": "2024-12-12",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.13",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@784a404d2ea88ae258af5afb49ccaaeae9305181",
+      "added": "2024-12-12",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.13",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@784a404d2ea88ae258af5afb49ccaaeae9305181",
+      "added": "2024-12-12",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-IMAGE",
+      "version": "0.1.14",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@09bdcba6b8468b019fde6b6bd4e2c6ec5f11436e",
+      "added": "2024-12-13",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "HP-ATTEST-BLOB",
+      "version": "0.1.14",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@09bdcba6b8468b019fde6b6bd4e2c6ec5f11436e",
+      "added": "2024-12-13",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
+    },
+    {
+      "name": "LP-ATTEST-BLOB",
+      "version": "0.1.14",
+      "identity": "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@09bdcba6b8468b019fde6b6bd4e2c6ec5f11436e",
+      "added": "2024-12-13",
+      "revoked": "2025-04-21",
+      "reason": "Superseded by newer versions with security and functionality improvements"
     }
   ],
   "metadata": {
