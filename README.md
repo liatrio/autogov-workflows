@@ -1514,54 +1514,59 @@ release-<build-type>:
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
-#### Automating Version Updates with .semrelrc
+#### Automating Version Updates with .releaserc
 
-To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.semrelrc` file and configure the exec plugin for the [go-semantic-release action](https://github.com/go-semantic-release/action/).
+To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.releaserc.json` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
 
 This approach ensures that all version references are consistently updated with each release, maintaining synchronization across your codebase.
 
-The example in this repo uses the [.semrelrc](./.semrelrc) to configure go-semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
+The example in this repo uses the [.releaserc](./.releaserc) to configure semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
 
 Here's how it works:
 
-1. **Configuration**: Create a `.semrelrc` file in your repository root with the following structure:
+1. **Configuration**: Create a `.releaserc` file in your repository root with the following structure:
 
    ```json
    {
      "branches": ["main"],
-     "plugins": {
-       "hooks": {
-         "names": ["exec"],
-         "options": {
-           "exec_on_success": "COMMAND_TO_UPDATE_FILES"
+     "plugins": [
+       "@semantic-release/commit-analyzer",
+       "@semantic-release/release-notes-generator",
+       "@semantic-release/github",
+       "@semantic-release/git",
+       [
+         "@semantic-release/exec", 
+         {
+           "successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"
          }
-       }
-     }
+       ]
+     ]
    }
    ```
 
-2. **Command Execution**: When a new version is released, the `exec_on_success` command is executed, allowing you to update version numbers in any files.
+2. **Command Execution**: When a new version is released, the `successCmd` command is executed, allowing you to update version numbers in any files.
 
-3. **Version Template**: Use `{{.NewRelease.Version}}` in your command to reference the new version number.
+3. **Version Template**: Use `${nextRelease.version}` in your command to reference the new version number.
 
-4. **File Updates**: The release workflow detects changes made by the command and commits them in a single commit with all modified files.
+4. **File Updates**: The semantic-release process automatically handles creating commits for modified files.
 
-5. **Tag Update**: The tag is automatically updated to point to the new commit containing all version updates.
+5. **Tag Creation**: The release process also handles creating and pushing tags for the new version.
 
 Example commands for different file types:
 
-- Update a Dockerfile: `"exec_on_success": "sed -i \"s/ENV VERSION=\\\".*\\\"/ENV VERSION=\\\"{{.NewRelease.Version}}\\\"/\" Dockerfile"`
-- Update multiple files: `"exec_on_success": "find . -name \"*.yaml\" -exec sed -i \"s/version: [0-9]\\\\.[0-9]\\\\.[0-9]/version: {{.NewRelease.Version}}/\" {} \\;"`
-- Update a specific pattern: `"exec_on_success": "find policies -name \"*.rego\" -exec sed -i \"s/#  version: [0-9]\\\\.[0-9]\\\\.[0-9]/#  version: {{.NewRelease.Version}}/\" {} \\;"`
+- Update a Dockerfile: `"successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"`
+- Update multiple files: `"successCmd": "find . -name \"*.yaml\" -exec sed -i 's/version: [0-9]\\.[0-9]\\.[0-9]/version: ${nextRelease.version}/' {} \\;"`
+- Update a specific pattern: `"successCmd": "find policies -name \"*.rego\" -exec sed -i 's/#  version: [0-9]\\.[0-9]\\.[0-9]/#  version: ${nextRelease.version}/' {} \\;"`
 
-> **Note on Escaping Characters**: Since go-semantic-release uses Go templating, proper escaping is crucial in the `exec_on_success` command. Special characters need double escaping - once for JSON and once for the shell command:
+> **Note on Escaping Characters**: When working with semantic-release and JSON files, proper escaping is important:
 >
-> - Backslashes need to be escaped as `\\` in JSON
-> - For regex patterns with backslashes (like `\d` or `\.`), use four backslashes: `\\\\`
-> - Double quotes within the command need to be escaped as `\"`
-> - The Go template syntax `{{.NewRelease.Version}}` should remain unescaped
+> - Backslashes need to be escaped as `\\` in JSON 
+> - For regex patterns with backslashes (like `\d` or `\.`), use double backslashes: `\\`
+> - The template syntax `${nextRelease.version}` should remain unescaped
 >
-> For example, to match a version pattern like `1.2.3` in a regex, use `[0-9]\\\\.[0-9]\\\\.[0-9]` instead of `[0-9]\.[0-9]\.[0-9]`
+> Using single quotes in your sed commands can help reduce the need for excessive escaping.
+
+For more customization options, including beautiful emoji formatting for release notes, check out the [semantic-release documentation](https://github.com/semantic-release/semantic-release/blob/master/docs/usage/configuration.md).
 
 ## Troubleshooting
 

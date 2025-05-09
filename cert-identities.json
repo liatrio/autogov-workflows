@@ -15,7 +15,7 @@
     {
       "version": "0.5.0",
       "sha": "3226c6b2acdebdc16dd0457abd9fbde79f99ef0e",
-      "status": "latest",
+      "status": "approved",
       "identities": [
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@3226c6b2acdebdc16dd0457abd9fbde79f99ef0e",
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@3226c6b2acdebdc16dd0457abd9fbde79f99ef0e",

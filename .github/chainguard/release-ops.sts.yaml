@@ -3,3 +3,4 @@ subject_pattern: repo:liatrio/liatrio-gh-autogov-workflows:ref:refs/heads/main
 permissions:
   contents: write
   packages: write
+  pull_requests: write
