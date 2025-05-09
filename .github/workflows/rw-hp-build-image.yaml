@@ -67,6 +67,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      issues: write
+      pull-requests: write
     needs: [verify-image, attest-image, run-opa-image]
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
