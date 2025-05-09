@@ -88,7 +88,7 @@ jobs:
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Install actions/artifact Library
         if: ${{ inputs.build-type == 'blob' }}
-        run: npm install @actions/artifact@2.2.1
+        run: npm install --no-save @actions/artifact@2.3.2
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

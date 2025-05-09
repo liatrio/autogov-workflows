@@ -58,7 +58,7 @@ jobs:
       - name: Download Trusted Roots
         run: gh attestation trusted-root > trusted_root.jsonl
       - name: Install actions/artifact Library
-        run: npm install @actions/artifact@2.1.11
+        run: npm install --no-save @actions/artifact@2.1.11
       - name: Create Attestations Folder
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }}
       - name: Download Sigstore Bundle(s)
