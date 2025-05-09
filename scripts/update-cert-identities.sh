@@ -210,7 +210,7 @@ else
     --arg added "$TODAY" \
     --arg expires "$EXPIRY_DATE" \
     --argjson identities "$IDENTITIES_JSON" \
-    '.identities = (.identities | map(if .version == $version then {
+    '.identities = (.identities | map(if .version == $version and .status == "latest" then {
        "version": $version,
        "sha": $sha,
        "status": "latest",
