@@ -24,6 +24,8 @@ jobs:
       attestations: write
       packages: write
       contents: write
+      issues: write
+      pull-requests: write
     uses: ./.github/workflows/rw-hp-build-image.yaml
     secrets: inherit
     with:
