@@ -59,9 +59,6 @@ jobs:
   release-blob: #blob
     permissions:
       contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
     needs: [verify-blob, attest-blob, run-opa-blob]
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit
