@@ -65,13 +65,7 @@
     ],
     "@semantic-release/github",
     [
-      "@semantic-release/git",
-      {
-        "committer": {
-          "name": "octo-sts",
-          "email": "octo-sts@users.noreply.github.com"
-        }
-      }
+      "@semantic-release/git"
     ],
     [
       "@semantic-release/exec",
