@@ -70,9 +70,19 @@ jobs:
           export COMMIT_SHA="$TAG_SHA"
           ./scripts/update-cert-identities.sh "$VERSION"
 
+      - name: Get latest main commit SHA
+        id: get-main-sha
+        if: steps.check-update.outputs.skip != 'true'
+        run: |
+          echo "sha=$(git rev-parse origin/main)" >> $GITHUB_OUTPUT
+
       - name: Update files and tag
         if: steps.check-update.outputs.skip != 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        env:
+          MAIN_SHA: ${{ steps.get-main-sha.outputs.sha }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+          TAG_SHA: ${{ steps.get-tag-sha.outputs.tag_sha }}
         with:
           github-token: ${{ steps.octo-sts.outputs.token }}
           script: |
@@ -98,16 +108,16 @@ jobs:
             console.log(`Using branch: ${branch}`);
 
             try {
-              const tagSha = process.env.TAG_SHA;
-              if (!tagSha) {
-                console.error('❌ ERROR: TAG_SHA environment variable is not set');
+              const mainSha = process.env.MAIN_SHA;
+              if (!mainSha) {
+                console.error('❌ ERROR: MAIN_SHA environment variable is not set');
                 process.exit(1);
               }
               
               const { data: commitData } = await github.rest.git.getCommit({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                commit_sha: tagSha
+                commit_sha: mainSha
               });
               const baseTreeSha = commitData.tree.sha;
 
@@ -162,7 +172,7 @@ jobs:
                 repo: context.repo.repo,
                 message: `chore(release): update certificate identities for v${version} 🤖 [skip ci]`,
                 tree: newTree.sha,
-                parents: [tagSha]
+                parents: [mainSha]
               });
 
               await github.rest.git.updateRef({

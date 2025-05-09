@@ -1514,57 +1514,60 @@ release-<build-type>:
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
-#### Automating Version Updates with .releaserc
+#### Automating Version Updates with Semantic Release
 
-To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.releaserc.json` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
+To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.releaserc.yml` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
 
 This approach ensures that all version references are consistently updated with each release, maintaining synchronization across your codebase.
 
-The example in this repo uses the [.releaserc](./.releaserc) to configure semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
+The example in this repo uses the [.releaserc.yml](./.releaserc.yml) to configure semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
 
 Here's how it works:
 
-1. **Configuration**: Create a `.releaserc` file in your repository root with the following structure:
+1. **Configuration**: Create a `.releaserc.yml` file in your repository root with the following structure:
 
-   ```json
-   {
-     "branches": ["main"],
-     "plugins": [
-       "@semantic-release/commit-analyzer",
-       "@semantic-release/release-notes-generator",
-       "@semantic-release/github",
-       "@semantic-release/git",
-       [
-         "@semantic-release/exec", 
-         {
-           "successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"
-         }
-       ]
-     ]
-   }
+   ```yaml
+   ---
+   branches:
+     - main
+   plugins:
+     - - "@semantic-release/commit-analyzer"
+       - preset: conventionalcommits
+     - - "@semantic-release/release-notes-generator"
+       - preset: conventionalcommits
+     - - "@semantic-release/exec"
+       - prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile
+     - - "@semantic-release-extras/verified-git-commit"
+       - assets:
+           - Dockerfile
+         commitMessage: |-
+           chore(release): ${nextRelease.version} [skip ci]
+
+           ${nextRelease.notes}
+     - "@semantic-release/github"
    ```
 
-2. **Command Execution**: When a new version is released, the `successCmd` command is executed, allowing you to update version numbers in any files.
+2. **Command Execution**: When a new version is released, the `prepareCmd` command is executed, allowing you to update version numbers in any files.
 
 3. **Version Template**: Use `${nextRelease.version}` in your command to reference the new version number.
 
-4. **File Updates**: The semantic-release process automatically handles creating commits for modified files.
+4. **File Updates**: The semantic-release process automatically handles creating commits for modified files using the `@semantic-release-extras/verified-git-commit` plugin.
 
 5. **Tag Creation**: The release process also handles creating and pushing tags for the new version.
 
 Example commands for different file types:
 
-- Update a Dockerfile: `"successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"`
-- Update multiple files: `"successCmd": "find . -name \"*.yaml\" -exec sed -i 's/version: [0-9]\\.[0-9]\\.[0-9]/version: ${nextRelease.version}/' {} \\;"`
-- Update a specific pattern: `"successCmd": "find policies -name \"*.rego\" -exec sed -i 's/#  version: [0-9]\\.[0-9]\\.[0-9]/#  version: ${nextRelease.version}/' {} \\;"`
+- Update a Dockerfile: `prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile`
+- Update multiple files: `prepareCmd: find . -name "*.yaml" -exec sed -i 's/version: [0-9]\.[0-9]\.[0-9]/version: ${nextRelease.version}/' {} \;`
+- Update a specific pattern: `prepareCmd: find policies -name "*.rego" -exec sed -i 's/#  version: [0-9]\.[0-9]\.[0-9]/#  version: ${nextRelease.version}/' {} \;`
 
-> **Note on Escaping Characters**: When working with semantic-release and JSON files, proper escaping is important:
+> **Note on Escaping Characters**: YAML makes working with special characters much easier than JSON:
 >
-> - Backslashes need to be escaped as `\\` in JSON 
-> - For regex patterns with backslashes (like `\d` or `\.`), use double backslashes: `\\`
+> - YAML requires fewer escaped characters than JSON
+> - For regex patterns with backslashes (like `\d` or `\.`), you still need to escape them: `\d`
 > - The template syntax `${nextRelease.version}` should remain unescaped
 >
-> Using single quotes in your sed commands can help reduce the need for excessive escaping.
+> Using single quotes in your sed commands or YAML's multi-line string syntax (`|-`) can help with complex strings.
 
 For more customization options, including beautiful emoji formatting for release notes, check out the [semantic-release documentation](https://github.com/semantic-release/semantic-release/blob/master/docs/usage/configuration.md).
 
