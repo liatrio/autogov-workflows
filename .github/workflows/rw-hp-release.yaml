@@ -136,57 +136,6 @@ jobs:
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-      - name: Check if release is needed
-        id: check-release
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          github-token: ${{ steps.octo-sts.outputs.token }}
-          result-encoding: string
-          script: |
-            let latestRelease;
-            try {
-              const { data } = await github.rest.repos.getLatestRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              });
-              latestRelease = data;
-              console.log(`Latest release: ${latestRelease.tag_name} (${latestRelease.created_at})`);
-            } catch (e) {
-              if (e.status === 404) {
-                console.log('No releases found, proceeding with initial release');
-                return 'true';
-              }
-              console.log(`Error getting latest release: ${e.message}`);
-              console.log('Proceeding with release to be safe');
-              return 'true';
-            }
-
-            try {
-              const tagRef = latestRelease.tag_name;
-              const { data: comparison } = await github.rest.repos.compareCommits({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base: tagRef,
-                head: context.sha
-              });
-
-              const relevantCommits = comparison.commits.filter(commit => {
-                return !commit.commit.message.includes('chore(release): update files for release v') && 
-                       !commit.commit.message.includes('[skip ci]');
-              });
-
-              if (relevantCommits.length > 0) {
-                console.log(`Found ${relevantCommits.length} relevant commits since last release, proceeding with new release`);
-                return 'true';
-              } else {
-                console.log('No relevant commits since last release, skipping release');
-                return 'false';
-              }
-            } catch (e) {
-              console.log(`Error comparing commits: ${e.message}`);
-              console.log('Proceeding with release to be safe');
-              return 'true';
-            }
       - name: Run go-semantic-release
         uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # 4.2.0
         id: semantic-release
