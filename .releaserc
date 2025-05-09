@@ -1,11 +1,18 @@
 {
-  "branches": ["main"],
+  "branches": [
+    "main"
+  ],
   "plugins": [
-    ["@semantic-release/commit-analyzer", {
-      "preset": "conventionalcommits"
-    }],
-    ["@semantic-release/release-notes-generator", {
-      "preset": "conventionalcommits",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
       "presetConfig": {
         "types": [
           {"type": "feat", "section": "Features"},
@@ -24,14 +31,15 @@
       "writerOpts": {
         "emojis": true
       }
-    }],
-    "@semantic-release/github",
-    "@semantic-release/git",
-    [
-      "@semantic-release/exec", 
-      {
-        "successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"
-      }
-    ]
+    }
+  ],
+  "@semantic-release/github",
+  "@semantic-release/git",
+  [
+    "@semantic-release/exec",
+    {
+      "successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"
+    }
   ]
-} 
+]
+}
