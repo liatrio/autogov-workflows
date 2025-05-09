@@ -59,6 +59,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      issues: write
+      pull-requests: write
     outputs:
       semantic-release-version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:

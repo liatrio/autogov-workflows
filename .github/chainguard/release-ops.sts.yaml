@@ -4,3 +4,4 @@ permissions:
   contents: write
   packages: write
   pull_requests: write
+  issues: write
