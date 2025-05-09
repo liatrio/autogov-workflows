@@ -1,0 +1,37 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    ["@semantic-release/commit-analyzer", {
+      "preset": "conventionalcommits"
+    }],
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits",
+      "presetConfig": {
+        "types": [
+          {"type": "feat", "section": "Features"},
+          {"type": "fix", "section": "Bug Fixes"},
+          {"type": "revert", "section": "Reverts"},
+          {"type": "perf", "section": "Performance Improvements"},
+          {"type": "docs", "section": "Documentation"},
+          {"type": "test", "section": "Tests"},
+          {"type": "refactor", "section": "Code Refactoring"},
+          {"type": "style", "section": "Styles"},
+          {"type": "chore", "section": "Chores"},
+          {"type": "build", "section": "Build"},
+          {"type": "ci", "section": "CI"}
+        ]
+      },
+      "writerOpts": {
+        "emojis": true
+      }
+    }],
+    "@semantic-release/github",
+    "@semantic-release/git",
+    [
+      "@semantic-release/exec", 
+      {
+        "successCmd": "sed -i 's/ENV VERSION=\".*\"/ENV VERSION=\"${nextRelease.version}\"/' Dockerfile"
+      }
+    ]
+  ]
+} 
