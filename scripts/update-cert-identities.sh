@@ -177,8 +177,13 @@ for i in "${!WORKFLOW_IDENTITIES[@]}"; do
 done
 IDENTITIES_JSON+="]"
 
-# check if version exists in latest identities
-VERSION_EXISTS=$(jq --arg version "$VERSION" -r '.identities[] | select(.version == $version and .status == "latest") | .version' cert-identities.tmp.json)
+# update all existing "latest" entries to be "approved"
+echo "Updating any existing 'latest' entries to 'approved'..."
+jq '.identities = (.identities | map(if .status == "latest" then . + {"status": "approved"} else . end))' cert-identities.tmp.json > cert-identities.tmp2.json
+mv cert-identities.tmp2.json cert-identities.tmp.json
+
+# check if version exists in identities (regardless of status)
+VERSION_EXISTS=$(jq --arg version "$VERSION" -r '.identities[] | select(.version == $version) | .version' cert-identities.tmp.json)
 
 if [ -z "$VERSION_EXISTS" ]; then
   echo "Adding new version $VERSION to identities"
@@ -198,7 +203,7 @@ if [ -z "$VERSION_EXISTS" ]; then
      }] + .identities' cert-identities.tmp.json >cert-identities.tmp2.json
   mv cert-identities.tmp2.json cert-identities.tmp.json
 else
-  echo "Version $VERSION already exists as latest, updating..."
+  echo "Version $VERSION already exists, updating to latest status..."
   # update existing entry
   jq --arg version "$VERSION" \
     --arg sha "$COMMIT_SHA" \
