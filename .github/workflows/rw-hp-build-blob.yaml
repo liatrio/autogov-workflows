@@ -60,8 +60,6 @@ jobs:
     permissions:
       contents: write
       id-token: write
-      issues: write
-      pull-requests: write
     needs: [verify-blob, attest-blob, run-opa-blob]
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
