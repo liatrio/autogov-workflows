@@ -3,7 +3,7 @@
     {
       "version": "0.6.10",
       "sha": "28868b417a55c8cd7dd93ed9b30fae904a3095a1",
-      "status": "latest",
+      "status": "approved",
       "identities": [
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@28868b417a55c8cd7dd93ed9b30fae904a3095a1",
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@28868b417a55c8cd7dd93ed9b30fae904a3095a1",
@@ -542,7 +542,7 @@
   ],
   "metadata": {
     "last_updated": "2025-05-10",
-    "version": "v0.6.10",
+    "version": "v0.6.2",
     "maintainer": "@liatrio/tag-autogov"
   }
 }
