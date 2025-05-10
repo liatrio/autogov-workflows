@@ -62,7 +62,7 @@ jobs:
         with:
           version: ${{ inputs.opa-version }}
       - name: Install actions/artifact Library
-        run: npm install @actions/artifact@2.2.1
+        run: npm install --no-save @actions/artifact@2.3.2
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)

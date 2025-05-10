@@ -1,0 +1,22 @@
+---
+branches:
+  - main
+plugins:
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+  - - "@semantic-release/exec"
+    - prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile
+  - - "@semantic-release-extras/verified-git-commit"
+    - assets:
+        - Dockerfile
+      commitMessage: |-
+        chore(release): ${nextRelease.version} [skip ci]
+
+        ${nextRelease.notes}
+  - - "@semantic-release/github"
+    - successComment: false
+      failTitle: false
+      failComment: false
+      labels: ["automated", "release"]
