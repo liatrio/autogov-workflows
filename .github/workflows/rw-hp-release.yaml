@@ -143,19 +143,11 @@ jobs:
         id: semantic-release
         with:
           extra_plugins: |
+            @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
-            # @semantic-release/git is NO LONGER listed here if it was before
-            # because @semantic-release-extras/verified-git-commit is now in .releaserc.json
-            # However, cycjimmy/semantic-release-action might pre-install common plugins.
-            # The important part is that your .releaserc.json now calls the new plugin.
-            # You MIGHT need to add @semantic-release-extras/verified-git-commit to extra_plugins
-            # if it's not automatically picked up or installed by the action.
-            # Check cycjimmy/semantic-release-action documentation for how it handles non-default plugins.
-            # Usually, just having it in .releaserc.json and as a dev dependency is enough.
-            # For cycjimmy/semantic-release-action, you often list plugins used in .releaserc.json
-            # also in extra_plugins if they are not part of the default set it installs.
-            @semantic-release-extras/verified-git-commit 
             @semantic-release/exec
+            @semantic-release-extras/verified-git-commit
+            @semantic-release/github
             conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
