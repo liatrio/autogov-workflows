@@ -138,17 +138,31 @@ jobs:
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-      - name: Run go-semantic-release
-        uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # 4.2.0
+      - name: Run semantic-release
+        uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
         id: semantic-release
         with:
           extra_plugins: |
             @semantic-release/release-notes-generator
-            @semantic-release/git
+            # @semantic-release/git is NO LONGER listed here if it was before
+            # because @semantic-release-extras/verified-git-commit is now in .releaserc.json
+            # However, cycjimmy/semantic-release-action might pre-install common plugins.
+            # The important part is that your .releaserc.json now calls the new plugin.
+            # You MIGHT need to add @semantic-release-extras/verified-git-commit to extra_plugins
+            # if it's not automatically picked up or installed by the action.
+            # Check cycjimmy/semantic-release-action documentation for how it handles non-default plugins.
+            # Usually, just having it in .releaserc.json and as a dev dependency is enough.
+            # For cycjimmy/semantic-release-action, you often list plugins used in .releaserc.json
+            # also in extra_plugins if they are not part of the default set it installs.
+            @semantic-release-extras/verified-git-commit 
             @semantic-release/exec
             conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GIT_AUTHOR_NAME: release-ops[bot]
+          GIT_AUTHOR_EMAIL: release-ops@users.noreply.github.com
+          GIT_COMMITTER_NAME: release-ops[bot]
+          GIT_COMMITTER_EMAIL: release-ops@users.noreply.github.com
       - name: Upload Results/Sigstore Bundle as Release Asset
         if: steps.semantic-release.outputs.new_release_published == 'true'
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
