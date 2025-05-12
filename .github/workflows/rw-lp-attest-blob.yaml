@@ -128,7 +128,7 @@ jobs:
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           github-token: ${{ inputs.github-token || github.token }}
@@ -203,7 +203,7 @@ jobs:
             --subject-path ${{ env.ARTIFACTS_FOLDER }}
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
+        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
         id: attest-metadata
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
@@ -257,7 +257,7 @@ jobs:
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Generate SBOM
-        uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0 # v0.18.0
+        uses: anchore/sbom-action@9f7302141466aa6482940f15371237e9d9f4c34a # v0.19.0
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           format: cyclonedx-json
@@ -322,7 +322,7 @@ jobs:
             await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
             console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
       - name: Scan current project
-        uses: anchore/scan-action@7c05671ae9be166aeb155bad2d7df9121823df32 # v6.1.0
+        uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e # v6.2.0
         id: anchore-scan
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
@@ -352,7 +352,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
+        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
         id: attest-dep-scan
         with:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
