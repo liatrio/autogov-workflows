@@ -407,20 +407,22 @@ Our approach guarantees that both the source repository and the signer workflow 
 
 #### Certificate Identities
 
-This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file contains:
+This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov-verify](https://github.com/liatrio/autogov-verify). The file uses a flattened format with a single `identities` array, where each entry has a `status` field indicating whether it is:
 
-- **Latest**: Current reusable workflow identities at the current version
-- **Approved**: All approved workflow identities (includes previous valid versions)
-- **Revoked**: Identities that have been explicitly revoked and should not be used
+- **latest**: Current reusable workflow identities at the current version
+- **approved**: All approved workflow identities (includes previous valid versions)
+- **revoked**: Identities that have been explicitly revoked and should not be used
 
 ##### How Certificate Identities Work
 
 Certificate identities provide a way to verify that a workflow being called is an approved version. Each identity consists of:
 
-- A name (e.g., "HP-ATTEST-IMAGE")
 - A version (e.g., "0.5.1")
-- The full URL to the workflow file including the tag's commit SHA
-- Addition and expiration dates
+- A commit SHA
+- A status ("latest", "approved", or "revoked")
+- An array of workflow identities (URLs to workflow files including the tag's commit SHA)
+- Addition date and optional expiration date
+- Revocation details (date and reason) if status is "revoked"
 
 ##### Certificate Identity Update Process
 
@@ -1512,54 +1514,62 @@ release-<build-type>:
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
-#### Automating Version Updates with .semrelrc
+#### Automating Version Updates with Semantic Release
 
-To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.semrelrc` file and configure the exec plugin for the [go-semantic-release action](https://github.com/go-semantic-release/action/).
+To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.releaserc.yml` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
 
 This approach ensures that all version references are consistently updated with each release, maintaining synchronization across your codebase.
 
-The example in this repo uses the [.semrelrc](./.semrelrc) to configure go-semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
+The example in this repo uses the [.releaserc.yml](./.releaserc.yml) to configure semantic-release to update a file, [Dockerfile](./Dockerfile), with the new version.
 
 Here's how it works:
 
-1. **Configuration**: Create a `.semrelrc` file in your repository root with the following structure:
+1. **Configuration**: Create a `.releaserc.yml` file in your repository root with the following structure:
 
-   ```json
-   {
-     "branches": ["main"],
-     "plugins": {
-       "hooks": {
-         "names": ["exec"],
-         "options": {
-           "exec_on_success": "COMMAND_TO_UPDATE_FILES"
-         }
-       }
-     }
-   }
+   ```yaml
+   ---
+   branches:
+     - main
+   plugins:
+     - - "@semantic-release/commit-analyzer"
+       - preset: conventionalcommits
+     - - "@semantic-release/release-notes-generator"
+       - preset: conventionalcommits
+     - - "@semantic-release/exec"
+       - prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile
+     - - "@semantic-release-extras/verified-git-commit"
+       - assets:
+           - Dockerfile
+         commitMessage: |-
+           chore(release): ${nextRelease.version} [skip ci]
+
+           ${nextRelease.notes}
+     - "@semantic-release/github"
    ```
 
-2. **Command Execution**: When a new version is released, the `exec_on_success` command is executed, allowing you to update version numbers in any files.
+2. **Command Execution**: When a new version is released, the `prepareCmd` command is executed, allowing you to update version numbers in any files.
 
-3. **Version Template**: Use `{{.NewRelease.Version}}` in your command to reference the new version number.
+3. **Version Template**: Use `${nextRelease.version}` in your command to reference the new version number.
 
-4. **File Updates**: The release workflow detects changes made by the command and commits them in a single commit with all modified files.
+4. **File Updates**: The semantic-release process automatically handles creating commits for modified files using the `@semantic-release-extras/verified-git-commit` plugin.
 
-5. **Tag Update**: The tag is automatically updated to point to the new commit containing all version updates.
+5. **Tag Creation**: The release process also handles creating and pushing tags for the new version.
 
 Example commands for different file types:
 
-- Update a Dockerfile: `"exec_on_success": "sed -i \"s/ENV VERSION=\\\".*\\\"/ENV VERSION=\\\"{{.NewRelease.Version}}\\\"/\" Dockerfile"`
-- Update multiple files: `"exec_on_success": "find . -name \"*.yaml\" -exec sed -i \"s/version: [0-9]\\\\.[0-9]\\\\.[0-9]/version: {{.NewRelease.Version}}/\" {} \\;"`
-- Update a specific pattern: `"exec_on_success": "find policies -name \"*.rego\" -exec sed -i \"s/#  version: [0-9]\\\\.[0-9]\\\\.[0-9]/#  version: {{.NewRelease.Version}}/\" {} \\;"`
+- Update a Dockerfile: `prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile`
+- Update multiple files: `prepareCmd: find . -name "*.yaml" -exec sed -i 's/version: [0-9]\.[0-9]\.[0-9]/version: ${nextRelease.version}/' {} \;`
+- Update a specific pattern: `prepareCmd: find policies -name "*.rego" -exec sed -i 's/#  version: [0-9]\.[0-9]\.[0-9]/#  version: ${nextRelease.version}/' {} \;`
 
-> **Note on Escaping Characters**: Since go-semantic-release uses Go templating, proper escaping is crucial in the `exec_on_success` command. Special characters need double escaping - once for JSON and once for the shell command:
+> **Note on Escaping Characters**: YAML makes working with special characters much easier than JSON:
 >
-> - Backslashes need to be escaped as `\\` in JSON
-> - For regex patterns with backslashes (like `\d` or `\.`), use four backslashes: `\\\\`
-> - Double quotes within the command need to be escaped as `\"`
-> - The Go template syntax `{{.NewRelease.Version}}` should remain unescaped
+> - YAML requires fewer escaped characters than JSON
+> - For regex patterns with backslashes (like `\d` or `\.`), you still need to escape them: `\d`
+> - The template syntax `${nextRelease.version}` should remain unescaped
 >
-> For example, to match a version pattern like `1.2.3` in a regex, use `[0-9]\\\\.[0-9]\\\\.[0-9]` instead of `[0-9]\.[0-9]\.[0-9]`
+> Using single quotes in your sed commands or YAML's multi-line string syntax (`|-`) can help with complex strings.
+
+For more customization options, including beautiful emoji formatting for release notes, check out the [semantic-release documentation](https://github.com/semantic-release/semantic-release/blob/master/docs/usage/configuration.md).
 
 ## Troubleshooting
 

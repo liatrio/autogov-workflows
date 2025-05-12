@@ -63,7 +63,7 @@ jobs:
       contents: write
       id-token: write
     outputs:
-      semantic-release-version: ${{ steps.go-semantic-release.outputs.version }}
+      semantic-release-version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
       - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
@@ -77,7 +77,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Install actions/artifact Library
-        run: npm install @actions/artifact@2.2.1
+        run: npm install --no-save @actions/artifact@2.3.2
       - name: Create Artifacts Folder
         if: ${{ inputs.build-type == 'blob' }}
         run: mkdir ${{ env.ARTIFACTS_FOLDER }}
@@ -136,146 +136,26 @@ jobs:
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-      - name: Run go-semantic-release
-        uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
-        id: go-semantic-release
+      - name: Run semantic-release
+        uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
+        id: semantic-release
         with:
-          changelog-generator-opt: emojis=true
-          allow-initial-development-versions: true
-          hooks: exec
-          github-token: ${{ steps.octo-sts.outputs.token }}
-      - name: Update files and tag
-        if: steps.go-semantic-release.outputs.version != ''
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        with:
-          github-token: ${{ steps.octo-sts.outputs.token }}
-          script: |
-            const { execSync } = require('child_process');
-            const fs = require('fs');
-
-            const modifiedFiles = execSync('git diff --name-only').toString().trim().split('\n').filter(Boolean);
-
-            if (modifiedFiles.length === 0) {
-              console.log('No files modified, skipping updates');
-              return;
-            }
-
-            console.log(`Found ${modifiedFiles.length} modified files: ${modifiedFiles.join(', ')}`);
-
-            const version = '${{ steps.go-semantic-release.outputs.version }}';
-            if (!version) {
-              console.log('No version found, skipping file updates and tag creation');
-              return;
-            }
-
-            const branch = context.ref.replace('refs/heads/', '');
-            console.log(`Using branch: ${branch}`);
-
-            try {
-              const { data: refData } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${branch}`
-              });
-              const latestCommitSha = refData.object.sha;
-              
-              const { data: commitData } = await github.rest.git.getCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: latestCommitSha
-              });
-              const baseTreeSha = commitData.tree.sha;
-
-              const treeItems = [];
-              let errorCount = 0;
-              
-              for (const filePath of modifiedFiles) {
-                console.log(`Processing file: ${filePath}`);
-
-                try {
-                  const content = fs.readFileSync(filePath, 'utf8');
-                  
-                  const { data: blobData } = await github.rest.git.createBlob({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    content: Buffer.from(content).toString('base64'),
-                    encoding: 'base64'
-                  });
-
-                  treeItems.push({
-                    path: filePath,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: blobData.sha
-                  });
-                  
-                  console.log(`Added ${filePath} to the commit tree`);
-                } catch (error) {
-                  console.log(`Error processing file ${filePath}: ${error.message}`);
-                  errorCount++;
-                }
-              }
-
-              if (treeItems.length === 0) {
-                console.error('❌ ERROR: Failed to process any files');
-                process.exit(1);
-              }
-
-              if (errorCount > 0) {
-                console.warn(`⚠️ WARNING: ${errorCount} files could not be processed`);
-              }
-
-              const { data: newTree } = await github.rest.git.createTree({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base_tree: baseTreeSha,
-                tree: treeItems
-              });
-
-              const { data: newCommit } = await github.rest.git.createCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                message: `chore(release): update files for release v${version} 🤖 [skip ci]`,
-                tree: newTree.sha,
-                parents: [latestCommitSha]
-              });
-
-              await github.rest.git.updateRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${branch}`,
-                sha: newCommit.sha
-              });
-
-              console.log(`Created single commit ${newCommit.sha} with all file changes`);
-
-              await new Promise(resolve => setTimeout(resolve, 3000));
-
-              console.log(`Updating tag to point to the new commit`);
-              try {
-                await github.rest.git.updateRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `tags/v${version}`,
-                  sha: newCommit.sha,
-                  force: true
-                });
-                console.log(`Tag update complete`);
-              } catch (error) {
-                console.error(`❌ ERROR: Could not update tag: ${error.message}`);
-                process.exit(1);
-              }
-            } catch (error) {
-              console.error(`❌ ERROR: ${error.message}`);
-              process.exit(1);
-            }
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/exec
+            @semantic-release-extras/verified-git-commit
+            @semantic-release/github
+            conventional-changelog-conventionalcommits
+        env:
+          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
       - name: Upload Results/Sigstore Bundle as Release Asset
-        if: steps.go-semantic-release.outputs.version != ''
+        if: steps.semantic-release.outputs.new_release_published == 'true'
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           files: |
             ${{ env.RESULTS_FOLDER }}/*
             ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
             ${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}
-          tag_name: v${{ steps.go-semantic-release.outputs.version }}
+          tag_name: v${{ steps.semantic-release.outputs.new_release_version }}
           token: ${{ inputs.github-token || github.token }}
