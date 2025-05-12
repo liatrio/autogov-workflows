@@ -110,7 +110,7 @@ jobs:
           password: ${{ inputs.github-token || github.token }}
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
@@ -176,7 +176,7 @@ jobs:
             --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
+        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
         id: attest-metadata
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -288,7 +288,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Scan current project
-        uses: anchore/scan-action@7c05671ae9be166aeb155bad2d7df9121823df32 # v6.1.0
+        uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e # v6.2.0
         id: anchore-scan
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
@@ -305,7 +305,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
+        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
         id: attest-dep-scan
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
