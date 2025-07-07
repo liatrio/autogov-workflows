@@ -44,7 +44,6 @@ env:
   GH_TOKEN: ${{ github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
-  POLICY_REPO_NAME: liatrio-rego-policy-library
 
 jobs:
   run-opa-low-perms:
