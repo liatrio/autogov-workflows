@@ -176,13 +176,13 @@ jobs:
       - name: Output Violations if failed
         if: ${{ failure() && steps.run-opa.outcome == 'failure' }}
         env:
-          INPUT_FILE: ${{ env.ATTESTATIONS_FOLDER }}/${{ inputs.ignore-dependency-vulnerabilities && 'vulnerability-ignored-bundle.json' || 'sigstore-bundle.json' }}
+          OPA_INPUT: ${{ env.ATTESTATIONS_FOLDER }}/${{ inputs.ignore-dependency-vulnerabilities && 'vulnerability-ignored-bundle.json' || 'sigstore-bundle.json' }}
         run: |
           set -x
           echo "Using input file: $OPA_INPUT"
           opa eval \
             --fail \
-            --input "$INPUT_FILE" \
+            --input "$OPA_INPUT" \
             --bundle "bundle.tar.gz" \
             "data.governance.violations" >\
           policy-evaluation.json
