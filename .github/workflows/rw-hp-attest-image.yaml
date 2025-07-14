@@ -175,7 +175,7 @@ jobs:
             --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
         id: attest-metadata
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -304,7 +304,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@afd638254319277bb3d7f0a234478733e2e46a73 # v2.3.0
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
         id: attest-dep-scan
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
