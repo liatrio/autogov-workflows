@@ -150,5 +150,6 @@ jobs:
             ${{ env.RESULTS_FOLDER }}/*
             ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
             ${{ env.ARTIFACTS_FOLDER }}/*
+            !cert-identities.json
           tag_name: v${{ steps.semantic-release.outputs.new_release_version }}
           token: ${{ inputs.github-token || github.token }}
