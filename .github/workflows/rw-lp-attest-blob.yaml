@@ -60,7 +60,6 @@ env:
   GH_TOKEN: ${{ github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
-  POLICY_REPO_NAME: liatrio-gh-autogov-policy-library
 
 jobs:
   build-blob-low-perms:
