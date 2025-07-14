@@ -158,7 +158,6 @@ jobs:
             ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json \
             > ${{ env.ATTESTATIONS_FOLDER }}/vulnerability-ignored-bundle.json
           echo "Vulnerability-ignored Sigstore bundle created successfully"
-          cat ${{ env.ATTESTATIONS_FOLDER }}/vulnerability-ignored-bundle.json | jq -r
       - name: Run OPA Evals
         id: run-opa
         env:
