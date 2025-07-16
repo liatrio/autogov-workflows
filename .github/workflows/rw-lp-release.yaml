@@ -20,6 +20,10 @@ on:
         description: The artifact-id of the SBOM attestation artifact.
         default: ${{ github.event.needs.attest-sbom-low-perms.outputs.build-artifact-id }}
         type: string
+      attest-dependency-scan-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        default: ${{ github.event.needs.attest-sbom.outputs.attest-dependency-scan-attestations-artifact-id }}
+        type: string
       results-artifact-id:
         type: string
         description: The artifact-id of the attestation artifacts.
@@ -40,10 +44,7 @@ on:
         value: ${{ jobs.release-low-perms.outputs.semantic-release-version }}
 
 env:
-  ARTIFACT_IDS: |
-    ${{ inputs.attest-build-attestation-artifact-id }}
-    ${{ inputs.attest-metadata-attestations-artifact-id }}
-    ${{ inputs.attest-sbom-attestations-artifact-id }}
+  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestations-artifact-id }},${{ inputs.attest-sbom-attestations-artifact-id }},${{ inputs.attest-dependency-scan-attestations-artifact-id }}"
   BLOB_ARTIFACT_ID: ${{ inputs.blob-artifact-id || '' }}
   RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
   ATTESTATIONS_FOLDER: ./attestations
@@ -59,6 +60,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      actions: read
     outputs:
       semantic-release-version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
@@ -73,57 +75,31 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.3.2
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactIds = process.env.ARTIFACT_IDS.split('\n').map(id => id.trim()).filter(id => id);
-
-            for (const artifactId of artifactIds) {
-              if (!artifactId) {
-                console.log('Skipping undefined artifact ID');
-                continue;
-              }
-
-              await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
-              console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
-            }
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_IDS }}
+          path: ${{ env.ATTESTATIONS_FOLDER }}
+          merge-multiple: true
       - name: Download Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.BLOB_ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.BLOB_ARTIFACT_ID }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Process Sigstore Bundle(s)
-        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
+        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Download opa-run Results
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.RESULTS_ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.RESULTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.RESULTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.RESULTS_ARTIFACT_ID }}
+          path: ${{ env.RESULTS_FOLDER }}
+          merge-multiple: true
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:

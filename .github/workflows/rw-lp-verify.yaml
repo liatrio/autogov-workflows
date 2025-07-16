@@ -20,6 +20,10 @@ on:
         description: The artifact-id of the SBOM attestation artifact.
         default: ${{ github.event.needs.attest-sbom-low-perms.outputs.build-artifact-id }}
         type: string
+      attest-dependency-scan-attestations-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        default: ${{ github.event.needs.attest-sbom.outputs.attest-dependency-scan-attestations-artifact-id }}
+        type: string
       cert-identity:
         type: string
         description: >
@@ -41,6 +45,7 @@ permissions: {}
 
 env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
+  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestations-artifact-id }},${{ inputs.attest-sbom-attestations-artifact-id }},${{ inputs.attest-dependency-scan-attestations-artifact-id }}"
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
 
@@ -48,6 +53,7 @@ jobs:
   verify-low-perms:
     permissions:
       contents: read
+      actions: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -57,60 +63,33 @@ jobs:
           exit 1
       - name: Download Trusted Roots
         run: gh attestation trusted-root > trusted_root.jsonl
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.1.11
       - name: Create Attestations Folder
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }}
       - name: Download Sigstore Bundle(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          ARTIFACT_IDS: |
-            ${{ inputs.attest-build-attestation-artifact-id }}
-            ${{ inputs.attest-metadata-attestations-artifact-id }}
-            ${{ inputs.attest-sbom-attestations-artifact-id }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactIds = process.env.ARTIFACT_IDS.split('\n').map(id => id.trim()).filter(id => id);
-
-            for (const artifactId of artifactIds) {
-              if (!artifactId) {
-                console.log('Skipping undefined artifact ID');
-                continue;
-              }
-
-              await artifactClient.downloadArtifact(artifactId, { path: process.env.ATTESTATIONS_FOLDER });
-              console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ATTESTATIONS_FOLDER}`);
-            }
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_IDS }}
+          path: ${{ env.ATTESTATIONS_FOLDER }}
+          merge-multiple: true
       - name: Process Sigstore Bundle(s)
-        run: |
-          cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
+        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Process Sigstore Bundle for Offline Blob Verification
         run: |
           cp ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl
           cd ${{ env.ATTESTATIONS_FOLDER }}
-          rm attest-*.jsonl sigstore-bundle.jsonl
+          find . -name "*.jsonl" ! -name "all_attestations.jsonl" -delete
       - name: Download Blob Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ inputs.blob-artifact-id }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Offline Verification of Blob Attestation(s)
         run: |
           set +x
-          for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
+          find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
             gh attestation verify \
               $ARTIFACT \
               --deny-self-hosted-runners \

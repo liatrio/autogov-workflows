@@ -57,7 +57,7 @@ on:
 permissions: {}
 
 env:
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
@@ -98,6 +98,7 @@ jobs:
       id-token: write
       attestations: write
       contents: read
+      actions: read
     env:
       ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
     outputs:
@@ -108,23 +109,14 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.3.2
-        if: ${{ runner.environment == 'github-hosted' }}
       - name: Download Blob Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_ID }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -151,6 +143,7 @@ jobs:
       id-token: write
       attestations: write
       contents: read
+      actions: read
     env:
       ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
     outputs:
@@ -161,23 +154,14 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.3.2
-        if: ${{ runner.environment == 'github-hosted' }}
       - name: Download Blob Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_ID }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
@@ -228,6 +212,7 @@ jobs:
       id-token: write
       attestations: write
       contents: read
+      actions: read
     env:
       ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
     outputs:
@@ -238,23 +223,14 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.3.2
-        if: ${{ runner.environment == 'github-hosted' }}
       - name: Download Blob Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_ID }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Generate SBOM
         uses: anchore/sbom-action@cee1b8e05ae5b2593a75e197229729eabaa9f8ec # v0.20.2
         with:
@@ -293,6 +269,7 @@ jobs:
       id-token: write
       attestations: write
       contents: read
+      actions: read
     env:
       ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
     outputs:
@@ -303,23 +280,14 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Install actions/artifact Library
-        run: npm install --no-save @actions/artifact@2.3.2
-        if: ${{ runner.environment == 'github-hosted' }}
       - name: Download Blob Artifact(s)
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ env.ARTIFACT_ID }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Scan current project
         uses: anchore/scan-action@16910ac423301c6d30554b83a7f71ac6ff4a51f3 # v6.4.0
         id: anchore-scan

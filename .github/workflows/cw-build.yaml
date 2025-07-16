@@ -24,6 +24,7 @@ jobs:
       attestations: write
       packages: write
       contents: write
+      actions: read
     uses: ./.github/workflows/rw-hp-build-image.yaml
     secrets: inherit
     with:
@@ -38,6 +39,7 @@ jobs:
   #     attestations: write
   #     packages: read
   #     contents: write
+  #     actions: read
   #   uses: ./.github/workflows/rw-hp-build-blob.yaml
   #   secrets: inherit
   #   with:
@@ -51,7 +53,9 @@ jobs:
   #   permissions:
   #     id-token: write
   #     attestations: write
+  #     packages: read
   #     contents: write
+  #     actions: read
   #   uses: ./.github/workflows/rw-lp-build-blob.yaml
   #   secrets: inherit
   #   with:
