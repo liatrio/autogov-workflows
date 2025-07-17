@@ -50,9 +50,10 @@ jobs:
       build-type: blob
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
-
+      
   run-opa-blob: #blob
     permissions:
+      id-token: write
       attestations: read
       packages: read
     needs: [verify-blob, attest-blob]
