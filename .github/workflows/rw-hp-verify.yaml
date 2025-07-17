@@ -60,6 +60,7 @@ jobs:
       id-token: write
       attestations: read
       packages: read
+      actions: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -86,36 +87,21 @@ jobs:
           password: ${{ inputs.github-token || github.token }}
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
-      - name: Install actions/artifact Library
-        if: ${{ inputs.build-type == 'blob' }}
-        run: npm install --no-save @actions/artifact@2.3.2
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ inputs.blob-artifact-id }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Blob Artifact Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           cd ${{ env.ATTESTATIONS_FOLDER }}
-          for ARTIFACT in ../${{ env.ARTIFACTS_FOLDER }}/*; do
-              gh attestation download "$ARTIFACT" --repo ${{ github.repository }}
-          done
+          find ../${{ env.ARTIFACTS_FOLDER }} -type f -exec gh attestation download {} --repo ${{ github.repository }} \;
       - name: Process Sigstore Bundle(s)
         if: ${{ inputs.build-type == 'blob' }}
-        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
+        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
@@ -129,7 +115,7 @@ jobs:
             --repo liatrio/autogov-verify \
             --pattern "autogov-verify"
           chmod +x autogov-verify
-      - name: Verify Attestation
+      - name: Verification of Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |
           set +x
@@ -141,7 +127,7 @@ jobs:
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           set +x
-          for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
+          find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
               ./autogov-verify \
                 --blob-path ${ARTIFACT} \
                 --cert-identity "${{ inputs.cert-identity }}" \
