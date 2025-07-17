@@ -79,20 +79,23 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_IDS }}
           path: ${{ env.ATTESTATIONS_FOLDER }}
+          merge-multiple: true
       - name: Download Artifact(s)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.BLOB_ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Process Sigstore Bundle(s)
-        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
+        run: cat ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Download opa-run Results
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.RESULTS_ARTIFACT_ID }}
           path: ${{ env.RESULTS_FOLDER }}
+          merge-multiple: true
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
