@@ -40,19 +40,19 @@ on:
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
-        value: ${{ jobs.build-blob-low-perms.outputs.blob-artifact-id }}
+        value: ${{ jobs.build-low-perms.outputs.blob-artifact-id }}
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
-        value: ${{ jobs.attest-blob-low-perms.outputs.provenance-artifact-id }}
+        value: ${{ jobs.attest-build-low-perms.outputs.provenance-artifact-id }}
       attest-metadata-attestations-artifact-id:
         description: The artifact-id of the custom metadata attestation artifact.
-        value: ${{ jobs.blob-attest-metadata-low-perms.outputs.metadata-artifact-id }}
+        value: ${{ jobs.attest-metadata-low-perms.outputs.metadata-artifact-id }}
       attest-sbom-attestations-artifact-id:
         description: The artifact-id of the SBOM attestation artifact.
-        value: ${{ jobs.blob-attest-sbom-low-perms.outputs.sbom-artifact-id }}
+        value: ${{ jobs.attest-sbom-low-perms.outputs.sbom-artifact-id }}
       attest-dependency-scan-attestations-artifact-id:
         description: The artifact-id of the dependency scan attestation artifact.
-        value: ${{ jobs.blob-attest-dependency-scan-low-perms.outputs.dependency-scan-artifact-id }}
+        value: ${{ jobs.attest-dependency-scan-low-perms.outputs.dependency-scan-artifact-id }}
 
 permissions: {}
 
@@ -62,7 +62,7 @@ env:
   ATTESTATIONS_FOLDER: ./attestations
 
 jobs:
-  build-blob-low-perms:
+  build-low-perms:
     permissions:
       contents: read
     runs-on: ${{ inputs.workflow-runner-label }}
@@ -91,16 +91,16 @@ jobs:
           path: ${{ inputs.subject-path }}
           if-no-files-found: error
 
-  attest-blob-low-perms:
+  attest-build-low-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-blob-low-perms
+    needs: build-low-perms
     permissions:
       id-token: write
       attestations: write
       contents: read
       actions: read
     env:
-      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+      ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
       provenance-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
     steps:
@@ -136,16 +136,16 @@ jobs:
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
           if-no-files-found: error
 
-  blob-attest-metadata-low-perms:
+  attest-metadata-low-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-blob-low-perms
+    needs: build-low-perms
     permissions:
       id-token: write
       attestations: write
       contents: read
       actions: read
     env:
-      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+      ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
       metadata-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
     steps:
@@ -205,16 +205,16 @@ jobs:
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
           if-no-files-found: error
 
-  blob-attest-sbom-low-perms:
+  attest-sbom-low-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-blob-low-perms
+    needs: build-low-perms
     permissions:
       id-token: write
       attestations: write
       contents: read
       actions: read
     env:
-      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+      ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
       sbom-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
     steps:
@@ -262,16 +262,16 @@ jobs:
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
           if-no-files-found: error
 
-  blob-attest-dependency-scan-low-perms:
+  attest-dependency-scan-low-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
-    needs: build-blob-low-perms
+    needs: build-low-perms
     permissions:
       id-token: write
       attestations: write
       contents: read
       actions: read
     env:
-      ARTIFACT_ID: ${{ needs.build-blob-low-perms.outputs.blob-artifact-id }}
+      ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
       dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
     steps:
@@ -334,6 +334,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-dependency-scan
         with:
-          name: image-dep-scan-attestation-low-perms
+          name: blob-dep-scan-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
           if-no-files-found: error

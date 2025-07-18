@@ -62,7 +62,7 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Download Trusted Roots
-        run: gh attestation trusted-root > trusted_root.jsonl
+        run: gh attestation trusted-root > trusted_root.json
       - name: Create Attestations Folder
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }}
       - name: Download Sigstore Bundle(s)
@@ -96,7 +96,7 @@ jobs:
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
               --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
-              --custom-trusted-root trusted_root.jsonl \
+              --custom-trusted-root trusted_root.json \
               --format json \
               --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
             | grep "^${{ github.ref }}$"
@@ -107,7 +107,7 @@ jobs:
               --repo ${{ github.repository }} \
               --cert-identity "${{ inputs.cert-identity }}" \
               --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
-              --custom-trusted-root trusted_root.jsonl \
+              --custom-trusted-root trusted_root.json \
               --format json \
               --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
             | grep -E \
