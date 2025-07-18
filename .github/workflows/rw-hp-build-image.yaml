@@ -36,6 +36,7 @@ jobs:
       attestations: write
       packages: write
       contents: read
+      actions: read
     uses: ./.github/workflows/rw-hp-attest-image.yaml
     secrets: inherit
     with:
@@ -47,6 +48,7 @@ jobs:
       id-token: write
       attestations: read
       packages: read
+      actions: read
     needs: [attest-image]
     uses: ./.github/workflows/rw-hp-verify.yaml
     secrets: inherit
@@ -61,6 +63,7 @@ jobs:
       id-token: write
       attestations: read
       packages: read
+      actions: read
     needs: [verify-image, attest-image]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit
@@ -74,6 +77,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      actions: read
     needs: [verify-image, attest-image, run-opa-image]
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit

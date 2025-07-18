@@ -31,6 +31,7 @@ jobs:
       id-token: write
       attestations: write
       contents: read
+      actions: read
     uses: ./.github/workflows/rw-hp-attest-blob.yaml
     secrets: inherit
     with:
@@ -43,6 +44,7 @@ jobs:
       id-token: write
       attestations: read
       packages: read
+      actions: read
     needs: [attest-blob]
     uses: ./.github/workflows/rw-hp-verify.yaml
     secrets: inherit
@@ -56,6 +58,7 @@ jobs:
       id-token: write
       attestations: read
       packages: read
+      actions: read
     needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit
@@ -68,6 +71,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      actions: read
     needs: [verify-blob, attest-blob, run-opa-blob]
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit

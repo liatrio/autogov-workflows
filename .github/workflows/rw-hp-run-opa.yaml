@@ -44,6 +44,11 @@ on:
         type: boolean
         # defaults to true in workflows repo, false elsewhere
         default: ${{ github.repository == format('{0}/{1}', github.repository_owner, 'liatrio-gh-autogov-workflows') }}
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        required: false
+        type: string
     outputs:
       results-artifact-id:
         description: The artifact-id of the opa eval results artifact.
@@ -52,7 +57,7 @@ on:
 permissions: {}
 
 env:
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
@@ -65,6 +70,7 @@ jobs:
       attestations: read
       packages: read
       id-token: write
+      actions: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -83,7 +89,6 @@ jobs:
         with:
           version: ${{ inputs.opa-version }}
       - name: Login to GitHub Container Registry
-        if: ${{ inputs.build-type == 'image' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ inputs.registry }}
@@ -91,33 +96,19 @@ jobs:
           password: ${{ github.token }}
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
-      - name: Install actions/artifact Library
-        if: ${{ inputs.build-type == 'blob' }}
-        run: npm install --no-save @actions/artifact@2.3.2
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          ARTIFACT_ID: ${{ inputs.blob-artifact-id }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          script: |
-            const { DefaultArtifactClient } = require('@actions/artifact');
-            const artifactClient = new DefaultArtifactClient();
-            const artifactId = process.env.ARTIFACT_ID;
-
-            if (!artifactId) {
-              throw new Error('Artifact ID is not defined');
-            }
-
-            await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-            console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+          github-token: ${{ inputs.github-token || github.token }}
+          artifact-ids: ${{ inputs.blob-artifact-id }}
+          path: ${{ env.ARTIFACTS_FOLDER }}
+          merge-multiple: true
       - name: Download Blob Artifact Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           cd ${{ env.ATTESTATIONS_FOLDER }}
-          for ARTIFACT in ../${{ env.ARTIFACTS_FOLDER }}/*; do
-              gh attestation download "$ARTIFACT" --repo ${{ github.repository }}
-          done
+          find ../${{ env.ARTIFACTS_FOLDER }} -type f -exec gh attestation download {} --repo ${{ github.repository }} \;
       - name: Download Image Artifact Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |
@@ -129,13 +120,12 @@ jobs:
         run: |
           set +x
           echo "Processing Sigstore bundles from ${{ env.ATTESTATIONS_FOLDER }}"
-          if ! jq -s . ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json; then
+          if ! find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; | jq -s . > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json; then
             echo "Error: Failed to process Sigstore bundles"
             exit 1
           fi
-          rm -f ${{ env.ATTESTATIONS_FOLDER }}/*.jsonl
-          echo "Processed Sigstore bundle:"
-          cat ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.json | jq -r
+          find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -delete
+          echo "Processed Sigstore bundle"
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
