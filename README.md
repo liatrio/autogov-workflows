@@ -383,7 +383,7 @@ Considering many organizations and/or developers run builds and workflows from n
       ARTIFACTS_FOLDER: ./artifacts
   run: |
       set +x
-      for ARTIFACT in ${{ env.ARTIFACTS_FOLDER }}/*; do
+      find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
         gh attestation verify \
           $ARTIFACT \
           --deny-self-hosted-runners \
@@ -689,28 +689,17 @@ This diagram illustrates the isolation of the build and attestation processes. B
 
 To further isolate between jobs, the build job uploads the artifact(s) (or in the case of building an image, pushes the image to a container registry) to the downstream attest/sign job to download. Jobs in the calling workflow, outside of our reusable workflow, could unintentionally overwrite the artifact by uploading one with the same name. This risks the attest/sign job attesting to the wrong artifact.
 
-The [actions/upload-artifact](https://github.com/actions/upload-artifact) now enables immutable uploads using artifact IDs, though currently [actions/download-artifact](https://github.com/actions/download-artifact) does not support downloading artifacts by the artifact ID. Temporarily, we utilize [actions/github-script](https://github.com/actions/github-script) in tandem with the [@actions/artifact library](https://www.npmjs.com/package/@actions/artifact) to further secure artifact downloads as it [does support this functionality](https://github.com/actions/download-artifact/blob/fa0a91b85d4f404e444e00e005971372dc801d16/src/download-artifact.ts#L114-L122).
+The [actions/upload-artifact](https://github.com/actions/upload-artifact) enables immutable uploads using artifact IDs, and [actions/download-artifact](https://github.com/actions/download-artifact) now supports downloading artifacts by their artifact ID using the `artifact-ids` parameter. This provides secure artifact handling by ensuring specific artifacts are downloaded based on their unique identifiers.
 
-While uploads via `actions/upload-artifact` are designed to be immutable with an artifact ID, the `actions/download-artifact` does not currently support this.
+Both uploads and downloads via the official GitHub Actions are designed to be immutable with artifact IDs:
 
 ```yaml
-- name: download-artifact
-  uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-  env:
-      ARTIFACT_ID: ${{ needs.build.outputs.build-artifact-id }}
-      ARTIFACTS_FOLDER: ./artifacts
+- name: Download Artifact(s)
+  uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
   with:
-      script: |
-      const { DefaultArtifactClient } = require('@actions/artifact');
-      const artifactClient = new DefaultArtifactClient();
-      const artifactId = process.env.ARTIFACT_ID;
-
-      if (!artifactId) {
-          throw new Error('Artifact ID is not defined');
-      }
-
-      await artifactClient.downloadArtifact(artifactId, { path: process.env.ARTIFACTS_FOLDER });
-      console.log(`Downloaded artifact with ID: ${artifactId} to ${process.env.ARTIFACTS_FOLDER}`);
+    github-token: ${{ inputs.github-token || github.token }}
+    artifact-ids: ${{ env.ARTIFACT_ID }}
+    path: ${{ env.ARTIFACTS_FOLDER }}
 ```
 
 ##### Reducing Permissions Further
@@ -970,7 +959,7 @@ gh attestation verify \
 blob:
 
 ```shell
-for ARTIFACT in "$ARTIFACTS_FOLDER"/*; do
+find "$ARTIFACTS_FOLDER" -type f | while read -r ARTIFACT; do
   gh attestation verify \
     $ARTIFACT \
     --deny-self-hosted-runners \
@@ -1060,10 +1049,9 @@ These additional digests represent attestation manifests - metadata about your i
 
 To inspect and verify these attestation digests, see the [Verification Using ORAS](#verification-using-oras) section above.
 
-The OCI Image Format Spec can be found below:
+The OCI image format specification can be found below:
 
-- [OCI Image Format Specification](<https://github.com/opencontainers/image-spec/tree/main>?
-tab=readme-ov-file#oci-image-format-specification)
+- [OCI Image Format Spec](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
 
 ### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
 
@@ -1085,6 +1073,7 @@ actions/attest-sbom@*,
 actions/attest@*,
 actions/checkout@*,
 actions/github-script@*,
+actions/download-artifact@*,
 actions/upload-artifact@*,
 anchore/scan-action@*,
 anchore/sbom-action@*,

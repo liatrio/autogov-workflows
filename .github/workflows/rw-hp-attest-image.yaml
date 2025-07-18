@@ -54,7 +54,7 @@ on:
 permissions: {}
 
 env:
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
 
