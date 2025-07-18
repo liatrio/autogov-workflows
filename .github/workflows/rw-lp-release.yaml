@@ -91,8 +91,6 @@ jobs:
           artifact-ids: ${{ env.BLOB_ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - name: Process Sigstore Bundle(s)
-        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
       - name: Download opa-run Results
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -124,10 +122,7 @@ jobs:
         with:
           files: |
             ${{ env.RESULTS_FOLDER }}/results-*
-            ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
-            ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-            ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
-            ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+            ${{ env.ATTESTATIONS_FOLDER }}/*
             ${{ env.ARTIFACTS_FOLDER }}/*
           tag_name: v${{ steps.semantic-release.outputs.new_release_version }}
           token: ${{ inputs.github-token || github.token }}
