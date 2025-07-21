@@ -46,6 +46,11 @@ on:
         default: ubuntu-latest
         required: false
         type: string
+      autogov-verify-version:
+        description: The autogov-verify version to use.
+        required: false
+        type: string
+        default: v0.4.2
 
 permissions: {}
 
@@ -109,7 +114,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download \
+          gh release download ${{ inputs.autogov-verify-version }} \
             --repo liatrio/autogov-verify \
             --pattern "autogov-verify"
           chmod +x autogov-verify
