@@ -37,6 +37,11 @@ on:
           The GitHub token set throughout the reuseable workflow including the composite (build) action.
         required: false
         type: string
+      autogov-helper-version:
+        description: The autogov-helper version to use.
+        required: false
+        type: string
+        default: v0.2.2
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
@@ -171,7 +176,7 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
             --pattern "autogov-helper"
           chmod +x autogov-helper
@@ -305,7 +310,7 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
             --pattern "autogov-helper"
           chmod +x autogov-helper
