@@ -125,6 +125,8 @@ jobs:
           chmod +x autogov-verify
       - name: Verification of Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
           ./autogov-verify \
@@ -134,6 +136,8 @@ jobs:
             --source-ref "${{ github.ref }}"
       - name: Online Verification of Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
           find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
