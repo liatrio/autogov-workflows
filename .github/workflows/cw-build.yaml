@@ -51,7 +51,6 @@ jobs:
   # attest-blob-lp: #blob
   #   if: github.event.pull_request.draft == false
   #   permissions:
-  #     id-token: write
   #     attestations: write
   #     packages: read
   #     contents: write
