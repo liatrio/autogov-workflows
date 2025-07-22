@@ -30,7 +30,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.4.2
+        default: v0.4.3
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
@@ -58,6 +58,7 @@ jobs:
     permissions:
       id-token: write
       attestations: read
+      contents: read
       packages: read
       actions: read
     needs: [attest-image]
