@@ -46,11 +46,11 @@ on:
         default: ubuntu-latest
         required: false
         type: string
-      autogov-verify-version:
-        description: The autogov-verify version to use.
+      use-cert-identity-list:
+        description: Whether to use cert-identity-list for validation
         required: false
-        type: string
-        default: v0.4.2
+        type: boolean
+        default: ${{ github.repository != 'liatrio/liatrio-gh-autogov-workflows' }}
 
 permissions: {}
 
@@ -66,6 +66,7 @@ jobs:
       attestations: read
       packages: read
       actions: read
+      contents: read
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -114,10 +115,18 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download ${{ inputs.autogov-verify-version }} \
+          gh release download \
             --repo liatrio/autogov-verify \
             --pattern "autogov-verify"
           chmod +x autogov-verify
+      - name: Download cert-identities file
+        if: ${{ inputs.use-cert-identity-list }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download \
+            --repo liatrio/liatrio-gh-autogov-workflows \
+            --pattern "cert-identities.json"
       - name: Verification of Image Attestation(s)
         if: ${{ inputs.build-type == 'image' }}
         run: |
@@ -125,7 +134,8 @@ jobs:
           ./autogov-verify \
             --artifact-digest ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}@${{ inputs.image-digest }} \
             --cert-identity "${{ inputs.cert-identity }}" \
-            --expected-ref "${{ github.ref }}"
+            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
+            --source-ref "${{ github.ref }}"
       - name: Online Verification of Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
         run: |
@@ -134,5 +144,6 @@ jobs:
               ./autogov-verify \
                 --blob-path ${ARTIFACT} \
                 --cert-identity "${{ inputs.cert-identity }}" \
-                --expected-ref "${{ github.ref }}"
+                ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
+                --source-ref "${{ github.ref }}"
           done
