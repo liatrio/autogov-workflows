@@ -50,7 +50,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.4.2
+        default: v0.4.3
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
