@@ -124,28 +124,31 @@ jobs:
             --repo liatrio/autogov-verify \
             --pattern "autogov-verify"
           chmod +x autogov-verify
-      - name: Verification of Image Attestation(s)
-        if: ${{ inputs.build-type == 'image' }}
+      - name: Download cert-identities file
+        if: ${{ inputs.use-cert-identity-list }}
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download ${{ inputs.autogov-verify-version }} \
+            --repo liatrio/liatrio-gh-autogov-workflows \
+            --pattern "cert-identities.json"
+      - name: Verification of Image Attestation(s)
+        if: ${{ inputs.build-type == 'image' }}
         run: |
           set +x
           ./autogov-verify \
             --artifact-digest ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}@${{ inputs.image-digest }} \
             --cert-identity "${{ inputs.cert-identity }}" \
-            ${{ inputs.use-cert-identity-list && '--cert-identity-list https://raw.githubusercontent.com/liatrio/liatrio-gh-autogov-workflows/refs/heads/main/cert-identities.json' || '' }} \
+            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
             --source-ref "${{ github.ref }}"
       - name: Online Verification of Blob Attestation(s)
         if: ${{ inputs.build-type == 'blob' }}
-        env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
           find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
               ./autogov-verify \
                 --blob-path ${ARTIFACT} \
                 --cert-identity "${{ inputs.cert-identity }}" \
-                ${{ inputs.use-cert-identity-list && '--cert-identity-list https://raw.githubusercontent.com/liatrio/liatrio-gh-autogov-workflows/refs/heads/main/cert-identities.json' || '' }} \
+                ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
                 --source-ref "${{ github.ref }}"
           done
-
