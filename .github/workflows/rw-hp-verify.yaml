@@ -148,3 +148,4 @@ jobs:
                 ${{ inputs.use-cert-identity-list && '--cert-identity-list https://raw.githubusercontent.com/liatrio/liatrio-gh-autogov-workflows/refs/heads/main/cert-identities.json' || '' }} \
                 --source-ref "${{ github.ref }}"
           done
+
