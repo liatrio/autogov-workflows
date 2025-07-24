@@ -21,8 +21,8 @@ on:
         default: ${{ github.event.needs.attest-sbom-low-perms.outputs.build-artifact-id }}
         type: string
       attest-dependency-scan-attestations-artifact-id:
-        description: The artifact-id of the SBOM attestation artifact.
-        default: ${{ github.event.needs.attest-sbom.outputs.attest-dependency-scan-attestations-artifact-id }}
+        description: The artifact-id of the dependency scan attestation artifact.
+        default: ${{ github.event.needs.attest-dependency-scan-low-perms.outputs.build-artifact-id }}
         type: string
       cert-identity:
         type: string
