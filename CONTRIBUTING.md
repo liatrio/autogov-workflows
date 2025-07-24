@@ -43,7 +43,7 @@ To add a new artifact creation and attestation you will add the following to the
         > if you are creating a language specific artifact, it might be necessary to have a dynamic job definition based on user input. Note, the user should not be able to control the command executed, but maybe they set an input or environment variable for language. The reusable workflow can have a library of language commands to generate the desired artifact (just start with one language, build tool, test tool, etc)
 
 1. Update the outputs of the workflow_call
-   - add new artifact attestation to outputs of `rw-*-attest-*.yaml` : `attest-<new-artifact>-attestations-artifact-id`
+   - add new artifact attestation to outputs of `rw-*-attest-*.yaml` : `attest-<new-artifact>-attestation-artifact-id`
 
 1. Create a policy for this artifact's attestation in the [policy library](https://github.com/liatrio/liatrio-rego-policy-library)
    - this step can be started before or after the merge of new attestation artifact creation job  *(it might be helpful to start writing the policy to help determine what information you need in the attestation as determined by the new predicate)*

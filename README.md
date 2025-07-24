@@ -293,7 +293,7 @@ By using any of GitHub's attest Actions, developers can automate the creation of
 
 This offering is now generally available, as announced in June 2024, with public repositories using Sigstore's public instance for signing, while private repositories are backed by GitHub's private Sigstore instance. This ensures that all repositories can integrate artifact attestations into their workflows while maintaining the same level of cryptographic security.
 
-For more information, visit the [GitHub documentation on artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
+For more information, visit the [GitHub documentation on artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestation-to-establish-provenance-for-builds).
 
 ### The SLSA Build Track
 
@@ -670,6 +670,7 @@ Error: No such object
    - `https://slsa.dev/provenance/v1`: SLSA provenance attestation
    - `https://cosign.sigstore.dev/attestation/v1`: Cosign attestation
    - `https://cyclonedx.org/bom`: SBOM attestation
+   - `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
 
 For more detailed information about ORAS commands and capabilities, refer to the [ORAS documentation](https://oras.land/docs/commands/oras_discover/).
 
@@ -1210,8 +1211,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}: The artifact-id of the SBOM attestation artifact.
+- `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (required, string): The artifact-id of the results artifacts.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
@@ -1222,17 +1223,17 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestations-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the build artifacts.
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestations-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestations-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestations-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
 #### `.github/workflows/rw-hp-verify.yaml`
 
@@ -1264,8 +1265,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/workflows/rw-lp-run-opa.yaml`
 
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}: The artifact-id of the SBOM attestation artifact.
+- `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (required, string): The artifact-id of the results artifacts.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `opa-version` (required, string, default: 'v1.1.0'): The version of Open Policy Agent (OPA) to use.
@@ -1274,8 +1275,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestations-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}: The artifact-id of the SBOM attestation artifact.
+- `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
+- `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (required, string): The artifact-id of the results artifacts.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
@@ -1452,8 +1453,8 @@ verify-<build-type>:
     build-type: <build-type>
     blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
     attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-    attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
-    attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
+    attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
+    attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
@@ -1501,8 +1502,8 @@ release-<build-type>:
   with:
     build-type: <build-type>
     attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
-    attest-metadata-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestations-artifact-id }}
-    attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
+    attest-metadata-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestation-artifact-id }}
+    attest-sbom-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestation-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
@@ -1516,8 +1517,8 @@ release-<build-type>:
   with:
     build-type: <build-type>
     attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
-    attest-metadata-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestations-artifact-id }}
-    attest-sbom-attestations-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestations-artifact-id }}
+    attest-metadata-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestation-artifact-id }}
+    attest-sbom-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestation-artifact-id }}
     results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 

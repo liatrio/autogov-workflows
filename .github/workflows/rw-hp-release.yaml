@@ -15,17 +15,17 @@ on:
         description: The artifact-id of the build provenance attestation artifact.
         default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}
         type: string
-      attest-metadata-attestations-artifact-id:
+      attest-metadata-attestation-artifact-id:
         description: The artifact-id of the custom metadata attestation artifact.
-        default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestations-artifact-id }}
+        default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}
         type: string
-      attest-sbom-attestations-artifact-id:
+      attest-sbom-attestation-artifact-id:
         description: The artifact-id of the SBOM attestation artifact.
-        default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestations-artifact-id }}
+        default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}
         type: string
-      attest-dependency-scan-attestations-artifact-id:
+      attest-dependency-scan-attestation-artifact-id:
         description: The artifact-id of the dependency scan attestation artifact.
-        default: ${{ github.event.needs.attest-dependency-scan.outputs.attest-dependency-scan-attestations-artifact-id }}
+        default: ${{ github.event.needs.attest-dependency-scan.outputs.attest-dependency-scan-attestation-artifact-id }}
         type: string
       results-artifact-id:
         type: string
@@ -47,7 +47,7 @@ on:
         value: ${{ jobs.release-high-perms.outputs.semantic-release-version }}
 
 env:
-  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestations-artifact-id }},${{ inputs.attest-sbom-attestations-artifact-id }},${{ inputs.attest-dependency-scan-attestations-artifact-id }}"
+  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}"
   BLOB_ARTIFACT_ID: ${{ inputs.build-type == 'blob' && inputs.blob-artifact-id || '' }}
   RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
   ATTESTATIONS_FOLDER: ./attestations
