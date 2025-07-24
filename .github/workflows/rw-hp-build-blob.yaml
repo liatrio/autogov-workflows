@@ -91,8 +91,8 @@ jobs:
     with:
       build-type: blob
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestations-artifact-id }}
-      attest-sbom-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestations-artifact-id }}
-      attest-dependency-scan-attestations-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestations-artifact-id }}
+      attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
+      attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
