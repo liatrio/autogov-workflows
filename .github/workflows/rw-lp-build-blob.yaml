@@ -29,9 +29,7 @@ jobs:
     uses: ./.github/workflows/rw-lp-attest-blob.yaml
     secrets: inherit
     with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
+      subject-path: ${{ inputs.subject-path }}
 
   verify-blob: #blob
     permissions:

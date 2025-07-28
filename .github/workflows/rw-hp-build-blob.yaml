@@ -45,9 +45,7 @@ jobs:
     uses: ./.github/workflows/rw-hp-attest-blob.yaml
     secrets: inherit
     with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
+      subject-path: ${{ inputs.subject-path }}
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
   verify-blob: #blob
