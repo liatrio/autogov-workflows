@@ -60,6 +60,7 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
+  POLICY_REPO_NAME: liatrio-rego-policy-library
 
 jobs:
   run-opa-high-perms:
@@ -139,7 +140,16 @@ jobs:
         run: |
           set +x
           oras pull \
-            ghcr.io/${{ github.repository_owner }}/liatrio-rego-policy-library:latest
+            ghcr.io/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}:latest
+      - name: Download Policy Schemas
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download \
+            --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
+            --pattern "schemas.tar.gz"
+          mkdir -p schemas
+          tar -xzf schemas.tar.gz -C schemas
       - name: Configure Dependency Vulnerability Handling
         if: ${{ inputs.ignore-dependency-vulnerabilities }}
         run: |
@@ -158,6 +168,7 @@ jobs:
           opa eval \
             --fail \
             --input "$OPA_INPUT" \
+            --schema schemas \
             --bundle "bundle.tar.gz" \
             "data.governance.allow" >\
           policy-evaluation.json
@@ -173,6 +184,7 @@ jobs:
             --fail \
             --input "$OPA_INPUT" \
             --bundle "bundle.tar.gz" \
+            --schema schemas \
             "data.governance.violations" >\
           policy-evaluation.json
           cat policy-evaluation.json | jq -r
