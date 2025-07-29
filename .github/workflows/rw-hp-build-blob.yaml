@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         default: v0.2.2
+      publish-attestations:
+        description: Whether to publish attestations as release assets.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -45,9 +50,7 @@ jobs:
     uses: ./.github/workflows/rw-hp-attest-blob.yaml
     secrets: inherit
     with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
+      subject-path: ${{ inputs.subject-path }}
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
   verify-blob: #blob
@@ -96,3 +99,4 @@ jobs:
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
+      publish-attestations: ${{ inputs.publish-attestations }}

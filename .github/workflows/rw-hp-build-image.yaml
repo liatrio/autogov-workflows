@@ -36,6 +36,11 @@ on:
         required: false
         type: string
         default: v0.2.2
+      publish-attestations:
+        description: Whether to publish attestations as release assets.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -101,3 +106,4 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
+      publish-attestations: ${{ inputs.publish-attestations }}

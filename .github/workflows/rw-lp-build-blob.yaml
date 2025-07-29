@@ -16,6 +16,11 @@ on:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
+      publish-attestations:
+        description: Whether to publish attestations as release assets.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -29,9 +34,7 @@ jobs:
     uses: ./.github/workflows/rw-lp-attest-blob.yaml
     secrets: inherit
     with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
+      subject-path: ${{ inputs.subject-path }}
 
   verify-blob: #blob
     permissions:
@@ -78,3 +81,4 @@ jobs:
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
+      publish-attestations: ${{ inputs.publish-attestations }}
