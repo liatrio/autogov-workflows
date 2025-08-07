@@ -132,7 +132,14 @@ jobs:
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
             go install github.com/equinix-labs/otel-cli@v0.4.5
-            $HOME/go/bin/otel-cli span event --name "Attest Build Provenance" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)"
+            sockdir=$(mktemp -d)
+            $HOME/go/bin/otel-cli span background \
+              --service $0          \
+              --name "$0 runtime"   \
+              --sockdir $sockdir & # the & is important here, background server will block
+            sleep 0.1 # give the background server just a few ms to start up
+            $HOME/go/bin/otel-cli span event --name "Attest Build Provenance" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)" --sockdir $sockdir
+            $HOME/go/bin/otel-cli span end --sockdir $sockdir
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -208,7 +215,14 @@ jobs:
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
             go install github.com/equinix-labs/otel-cli@v0.4.5
-            $HOME/go/bin/otel-cli span event --name "Attest Metadata" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)"
+            sockdir=$(mktemp -d)
+            $HOME/go/bin/otel-cli span background \
+              --service $0          \
+              --name "$0 runtime"   \
+              --sockdir $sockdir & # the & is important here, background server will block
+            sleep 0.1 # give the background server just a few ms to start up
+            $HOME/go/bin/otel-cli span event --name "Attest Metadata" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)" --sockdir $sockdir
+            $HOME/go/bin/otel-cli span end --sockdir $sockdir
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-metadata
@@ -276,7 +290,14 @@ jobs:
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
             go install github.com/equinix-labs/otel-cli@v0.4.5
-            $HOME/go/bin/otel-cli span event --name "Attest SBOM" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)"
+            sockdir=$(mktemp -d)
+            $HOME/go/bin/otel-cli span background \
+              --service $0          \
+              --name "$0 runtime"   \
+              --sockdir $sockdir & # the & is important here, background server will block
+            sleep 0.1 # give the background server just a few ms to start up
+            $HOME/go/bin/otel-cli span event --name "Attest SBOM" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)" --sockdir $sockdir
+            $HOME/go/bin/otel-cli span end --sockdir $sockdir
       - name: Upload SBOM Attestation
         id: upload-sbom
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -358,7 +379,14 @@ jobs:
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
             go install github.com/equinix-labs/otel-cli@v0.4.5
-            $HOME/go/bin/otel-cli span event --name "Attest Dependency Scan" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)"
+            sockdir=$(mktemp -d)
+            $HOME/go/bin/otel-cli span background \
+              --service $0          \
+              --name "$0 runtime"   \
+              --sockdir $sockdir & # the & is important here, background server will block
+            sleep 0.1 # give the background server just a few ms to start up
+            $HOME/go/bin/otel-cli span event --name "Attest Dependency Scan" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)" --sockdir $sockdir
+            $HOME/go/bin/otel-cli span end --sockdir $sockdir
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-dependency-scan
