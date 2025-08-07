@@ -124,6 +124,9 @@ jobs:
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
+      - name: Install otel-cli
+        run: |
+          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Provenance Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -133,7 +136,6 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-            go install github.com/equinix-labs/otel-cli@v0.4.5
             # Use otel-cli exec to avoid background server bugs
             bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)
             $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Build Provenance" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
@@ -201,6 +203,9 @@ jobs:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: metadata.json
           push-to-registry: true
+      - name: Install otel-cli
+        run: |
+          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Metadata Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -211,7 +216,6 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
-            go install github.com/equinix-labs/otel-cli@v0.4.5
             # Use otel-cli exec to avoid background server bugs
             bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)
             $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Metadata" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
@@ -271,6 +275,9 @@ jobs:
           sbom-path: sbom.cyclonedx.json
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
+      - name: Install otel-cli
+        run: |
+          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename SBOM Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -281,7 +288,6 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
-            go install github.com/equinix-labs/otel-cli@v0.4.5
             # Use otel-cli exec to avoid background server bugs
             bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)
             $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest SBOM" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
@@ -355,6 +361,9 @@ jobs:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: depscan.json
           push-to-registry: true
+      - name: Install otel-cli
+        run: |
+          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Dependency Scan Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -365,7 +374,6 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
-            go install github.com/equinix-labs/otel-cli@v0.4.5
             # Use otel-cli exec to avoid background server bugs
             bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)
             $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Dependency Scan" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
