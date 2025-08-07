@@ -116,6 +116,23 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          # Download artifact from specific run instead of release
+          gh run download 16816305608 \
+            --repo liatrio/autogov-helper \
+            --name autogov-helper
+          # Extract the binary from the downloaded directory
+          find . -name "autogov-helper" -type f -exec chmod +x {} \;
+          # Move to current directory if it's in a subdirectory
+          find . -name "autogov-helper" -type f -exec mv {} . \;
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -124,9 +141,6 @@ jobs:
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
-      - name: Install otel-cli
-        run: |
-          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Provenance Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -136,9 +150,7 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-            # Use otel-cli exec to avoid background server bugs
-            bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)
-            $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Build Provenance" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
+            autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl   
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -179,10 +191,14 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
+          # Download artifact from specific run instead of release
+          gh run download 16816305608 \
             --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
+            --name autogov-helper
+          # Extract the binary from the downloaded directory
+          find . -name "autogov-helper" -type f -exec chmod +x {} \;
+          # Move to current directory if it's in a subdirectory
+          find . -name "autogov-helper" -type f -exec mv {} . \;
       - name: Generate Metadata Attestation
         env:
           GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
@@ -203,9 +219,6 @@ jobs:
           predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
           predicate-path: metadata.json
           push-to-registry: true
-      - name: Install otel-cli
-        run: |
-          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Metadata Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -216,9 +229,7 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
-            # Use otel-cli exec to avoid background server bugs
-            bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)
-            $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Metadata" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
+            autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-metadata
@@ -255,6 +266,18 @@ jobs:
         with:
           scope: liatrio
           identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          # Download artifact from specific run instead of release
+          gh run download 16816305608 \
+            --repo liatrio/autogov-helper \
+            --name autogov-helper
+          # Extract the binary from the downloaded directory
+          find . -name "autogov-helper" -type f -exec chmod +x {} \;
+          # Move to current directory if it's in a subdirectory
+          find . -name "autogov-helper" -type f -exec mv {} . \;
       - name: Generate SBOM
         uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
         with:
@@ -275,9 +298,6 @@ jobs:
           sbom-path: sbom.cyclonedx.json
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
-      - name: Install otel-cli
-        run: |
-          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename SBOM Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -288,9 +308,7 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
-            # Use otel-cli exec to avoid background server bugs
-            bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)
-            $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest SBOM" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
+            autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -331,10 +349,14 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
+          # Download artifact from specific run instead of release
+          gh run download 16816305608 \
             --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
+            --name autogov-helper
+          # Extract the binary from the downloaded directory
+          find . -name "autogov-helper" -type f -exec chmod +x {} \;
+          # Move to current directory if it's in a subdirectory
+          find . -name "autogov-helper" -type f -exec mv {} . \;
       - name: Scan current project
         uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
         id: anchore-scan
@@ -361,9 +383,6 @@ jobs:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: depscan.json
           push-to-registry: true
-      - name: Install otel-cli
-        run: |
-          go install github.com/equinix-labs/otel-cli@v0.4.5
       - name: Rename Dependency Scan Bundle
         uses: krzko/run-with-telemetry@v0.5.0
         with:
@@ -374,9 +393,7 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
-            # Use otel-cli exec to avoid background server bugs
-            bundle_data=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)
-            $HOME/go/bin/otel-cli exec --verbose --service "github-actions" --name "Attest Dependency Scan" --attrs "attestation.bundle=$bundle_data" -- echo "Attestation event recorded"
+            autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-dependency-scan
