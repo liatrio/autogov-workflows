@@ -35,7 +35,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: emit_span_test
+        default: v0.2.2
       publish-attestations:
         description: Whether to publish attestations as release assets.
         required: false
