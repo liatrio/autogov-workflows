@@ -62,7 +62,7 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
-  OTEL_EXPORTER_OTLP_ENDPOINT: o11y-gh-traces-receiver.dev.k8s-platform-v3.liatr.io:443/v1
+  OTEL_EXPORTER_OTLP_ENDPOINT: o11y-gh-traces-receiver.dev.k8s-platform-v3.liatr.io:4318/v1
   OTEL_SERVICE_NAME: ${{ github.repository }}
 
 jobs:
