@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: emit_span_prerelease
+        default: emit_span_test
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
