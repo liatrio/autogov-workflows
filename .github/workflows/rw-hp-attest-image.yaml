@@ -123,7 +123,7 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename Provenance Bundle
-        uses: krzko/run-with-telemetry@main
+        uses: krzko/run-with-telemetry@v0.5.0
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
@@ -197,7 +197,7 @@ jobs:
           predicate-path: metadata.json
           push-to-registry: true
       - name: Rename Metadata Bundle
-        uses: krzko/run-with-telemetry@main
+        uses: krzko/run-with-telemetry@v0.5.0
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
@@ -258,7 +258,7 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename SBOM Bundle
-        uses: krzko/run-with-telemetry@main
+        uses: krzko/run-with-telemetry@v0.5.0
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
@@ -338,7 +338,7 @@ jobs:
           predicate-path: depscan.json
           push-to-registry: true
       - name: Rename Dependency Scan Bundle
-        uses: krzko/run-with-telemetry@main
+        uses: krzko/run-with-telemetry@v0.5.0
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
