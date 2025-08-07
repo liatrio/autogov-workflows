@@ -1,4 +1,4 @@
-name: Build Entrypoint Caller Workflow
+name: Build Entrypoint Temp Test
 
 on:
   workflow_dispatch:
@@ -25,12 +25,12 @@ jobs:
       packages: write
       contents: write
       actions: read
-    uses: ./.github/workflows/rw-hp-build-image.yaml
+    uses: ./.github/workflows/rw-hp-build-image-temptest.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image-temptest.yaml@${{ github.ref }}
 
   # attest-blob-hp: #blob
   #   if: github.event.pull_request.draft == false
