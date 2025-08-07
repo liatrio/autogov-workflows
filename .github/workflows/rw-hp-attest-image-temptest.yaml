@@ -1,0 +1,387 @@
+name: Attest Image Temp Test
+
+on:
+  workflow_call:
+    inputs:
+      subject-name:
+        description: >
+          Subject name as it should appear in the attestation. Required unless
+          "subject-path" is specified, in which case it will be inferred from the
+          path.
+        required: true
+        type: string
+      registry:
+        description: Container registry to push image.
+        default: ghcr.io
+        required: true
+        type: string
+      show-summary:
+        description: >
+          Whether to attach a list of generated attestations to the workflow run
+          summary page. Defaults to true.
+        default: true
+        required: false
+        type: boolean
+      workflow-runner-label:
+        description: >
+          The label used for runner/OS selection, examples:
+          https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#example-specifying-an-operating-system.
+        default: ubuntu-latest
+        required: false
+        type: string
+      github-token:
+        description: >
+          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+        required: false
+        type: string
+      autogov-helper-version:
+        description: The autogov-helper version to use.
+        required: false
+        type: string
+        default: emit_span_test
+    outputs:
+      image-digest:
+        description: The image digest of the image that was built from the build-image job.
+        value: ${{ jobs.build-high-perms.outputs.image-digest }}
+      attest-build-attestation-artifact-id:
+        description: The artifact-id of the build provenance attestation artifact.
+        value: ${{ jobs.attest-build-high-perms.outputs.provenance-artifact-id }}
+      attest-metadata-attestation-artifact-id:
+        description: The artifact-id of the custom metadata attestation artifact.
+        value: ${{ jobs.attest-metadata-high-perms.outputs.metadata-artifact-id }}
+      attest-sbom-attestation-artifact-id:
+        description: The artifact-id of the SBOM attestation artifact.
+        value: ${{ jobs.attest-sbom-high-perms.outputs.sbom-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id:
+        description: The artifact-id of the dependency scan attestation artifact.
+        value: ${{ jobs.attest-dependency-scan-high-perms.outputs.dependency-scan-artifact-id }}
+
+permissions: {}
+
+env:
+  GH_TOKEN: ${{ inputs.github-token || github.token }}
+  ARTIFACTS_FOLDER: ./artifacts
+  ATTESTATIONS_FOLDER: ./attestations
+  OTEL_EXPORTER_OTLP_ENDPOINT: o11y-gh-traces-grpc-receiver.dev.k8s-platform-v3.liatr.io:443
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_EXPORTER_OTLP_HEADERS: ""
+  OTEL_SERVICE_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build-high-perms:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ${{ inputs.workflow-runner-label }}
+    outputs:
+      image-digest: ${{ steps.build-image.outputs.image-digest }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build Image
+        if: ${{ runner.environment == 'github-hosted' }}
+        id: build-image
+        uses: ./.github/actions/build-image
+        with:
+          subject-name: ${{ inputs.subject-name }}
+          registry: ${{ inputs.registry }}
+
+  attest-build-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    outputs:
+      provenance-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
+      - name: Attest Provenance
+        id: attest-build-provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          github-token: ${{ inputs.github-token || github.token }}
+          push-to-registry: true
+      - name: Rename Provenance Bundle
+        uses: krzko/run-with-telemetry@v0.5.0
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          step-name: Rename Provenance Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl   
+      - name: Upload Provenance Sigstore Bundle
+        id: upload-provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-build-provenance-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+          if-no-files-found: error
+
+  attest-metadata-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
+    outputs:
+      metadata-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
+      - name: Generate Metadata Attestation
+        env:
+          GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
+        run: |
+          set +x
+          ./autogov-helper metadata \
+            --output metadata.json \
+            --type image \
+            --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
+          cat metadata.json
+      - name: Attest Metadata
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        id: attest-metadata
+        with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-path: metadata.json
+          push-to-registry: true
+      - name: Rename Metadata Bundle
+        uses: krzko/run-with-telemetry@v0.5.0
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
+          step-name: Rename Metadata Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+      - name: Upload Metadata Sigstore Bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: upload-metadata
+        with:
+          name: image-metadata-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+          if-no-files-found: error
+
+  attest-sbom-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+      packages: write
+    outputs:
+      sbom-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
+      - name: Generate SBOM
+        uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+        with:
+          image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          upload-release-assets: false
+          upload-artifact: false
+          github-token: ${{ inputs.github-token || github.token }}
+      - name: Log SBOM File
+        run: cat sbom.cyclonedx.json | jq -r
+      - name: Generate SBOM attestation
+        id: attest-sbom
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2.4.0
+        with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          sbom-path: sbom.cyclonedx.json
+          github-token: ${{ inputs.github-token || github.token }}
+          push-to-registry: true
+      - name: Rename SBOM Bundle
+        uses: krzko/run-with-telemetry@v0.5.0
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
+          step-name: Rename SBOM Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+      - name: Upload SBOM Attestation
+        id: upload-sbom
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-sbom-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+          if-no-files-found: error
+
+  attest-dependency-scan-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: read
+    outputs:
+      dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
+      - name: Scan current project
+        uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
+        id: anchore-scan
+        with:
+          image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
+          output-format: json
+          output-file: results.json
+          fail-build: false
+      - name: Generate Dependency Scan Attestation
+        run: |
+          set +x
+          ./autogov-helper depscan \
+            --results-path results.json \
+            --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
+            --digest "${{ needs.build-high-perms.outputs.image-digest }}" \
+            --output depscan.json
+          cat depscan.json
+      - name: Attest Dependency Scan
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        id: attest-dep-scan
+        with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
+          predicate-path: depscan.json
+          push-to-registry: true
+      - name: Rename Dependency Scan Bundle
+        uses: krzko/run-with-telemetry@v0.5.0
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
+          step-name: Rename Dependency Scan Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+      - name: Upload Dependency Scan Sigstore Bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: upload-dependency-scan
+        with:
+          name: image-dep-scan-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+          if-no-files-found: error
