@@ -62,6 +62,8 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
+  OTEL_EXPORTER_OTLP_ENDPOINT: o11y-gh-traces-receiver.dev.k8s-platform-v3.liatr.io/events
+  OTEL_SERVICE_NAME: ${{ github.repository }}
 
 jobs:
   build-high-perms:
@@ -121,9 +123,15 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename Provenance Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+        uses: krzko/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          step-name: Rename Provenance Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+            otel-cli span event --name "Attest Build Provenance" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)"
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -189,9 +197,15 @@ jobs:
           predicate-path: metadata.json
           push-to-registry: true
       - name: Rename Metadata Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+        uses: krzko/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          step-name: Rename Metadata Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+            otel-cli span event --name "Attest Metadata" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)"
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-metadata
@@ -244,9 +258,15 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename SBOM Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+        uses: krzko/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          step-name: Rename SBOM Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+            otel-cli span event --name "Attest SBOM" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)"
       - name: Upload SBOM Attestation
         id: upload-sbom
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -318,9 +338,15 @@ jobs:
           predicate-path: depscan.json
           push-to-registry: true
       - name: Rename Dependency Scan Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+        uses: krzko/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          step-name: Rename Dependency Scan Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+            otel-cli span event --name "Attest Dependency Scan" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)"
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-dependency-scan
