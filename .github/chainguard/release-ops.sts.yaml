@@ -1,5 +1,5 @@
 issuer: https://token.actions.githubusercontent.com
-subject_pattern: repo:liatrio/liatrio-gh-autogov-workflows:ref:refs/heads/main
+subject_pattern: repo:liatrio/liatrio-gh-autogov-workflows:ref:refs/heads/*
 permissions:
   actions: read
   contents: write
