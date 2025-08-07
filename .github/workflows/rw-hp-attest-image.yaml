@@ -131,6 +131,7 @@ jobs:
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+            go install github.com/equinix-labs/otel-cli@latest
             otel-cli span event --name "Attest Build Provenance" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl)"
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
@@ -201,10 +202,12 @@ jobs:
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
           step-name: Rename Metadata Bundle
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+            go install github.com/equinix-labs/otel-cli@latest
             otel-cli span event --name "Attest Metadata" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl)"
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -237,6 +240,11 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
       - name: Generate SBOM
         uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
         with:
@@ -262,10 +270,12 @@ jobs:
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
           step-name: Rename SBOM Bundle
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+            go install github.com/equinix-labs/otel-cli@latest
             otel-cli span event --name "Attest SBOM" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl)"
       - name: Upload SBOM Attestation
         id: upload-sbom
@@ -342,10 +352,12 @@ jobs:
         with:
           otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
           otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ steps.octo-sts.outputs.token }}
           step-name: Rename Dependency Scan Bundle
           run: |
             mkdir ${{ env.ATTESTATIONS_FOLDER }}
             mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+            go install github.com/equinix-labs/otel-cli@latest
             otel-cli span event --name "Attest Dependency Scan" --attrs "attestation.bundle=$(base64 -i ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl)"
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
