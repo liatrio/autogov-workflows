@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.2.2
+        default: emit_span_prerelease
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -125,14 +125,10 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          # Download artifact from specific run instead of release
-          gh run download 16816305608 \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
-            --name autogov-helper
-          # Extract the binary from the downloaded directory
-          find . -name "autogov-helper" -type f -exec chmod +x {} \;
-          # Move to current directory if it's in a subdirectory
-          find . -name "autogov-helper" -type f -exec mv {} . \;
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -191,14 +187,10 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          # Download artifact from specific run instead of release
-          gh run download 16816305608 \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
-            --name autogov-helper
-          # Extract the binary from the downloaded directory
-          find . -name "autogov-helper" -type f -exec chmod +x {} \;
-          # Move to current directory if it's in a subdirectory
-          find . -name "autogov-helper" -type f -exec mv {} . \;
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Generate Metadata Attestation
         env:
           GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
@@ -270,14 +262,10 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          # Download artifact from specific run instead of release
-          gh run download 16816305608 \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
-            --name autogov-helper
-          # Extract the binary from the downloaded directory
-          find . -name "autogov-helper" -type f -exec chmod +x {} \;
-          # Move to current directory if it's in a subdirectory
-          find . -name "autogov-helper" -type f -exec mv {} . \;
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Generate SBOM
         uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
         with:
@@ -349,14 +337,10 @@ jobs:
         run: |
           set +x
           export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          # Download artifact from specific run instead of release
-          gh run download 16816305608 \
+          gh release download ${{ inputs.autogov-helper-version }} \
             --repo liatrio/autogov-helper \
-            --name autogov-helper
-          # Extract the binary from the downloaded directory
-          find . -name "autogov-helper" -type f -exec chmod +x {} \;
-          # Move to current directory if it's in a subdirectory
-          find . -name "autogov-helper" -type f -exec mv {} . \;
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Scan current project
         uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
         id: anchore-scan
