@@ -63,6 +63,7 @@ env:
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
   OTEL_EXPORTER_OTLP_ENDPOINT: https://o11y-gh-traces-grpc-receiver.dev.k8s-platform-v3.liatr.io
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
   OTEL_EXPORTER_OTLP_HEADERS: ""
   OTEL_SERVICE_NAME: ${{ github.repository }}
 
