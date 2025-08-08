@@ -17,7 +17,7 @@ on:
 permissions: {}
 
 jobs:
-  attest-image-hp: #image
+  attest-image-hp-temp: #image
     if: github.event.pull_request.draft == false
     permissions:
       id-token: write
