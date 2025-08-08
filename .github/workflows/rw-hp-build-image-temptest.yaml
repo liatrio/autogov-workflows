@@ -52,7 +52,7 @@ jobs:
       packages: write
       contents: read
       actions: read
-    uses: ./.github/workflows/rw-hp-attest-image.yaml
+    uses: ./.github/workflows/rw-hp-attest-image-temptest.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
