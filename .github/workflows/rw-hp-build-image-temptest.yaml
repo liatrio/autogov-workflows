@@ -45,65 +45,65 @@ on:
 permissions: {}
 
 jobs:
-  attest-image: #image
+  attest-image-temp: #image
     permissions:
       id-token: write
       attestations: write
       packages: write
       contents: read
       actions: read
-    uses: ./.github/workflows/rw-hp-attest-image.yaml
+    uses: ./.github/workflows/rw-hp-attest-image-temptest.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
       registry: ${{ inputs.registry }}
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
-  verify-image: #image
+  verify-image-temp: #image
     permissions:
       id-token: write
       attestations: read
       contents: read
       packages: read
       actions: read
-    needs: [attest-image]
+    needs: [attest-image-temp]
     uses: ./.github/workflows/rw-hp-verify.yaml
     secrets: inherit
     with:
       build-type: image
       registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      image-digest: ${{ needs.attest-image-temp.outputs.image-digest }}
       cert-identity: ${{ inputs.cert-identity }}
       autogov-verify-version: ${{ inputs.autogov-verify-version }}
 
-  run-opa-image: #image
+  run-opa-image-temp: #image
     permissions:
       id-token: write
       attestations: read
       packages: read
       actions: read
-    needs: [verify-image, attest-image]
+    needs: [verify-image-temp, attest-image-temp]
     uses: ./.github/workflows/rw-hp-run-opa.yaml
     secrets: inherit
     with:
       build-type: image
       registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      image-digest: ${{ needs.attest-image-temp.outputs.image-digest }}
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
 
-  release-image: #image
+  release-image-temp: #image
     permissions:
       contents: write
       id-token: write
       actions: read
-    needs: [verify-image, attest-image, run-opa-image]
+    needs: [verify-image-temp, attest-image-temp, run-opa-image-temp]
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
     with:
       build-type: image
-      attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
-      attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
+      attest-build-attestation-artifact-id: ${{ needs.attest-image-temp.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestation-artifact-id: ${{ needs.attest-image-temp.outputs.attest-metadata-attestation-artifact-id }}
+      attest-sbom-attestation-artifact-id: ${{ needs.attest-image-temp.outputs.attest-sbom-attestation-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image-temp.outputs.attest-dependency-scan-attestation-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-image-temp.outputs.results-artifact-id }}
       publish-attestations: ${{ inputs.publish-attestations }}
