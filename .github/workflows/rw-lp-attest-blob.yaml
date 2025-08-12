@@ -41,7 +41,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.3.0
+        default: v0.4.0
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
