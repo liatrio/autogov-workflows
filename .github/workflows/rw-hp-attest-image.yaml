@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.2.2
+        default: v0.3.0
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -62,6 +62,10 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
+  OTEL_EXPORTER_OTLP_ENDPOINT: o11y-gh-traces-grpc-receiver.dev.k8s-platform-v3.liatr.io:443
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_EXPORTER_OTLP_HEADERS: ""
+  OTEL_SERVICE_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build-high-perms:
@@ -94,6 +98,7 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
       packages: write
@@ -112,6 +117,19 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -121,9 +139,17 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename Provenance Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+        uses: liatrio/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ inputs.github-token || github.token }}
+          step-name: Rename Provenance Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
+            export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl   
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -136,6 +162,7 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       contents: read
       id-token: write
       attestations: write
@@ -189,9 +216,17 @@ jobs:
           predicate-path: metadata.json
           push-to-registry: true
       - name: Rename Metadata Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+        uses: liatrio/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ inputs.github-token || github.token }}
+          step-name: Rename Metadata Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
+            export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-metadata
@@ -204,6 +239,7 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
       contents: read
@@ -223,6 +259,19 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-helper
+        run: |
+          set +x
+          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
+          gh release download ${{ inputs.autogov-helper-version }} \
+            --repo liatrio/autogov-helper \
+            --pattern "autogov-helper"
+          chmod +x autogov-helper
       - name: Generate SBOM
         uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
         with:
@@ -244,9 +293,17 @@ jobs:
           github-token: ${{ inputs.github-token || github.token }}
           push-to-registry: true
       - name: Rename SBOM Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+        uses: liatrio/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ inputs.github-token || github.token }}
+          step-name: Rename SBOM Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
+            export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -259,6 +316,7 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
       packages: write
@@ -292,9 +350,10 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Scan current project
-        uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
+        uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
         id: anchore-scan
         with:
+          grype-version: "v0.97.1"  # Pin to known working version before recent schema changes
           image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
           output-format: json
           output-file: results.json
@@ -318,9 +377,17 @@ jobs:
           predicate-path: depscan.json
           push-to-registry: true
       - name: Rename Dependency Scan Bundle
-        run: |
-          mkdir ${{ env.ATTESTATIONS_FOLDER }}
-          mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+        uses: liatrio/run-with-telemetry@main
+        with:
+          otel-exporter-otlp-endpoint: ${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          otel-service-name: ${{ env.OTEL_SERVICE_NAME }}
+          github-token: ${{ inputs.github-token || github.token }}
+          step-name: Rename Dependency Scan Bundle
+          run: |
+            mkdir ${{ env.ATTESTATIONS_FOLDER }}
+            mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+            export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
+            ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: upload-dependency-scan
