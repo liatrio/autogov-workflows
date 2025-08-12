@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.3.0
+        default: v0.4.0
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -353,7 +353,6 @@ jobs:
         uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
         id: anchore-scan
         with:
-          grype-version: "v0.97.1"  # Pin to known working version before recent schema changes
           image: ${{ format('{0}/{1}@{2}', inputs.registry, github.repository, needs.build-high-perms.outputs.image-digest) }}
           output-format: json
           output-file: results.json
