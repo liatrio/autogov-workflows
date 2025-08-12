@@ -31,7 +31,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.3.0
+        default: v0.4.0
       publish-attestations:
         description: Whether to publish attestations as release assets.
         required: false
