@@ -1,9 +1,21 @@
 {
   "identities": [
     {
+      "version": "0.10.1",
+      "sha": "17cc339a738d2e9c00b6fe1b48455caa75ed95bc",
+      "status": "latest",
+      "identities": [
+        "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@17cc339a738d2e9c00b6fe1b48455caa75ed95bc",
+        "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@17cc339a738d2e9c00b6fe1b48455caa75ed95bc",
+        "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@17cc339a738d2e9c00b6fe1b48455caa75ed95bc"
+      ],
+      "added": "2025-08-18",
+      "expires": "2026-08-18"
+    },
+    {
       "version": "0.10.0",
       "sha": "a7cab0b4bbf44c6799dba7b057fc549774f1bff9",
-      "status": "latest",
+      "status": "approved",
       "identities": [
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@a7cab0b4bbf44c6799dba7b057fc549774f1bff9",
         "https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@a7cab0b4bbf44c6799dba7b057fc549774f1bff9",
@@ -687,8 +699,8 @@
     }
   ],
   "metadata": {
-    "last_updated": "2025-08-12",
-    "version": "v0.10.0",
+    "last_updated": "2025-08-18",
+    "version": "v0.10.1",
     "maintainer": "@liatrio/tag-autogov"
   }
 }
