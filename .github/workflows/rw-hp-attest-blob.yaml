@@ -183,6 +183,7 @@ jobs:
       - name: Generate Metadata Attestation
         env:
           GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
+          POLICY_REF: https://github.com/liatrio/liatrio-rego-policy-library
         run: |
           set +x
           ./autogov-helper metadata \
