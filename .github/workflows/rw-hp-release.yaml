@@ -120,25 +120,6 @@ jobs:
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-      - name: Check for release-image composite action
-        id: check-release-action
-        run: |
-          if [ -f ".github/actions/release-image/action.yaml" ] || [ -f ".github/actions/release-image/action.yml" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Run release-image composite action
-        if: steps.check-release-action.outputs.exists == 'true'
-        uses: ./.github/actions/release-image
-        id: custom-release
-        with:
-          github-token: ${{ steps.octo-sts.outputs.token }}
-          artifacts-folder: ${{ env.ARTIFACTS_FOLDER }}
-          attestations-folder: ${{ env.ATTESTATIONS_FOLDER }}
-          results-folder: ${{ env.RESULTS_FOLDER }}
-      - name: Run semantic-release (default)
-        if: steps.check-release-action.outputs.exists == 'false'
         uses: cycjimmy/semantic-release-action@16ca923e6ccbb50770c415a0ccd43709a8c5f7a4 # v4.2.2
         id: semantic-release
         with:
@@ -153,16 +134,10 @@ jobs:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
           IMAGE_DIGEST: ${{ inputs.image-digest }}
       - name: Upload Results/Sigstore Bundle as Release Asset
-        if: |
-          (steps.semantic-release.outputs.new_release_published == 'true') ||
-          (steps.custom-release.conclusion == 'success')
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           files: |
             ${{ env.RESULTS_ARTIFACT_ID != '' && format('{0}/results-*', env.RESULTS_FOLDER) || '' }}
             ${{ inputs.publish-attestations && format('{0}/*', env.ATTESTATIONS_FOLDER) || '' }}
             ${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}
-          tag_name: |
-            ${{ steps.semantic-release.outputs.new_release_version && format('v{0}', steps.semantic-release.outputs.new_release_version) ||
-                steps.custom-release.outputs.release_tag || 'latest' }}
           token: ${{ inputs.github-token || github.token }}

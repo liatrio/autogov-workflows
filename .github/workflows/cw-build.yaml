@@ -31,6 +31,9 @@ jobs:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      release-image: false
+      run-opa-image: false
+      
 
   # attest-blob-hp: #blob
   #   if: github.event.pull_request.draft == false
