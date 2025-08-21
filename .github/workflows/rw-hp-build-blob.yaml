@@ -37,6 +37,21 @@ on:
         required: false
         type: boolean
         default: true
+      verify-blob:
+        description: Whether to run the verify-blob job.
+        required: false
+        type: boolean
+        default: true
+      run-opa-blob:
+        description: Whether to run the run-opa-blob job.
+        required: false
+        type: boolean
+        default: true
+      release-blob:
+        description: Whether to run the release-blob job.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -54,6 +69,7 @@ jobs:
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
   verify-blob: #blob
+    if: ${{ inputs.verify-blob }}
     permissions:
       id-token: write
       attestations: read
@@ -70,6 +86,7 @@ jobs:
       autogov-verify-version: ${{ inputs.autogov-verify-version }}
 
   run-opa-blob: #blob
+    if: ${{ inputs.run-opa-blob }}
     permissions:
       id-token: write
       attestations: read
@@ -84,6 +101,7 @@ jobs:
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
 
   release-blob: #blob
+    if: ${{ inputs.release-blob }}
     permissions:
       contents: write
       id-token: write
