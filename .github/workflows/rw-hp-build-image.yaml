@@ -101,6 +101,7 @@ jobs:
     secrets: inherit
     with:
       build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
       attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
