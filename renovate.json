@@ -10,7 +10,9 @@
       "matchDepTypes": [
         "action"
       ],
-      "pinDigests": true
+      "pinDigests": true,
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions"
     }
   ],
   "schedule": [
