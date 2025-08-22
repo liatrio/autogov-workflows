@@ -16,11 +16,6 @@ on:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
-      ignore-dependency-vulnerabilities:
-        description: Whether to ignore dependency vulnerabilities in policy checks.
-        required: false
-        type: boolean
-        default: false
       verify-blob:
         description: Whether to run the verify-blob job.
         required: false

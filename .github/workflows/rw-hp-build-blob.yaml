@@ -116,5 +116,5 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id || '' }}
       publish-attestations: ${{ inputs.publish-attestations }}
