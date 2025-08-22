@@ -75,7 +75,6 @@ jobs:
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
   verify-image: #image
-    if: ${{ inputs.verify-image }}
     permissions:
       id-token: write
       attestations: read
@@ -83,31 +82,44 @@ jobs:
       packages: read
       actions: read
     needs: [attest-image]
-    uses: ./.github/workflows/rw-hp-verify.yaml
-    secrets: inherit
-    with:
-      build-type: image
-      registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      cert-identity: ${{ inputs.cert-identity }}
-      autogov-verify-version: ${{ inputs.autogov-verify-version }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run verify-image logic
+        if: ${{ inputs.verify-image }}
+        uses: ./.github/workflows/rw-hp-verify.yaml
+        with:
+          build-type: image
+          registry: ${{ inputs.registry }}
+          image-digest: ${{ needs.attest-image.outputs.image-digest }}
+          cert-identity: ${{ inputs.cert-identity }}
+          autogov-verify-version: ${{ inputs.autogov-verify-version }}
+      - name: No-op if verify-image is false
+        if: ${{ !inputs.verify-image }}
+        run: echo "verify-image skipped"
+
 
   run-opa-image: #image
-    if: ${{ inputs.run-opa-image }}
     permissions:
       id-token: write
       attestations: read
       packages: read
       actions: read
     needs: [verify-image, attest-image]
-    uses: ./.github/workflows/rw-hp-run-opa.yaml
-    secrets: inherit
-    with:
-      build-type: image
-      registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      subject-name: ${{ github.repository }}
-      ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run OPA logic
+        if: ${{ inputs.run-opa-image }}
+        uses: ./.github/workflows/rw-hp-run-opa.yaml
+        with:
+          build-type: image
+          registry: ${{ inputs.registry }}
+          image-digest: ${{ needs.attest-image.outputs.image-digest }}
+          subject-name: ${{ github.repository }}
+          ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
+      - name: No-op if run-opa-image is false
+        if: ${{ !inputs.run-opa-image }}
+        run: echo "run-opa-image skipped"
+
   test-dep: #image
     permissions:
       contents: write
@@ -117,15 +129,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Print results-artifact-id
+        if: ${{ inputs.run-opa-image }}
         run: echo ${{ needs.run-opa-image.outputs.results-artifact-id }}
+      - name: No-op if run-opa-image is false
+        if: ${{ !inputs.run-opa-image }}
+        run: echo "test-dep skipped because run-opa-image is false"
+
 
   test-opa-output:
     needs: [run-opa-image]
     runs-on: ubuntu-latest
     steps:
       - name: Echo OPA results artifact id
+        if: ${{ inputs.run-opa-image }}
         run: |
           echo "OPA results artifact id: ${{ needs.run-opa-image.outputs.results-artifact-id }}"
+      - name: No-op if run-opa-image is false
+        if: ${{ !inputs.run-opa-image }}
+        run: echo "test-opa-output skipped because run-opa-image is false"
   release-image: #image
     if: ${{ inputs.release-image }}
     permissions:
