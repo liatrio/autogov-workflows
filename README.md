@@ -1145,6 +1145,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
 - `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
+- `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
 
@@ -1153,11 +1154,13 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
 - `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
+- `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml.
+- `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
