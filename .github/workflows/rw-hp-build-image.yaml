@@ -35,9 +35,14 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.0
+        default: v0.4.2
       publish-attestations:
         description: Whether to publish attestations as release assets.
+        required: false
+        type: boolean
+        default: true
+      release-image:
+        description: Whether to run the release-image job.
         required: false
         type: boolean
         default: true
@@ -97,10 +102,12 @@ jobs:
       id-token: write
       actions: read
     needs: [verify-image, attest-image, run-opa-image]
+    if: ${{ inputs.release-image }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
     with:
       build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
       attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}

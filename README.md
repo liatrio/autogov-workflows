@@ -1143,21 +1143,24 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
-- `autogov-verify-version` (optional, string, default: 'v0.7.5'): The autogov-verify version to use.
-- `autogov-helper-version` (optional, string, default: 'v0.3.0'): The autogov-helper version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
+- `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
-- `autogov-verify-version` (optional, string, default: 'v0.7.5'): The autogov-verify version to use.
-- `autogov-helper-version` (optional, string, default: 'v0.3.0'): The autogov-helper version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
+- `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml.
+- `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
@@ -1166,7 +1169,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.3.0'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-image.yaml`
 
@@ -1175,7 +1178,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.3.0'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
@@ -1184,7 +1187,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.3.0'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-verify.yaml`
 
@@ -1195,7 +1198,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `autogov-verify-version` (optional, string, default: 'v0.7.5'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
 
 #### `.github/workflows/rw-hp-run-opa.yaml`
 
@@ -1213,7 +1216,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
@@ -1241,7 +1244,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `.github/workflows/rw-hp-run-opa.yaml`
 
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 
 #### `.github/workflows/rw-hp-release.yaml`
 
@@ -1267,7 +1270,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `opa-version` (required, string, default: 'v1.1.0'): The version of Open Policy Agent (OPA) to use.
 
@@ -1277,7 +1280,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
@@ -1305,7 +1308,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `.github/workflows/rw-lp-run-opa.yaml`
 
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 
 #### `.github/actions/build-image/action.yaml`
 
