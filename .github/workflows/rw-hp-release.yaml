@@ -30,7 +30,7 @@ on:
       results-artifact-id:
         type: string
         description: The artifact-id of the results artifact.
-        required: true
+        required: false
         default: ${{ github.event.needs.run-opa.outputs.results-artifact-id }}
       workflow-runner-label:
         type: string
@@ -58,7 +58,7 @@ on:
 env:
   ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}"
   BLOB_ARTIFACT_ID: ${{ inputs.build-type == 'blob' && inputs.blob-artifact-id || '' }}
-  RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id }}
+  RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id || '' }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
   RESULTS_FOLDER: ./${{ inputs.build-type }}-results
@@ -108,6 +108,7 @@ jobs:
           path: ${{ env.ATTESTATIONS_FOLDER }}
           merge-multiple: true
       - name: Download opa-run Results
+        if: ${{ env.RESULTS_ARTIFACT_ID != '' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
@@ -138,7 +139,7 @@ jobs:
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           files: |
-            ${{ env.RESULTS_FOLDER }}/results-*
+            ${{ env.RESULTS_ARTIFACT_ID != '' && format('{0}/results-*', env.RESULTS_FOLDER) || '' }}
             ${{ inputs.publish-attestations && format('{0}/*', env.ATTESTATIONS_FOLDER) || '' }}
             ${{ inputs.build-type == 'blob' && env.BLOB_ARTIFACT_ID && format('{0}/*', env.ARTIFACTS_FOLDER) || '' }}
           tag_name: v${{ steps.semantic-release.outputs.new_release_version }}

@@ -1213,7 +1213,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
@@ -1241,7 +1241,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `.github/workflows/rw-hp-run-opa.yaml`
 
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 
 #### `.github/workflows/rw-hp-release.yaml`
 
@@ -1267,7 +1267,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `opa-version` (required, string, default: 'v1.1.0'): The version of Open Policy Agent (OPA) to use.
 
@@ -1277,7 +1277,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
 
@@ -1305,7 +1305,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `.github/workflows/rw-lp-run-opa.yaml`
 
-- `results-artifact-id` (required, string): The artifact-id of the results artifacts.
+- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 
 #### `.github/actions/build-image/action.yaml`
 
