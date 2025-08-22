@@ -37,6 +37,11 @@ on:
         required: false
         type: boolean
         default: true
+      release-blob:
+        description: Whether to run the release-blob job.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -89,6 +94,7 @@ jobs:
       id-token: write
       actions: read
     needs: [verify-blob, attest-blob, run-opa-blob]
+    if: ${{ inputs.release-blob }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
     with:

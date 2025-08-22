@@ -21,6 +21,11 @@ on:
         required: false
         type: boolean
         default: true
+      release-blob:
+        description: Whether to run the release-blob job.
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -67,6 +72,7 @@ jobs:
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
 
   release-blob: #blob
+    if: ${{ inputs.release-blob }}
     permissions:
       id-token: write
       contents: write
