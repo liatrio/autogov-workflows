@@ -89,6 +89,7 @@ jobs:
       id-token: write
       actions: read
     needs: [verify-blob, attest-blob, run-opa-blob]
+    if: ${{ inputs.release-blob }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
     with:
