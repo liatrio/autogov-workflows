@@ -16,6 +16,26 @@ on:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
+      ignore-dependency-vulnerabilities:
+        description: Whether to ignore dependency vulnerabilities in policy checks.
+        required: false
+        type: boolean
+        default: false
+      verify-blob:
+        description: Whether to run the verify-blob job.
+        required: false
+        type: boolean
+        default: true
+      run-opa-blob:
+        description: Whether to run the run-opa-blob job.
+        required: false
+        type: boolean
+        default: true
+      release-blob:
+        description: Whether to run the release-blob job.
+        required: false
+        type: boolean
+        default: true
       publish-attestations:
         description: Whether to publish attestations as release assets.
         required: false
@@ -37,6 +57,7 @@ jobs:
       subject-path: ${{ inputs.subject-path }}
 
   verify-blob: #blob
+    if: ${{ inputs.verify-blob }}
     permissions:
       contents: read
       actions: read
@@ -52,6 +73,7 @@ jobs:
       cert-identity: ${{ inputs.cert-identity }}
 
   run-opa-blob: #blob
+    if: ${{ inputs.run-opa-blob }}
     permissions:
       id-token: write
       contents: read
@@ -67,6 +89,7 @@ jobs:
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
 
   release-blob: #blob
+    if: ${{ inputs.release-blob }}
     permissions:
       id-token: write
       contents: write
@@ -80,5 +103,5 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
+      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id || '' }}
       publish-attestations: ${{ inputs.publish-attestations }}
