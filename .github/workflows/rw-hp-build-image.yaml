@@ -117,6 +117,14 @@ jobs:
     steps:
       - name: Print results-artifact-id
         run: echo ${{ needs.run-opa-image.outputs.results-artifact-id }}
+
+  test-opa-output:
+    needs: [run-opa-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo OPA results artifact id
+        run: |
+          echo "OPA results artifact id: ${{ needs.run-opa-image.outputs.results-artifact-id }}"
   release-image: #image
     if: ${{ inputs.release-image }}
     permissions:
