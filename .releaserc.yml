@@ -18,5 +18,5 @@ plugins:
   - - "@semantic-release/github"
     - successComment: false
       failTitle: false
-      failComment: false
+      failCommentCondition: false
       labels: ["automated", "release"]
