@@ -1154,7 +1154,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
 - `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
-- `release-image` (optional, boolean, default: true): Whether to run the release-image job.
+- `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
 
