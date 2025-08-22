@@ -37,7 +37,11 @@ on:
         required: false
         type: boolean
         default: true
-
+      release-image:
+        description: Whether to run the release-image job.
+        required: false
+        type: boolean
+        default: true
 permissions: {}
 
 jobs:
