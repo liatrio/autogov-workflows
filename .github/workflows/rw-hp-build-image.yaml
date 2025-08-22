@@ -106,6 +106,7 @@ jobs:
       build-type: image
       registry: ${{ inputs.registry }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      subject-name: ${{ github.repository }}
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
   test-dep: #image
     permissions:
