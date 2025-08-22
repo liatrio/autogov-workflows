@@ -22,7 +22,7 @@ on:
         type: boolean
         default: true
       release-blob:
-        description: Whether to run the release-blob job.
+        description:  Whether or not to run the release-blob job.
         required: false
         type: boolean
         default: true
