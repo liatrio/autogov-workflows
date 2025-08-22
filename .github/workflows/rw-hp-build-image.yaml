@@ -107,7 +107,16 @@ jobs:
       registry: ${{ inputs.registry }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
-
+  test-dep: #image
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    needs: [verify-image, attest-image, run-opa-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print results-artifact-id
+        run: echo ${{ needs.run-opa-image.outputs.results-artifact-id }}
   release-image: #image
     if: ${{ inputs.release-image }}
     permissions:
@@ -124,5 +133,5 @@ jobs:
       attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id || '' }}
+      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
       publish-attestations: ${{ inputs.publish-attestations }}
