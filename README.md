@@ -1288,15 +1288,30 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `.github/workflows/rw-hp-build-image.yaml`
 
-- No outputs for this action
+- `attest-build-attestation-artifact-id` (string): Attestation artifact ID
+- `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
+- `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
+- `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
+- `image-digest` (string): image-digest
+- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
 
-- No outputs for this action
+- `attest-build-attestation-artifact-id` (string): Attestation artifact ID
+- `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
+- `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
+- `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
+- `blob-artifact-id` (string): Blob artifact ID
+- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
 
-- No outputs for this action
+- `attest-build-attestation-artifact-id` (string): Attestation artifact ID
+- `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
+- `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
+- `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
+- `blob-artifact-id` (string): Blob artifact ID
+- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
