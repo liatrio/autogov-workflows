@@ -61,6 +61,7 @@ on:
       results-artifact-id: 
         description: "Results artifact ID"
         value: ${{ jobs.run-opa-blob.outputs.results-artifact-id }}
+
 permissions: {}
 
 jobs:
