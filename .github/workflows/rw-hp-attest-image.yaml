@@ -83,7 +83,7 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Checkout code
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -211,7 +211,7 @@ jobs:
             --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         id: attest-metadata
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -377,7 +377,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         id: attest-dep-scan
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
