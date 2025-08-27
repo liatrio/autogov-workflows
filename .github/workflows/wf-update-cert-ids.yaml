@@ -9,6 +9,8 @@ on:
     branches:
       - 'main'
 
+permissions: {}
+
 jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
@@ -24,14 +26,16 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
           fetch-tags: true
-
+      - name: Create Release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          draft: true
       - name: Generate STS Token
         uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-
       - name: Check if update is needed
         id: check-update
         run: |
@@ -44,7 +48,6 @@ jobs:
             echo "Tag SHA not found in cert-identities.json. Update needed."
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
       - name: Get release version from tag
         id: get-version
         if: steps.check-update.outputs.skip != 'true'
@@ -53,7 +56,6 @@ jobs:
           echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "Latest version: $LATEST_VERSION"
-
       - name: Get tag SHA
         id: get-tag-sha
         if: steps.check-update.outputs.skip != 'true'
@@ -63,19 +65,16 @@ jobs:
           echo "TAG_SHA=$TAG_SHA" >> $GITHUB_ENV
           echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
           echo "Tag SHA: $TAG_SHA"
-
       - name: Update certificate identities
         if: steps.check-update.outputs.skip != 'true'
         run: |
           export COMMIT_SHA="$TAG_SHA"
           ./scripts/update-cert-identities.sh "$VERSION"
-
       - name: Get latest main commit SHA
         id: get-main-sha
         if: steps.check-update.outputs.skip != 'true'
         run: |
           echo "sha=$(git rev-parse origin/main)" >> $GITHUB_OUTPUT
-
       - name: Update files and tag
         if: steps.check-update.outputs.skip != 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
@@ -195,8 +194,9 @@ jobs:
             }
       - name: Upload Results as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
+          draft: false
           files: |
             cert-identities.json
           tag_name: v${{ steps.get-version.outputs.version }}
