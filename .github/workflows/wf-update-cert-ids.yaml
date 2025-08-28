@@ -26,10 +26,6 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
           fetch-tags: true
-      - name: Create Release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          draft: true
       - name: Generate STS Token
         uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
@@ -194,9 +190,8 @@ jobs:
             }
       - name: Upload Results as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
-          draft: false
           files: |
             cert-identities.json
           tag_name: v${{ steps.get-version.outputs.version }}
