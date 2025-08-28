@@ -66,6 +66,7 @@ jobs:
       contents: write
       id-token: write
       actions: read
+      pull-requests: write
     outputs:
       release-version: ${{ steps.release-please.outputs.tag_name }}
     steps:
@@ -80,10 +81,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Create Release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          draft: true
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)
