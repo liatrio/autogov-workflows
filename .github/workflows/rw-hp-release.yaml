@@ -88,10 +88,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Create Release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          draft: true
       - name: Create Artifacts Folder
         if: ${{ inputs.build-type == 'blob' }}
         run: mkdir ${{ env.ARTIFACTS_FOLDER }}
