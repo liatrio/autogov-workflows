@@ -1,7 +1,7 @@
 FROM ghcr.io/liatrio/python:3.13-slim
 
 # x-release-please-start-version
-ENV VERSION="0.11.2"
+ENV VERSION="0.12.1"
 # x-release-please-end
 
 LABEL org.opencontainers.image.version="${VERSION}"

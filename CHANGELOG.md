@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.12.0...v0.12.1) (2025-08-28)
+
+
+### Bug Fixes
+
+* softprops/action gh release workaround ([#230](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/230)) ([b0d7675](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/b0d767530b14a7a56e3d3880a475c0400e7d7fcb))
+* softprops/action gh release workaround ([#231](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/231)) ([82c1292](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/82c1292e406c2e8e9cd11402b51b09cbc42487e9))
+
 ## [0.12.0](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.11.2...v0.12.0) (2025-08-28)
 
 
