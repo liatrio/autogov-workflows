@@ -81,10 +81,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Create Release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
-        with:
-          draft: true
       - name: Create Attestations and Artifacts Folders
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Sigstore Bundle(s)
@@ -121,6 +117,7 @@ jobs:
           token: ${{ steps.octo-sts.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-pull-request: true
       - name: Upload Release Assets
         if: ${{ steps.release-please.outputs.release_created }}
         env:
