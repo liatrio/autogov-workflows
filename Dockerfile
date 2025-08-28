@@ -1,7 +1,8 @@
 FROM ghcr.io/liatrio/python:3.13-slim
 
-# x-release-please-version
+# x-release-please-start-version
 ENV VERSION="0.11.2"
+# x-release-please-end
 
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.description="Dedicated reusable automated governance workflows for internal Liatrio use."
@@ -13,4 +14,3 @@ RUN pip install --no-cache-dir Flask && \
 USER appuser
 
 CMD ["python3", "/app.py"]
-
