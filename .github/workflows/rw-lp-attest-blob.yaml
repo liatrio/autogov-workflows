@@ -85,7 +85,7 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -290,7 +290,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Generate SBOM
-        uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+        uses: anchore/sbom-action@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           format: cyclonedx-json
@@ -358,7 +358,7 @@ jobs:
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
       - name: Scan current project
-        uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
+        uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
         id: anchore-scan
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}

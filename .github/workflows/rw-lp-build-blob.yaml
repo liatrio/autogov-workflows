@@ -26,6 +26,25 @@ on:
         required: false
         type: boolean
         default: true
+    outputs:
+      attest-build-attestation-artifact-id:
+        description: "Attestation artifact ID"
+        value: ${{ jobs.attest-blob.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestation-artifact-id:
+        description: "Metadata artifact ID" 
+        value: ${{ jobs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
+      attest-sbom-attestation-artifact-id:
+        description: "SBOM artifact ID"  
+        value: ${{ jobs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id: 
+        description: "Dependency scan artifact ID" 
+        value: ${{ jobs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
+      blob-artifact-id: 
+        description: "Blob artifact ID"
+        value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
+      results-artifact-id: 
+        description: "Results artifact ID"
+        value: ${{ jobs.run-opa-blob.outputs.results-artifact-id }}
 
 permissions: {}
 
