@@ -61,7 +61,7 @@ on:
         value: ${{ jobs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
       image-digest: 
         description: "image-digest"
-        value: ${{ jobs.attest-image.outputs.image-digest}}
+        value: ${{ jobs.attest-image.outputs.image-digest }}
       results-artifact-id: 
         description: "Results artifact ID"
         value: ${{ jobs.run-opa-image.outputs.results-artifact-id }}
