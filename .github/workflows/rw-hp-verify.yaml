@@ -50,7 +50,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.4.4
+        default: v0.6.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -156,7 +156,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          oras login ghcr.io --username ${{ github.actor }} --password ${{ steps.octo-sts.outputs.token }}
+          set +x
           oras pull \
             ghcr.io/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}:latest
       - name: Download Policy Schemas
@@ -169,29 +169,32 @@ jobs:
           mkdir -p schemas
           tar -xzf schemas.tar.gz -C schemas
       - name: Verification and VSA Generation for Image Attestation(s)
+        env:
+          GH_TOKEN: ${{ inputs.github-token || github.token }}
         id: verify-image
         if: ${{ inputs.build-type == 'image' }}
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
           ./autogov-verify \
-            --image-digest "${{ inputs.image-digest }}" \
+            --artifact-digest "${{ format('{0}/{1}@{2}', inputs.registry, inputs.subject-name, inputs.image-digest) }}" \
             --cert-identity "${{ inputs.cert-identity }}" \
-            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
             --source-ref "${{ github.ref }}" \
             --policy-bundle-path "bundle.tar.gz" \
+            --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
             --generate-vsa \
-            --vsa-output "$VSA_FILE"
+            --vsa-output "$VSA_FILE" \
+            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
 
-          # Check VSA result and rename file with status
-          RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
-          if [ "$RESULT_STATUS" = "PASSED" ] || [ "$RESULT_STATUS" = "FAILED" ]; then
-            mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
-            echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
-          else
-            echo "Warning: Unknown VSA result status: $RESULT_STATUS"
-            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
-          fi
+# # Check VSA result and rename file with status
+# RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+# if [ "$RESULT_STATUS" = "PASSED" ] || [ "$RESULT_STATUS" = "FAILED" ]; then
+#   mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
+#   echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
+# else
+#   echo "Warning: Unknown VSA result status: $RESULT_STATUS"
+#   echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+# fi
       - name: Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         if: ${{ inputs.build-type == 'blob' }}
@@ -203,11 +206,12 @@ jobs:
           ./autogov-verify \
             --blob-path $ARTIFACTS \
             --cert-identity "${{ inputs.cert-identity }}" \
-            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }} \
             --source-ref "${{ github.ref }}" \
             --policy-bundle-path "bundle.tar.gz" \
+            --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
             --generate-vsa \
-            --vsa-output "$VSA_FILE"
+            --vsa-output "$VSA_FILE" \
+            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
 
           # Check VSA result and rename file with status
           RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")

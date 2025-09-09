@@ -44,7 +44,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.4.4
+        default: v0.6.0
       opa-version:
         description: The OPA version to use.
         required: false
@@ -115,7 +115,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          oras login ghcr.io --username ${{ github.actor }} --password ${{ steps.octo-sts.outputs.token }}
+          set +x
           oras pull \
             ghcr.io/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}:latest
       - name: Download Policy Schemas
@@ -145,12 +145,13 @@ jobs:
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
           # Process all artifacts together for a single VSA using offline verification
           ARTIFACTS=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | tr '\n' ' ')
-          ./autogov-verify verify-offline \
+          ./autogov-verify offline \
             --blob-path $ARTIFACTS \
             --attestations "${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl" \
             --cert-identity "${{ inputs.cert-identity }}" \
             --source-ref "${{ github.ref }}" \
             --policy-bundle-path "bundle.tar.gz" \
+            --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
             --generate-vsa \
             --vsa-output "$VSA_FILE"
 
