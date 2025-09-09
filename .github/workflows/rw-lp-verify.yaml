@@ -72,6 +72,7 @@ jobs:
       vsa-artifact-id: ${{ steps.upload-vsa-artifact.outputs.artifact-id }}
     permissions:
       contents: read
+      packages: read
       actions: read
       id-token: write
       attestations: write
