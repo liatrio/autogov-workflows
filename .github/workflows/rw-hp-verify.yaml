@@ -50,17 +50,12 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.6.0
+        default: v0.6.1
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
         type: boolean
         default: ${{ github.repository != 'liatrio/liatrio-gh-autogov-workflows' }}
-      ignore-dependency-vulnerabilities:
-        description: Whether to ignore dependency vulnerabilities during OPA evaluation.
-        required: false
-        type: boolean
-        default: ${{ github.repository == format('{0}/{1}', github.repository_owner, 'liatrio-gh-autogov-workflows') }}
       opa-version:
         description: The OPA version to use.
         required: false
@@ -82,7 +77,7 @@ jobs:
       vsa-artifact-id: ${{ steps.upload-vsa-artifact.outputs.artifact-id }}
     permissions:
       contents: read
-      packages: read
+      packages: write
       actions: read
       id-token: write
       attestations: write
@@ -104,7 +99,6 @@ jobs:
             exit 1
           fi
       - name: Login to GitHub Container Registry
-        if: ${{ inputs.build-type == 'image' }}
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           registry: ${{ inputs.registry }}
@@ -140,9 +134,17 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
-            --pattern "autogov-verify"
+          # TODO: Revert to release download after testing
+          # gh release download ${{ inputs.autogov-verify-version }} \
+          #   --repo liatrio/autogov-verify \
+          #   --pattern "autogov-verify"
+
+          # Build from branch for testing
+          gh repo clone liatrio/autogov-verify autogov-verify-src -- --depth 1 --branch fix/fixes-flags
+          cd autogov-verify-src
+          go build -o ../autogov-verify .
+          cd ..
+          rm -rf autogov-verify-src
           chmod +x autogov-verify
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
@@ -166,8 +168,6 @@ jobs:
           gh release download \
             --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
             --pattern "schemas.tar.gz"
-          mkdir -p schemas
-          tar -xzf schemas.tar.gz -C schemas
       - name: Verification and VSA Generation for Image Attestation(s)
         env:
           GH_TOKEN: ${{ inputs.github-token || github.token }}
@@ -186,62 +186,127 @@ jobs:
             --vsa-output "$VSA_FILE" \
             ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
 
-# # Check VSA result and rename file with status
-# RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
-# if [ "$RESULT_STATUS" = "PASSED" ] || [ "$RESULT_STATUS" = "FAILED" ]; then
-#   mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
-#   echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
-# else
-#   echo "Warning: Unknown VSA result status: $RESULT_STATUS"
-#   echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
-# fi
+          RESULT_RAW=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+          case "$RESULT_RAW" in
+            "true") RESULT_STATUS="PASSED" ;;
+            "false") RESULT_STATUS="FAILED" ;;
+            "PASSED"|"FAILED") RESULT_STATUS="$RESULT_RAW" ;;
+            *) RESULT_STATUS="UNKNOWN" ;;
+          esac
+
+          if [ "$RESULT_STATUS" = "PASSED" ] || [ "$RESULT_STATUS" = "FAILED" ]; then
+            mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
+            echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
+          else
+            echo "Warning: Unknown VSA result status: $RESULT_RAW (normalized to $RESULT_STATUS)"
+            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+          fi
       - name: Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           set +x
-          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
-          # Process all artifacts together for a single VSA
-          ARTIFACTS=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | tr '\n' ' ')
-          ./autogov-verify \
-            --blob-path $ARTIFACTS \
-            --cert-identity "${{ inputs.cert-identity }}" \
-            --source-ref "${{ github.ref }}" \
-            --policy-bundle-path "bundle.tar.gz" \
-            --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
-            --generate-vsa \
-            --vsa-output "$VSA_FILE" \
-            ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
+          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestations.json"
 
-          # Check VSA result and rename file with status
-          RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
-          if [ "$RESULT_STATUS" = "PASSED" ] || [ "$RESULT_STATUS" = "FAILED" ]; then
-            mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
-            echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
+          ARTIFACT_COUNT=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | wc -l)
+          echo "Found $ARTIFACT_COUNT artifact(s) to verify in ${{ env.ARTIFACTS_FOLDER }}"
+
+          if [ "$ARTIFACT_COUNT" -gt 0 ]; then
+            echo "Artifacts to verify:"
+            find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
+
+            ./autogov-verify \
+              --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
+              --repo ${{ github.repository }} \
+              --cert-identity "${{ inputs.cert-identity }}" \
+              --source-ref "${{ github.ref }}" \
+              --policy-bundle-path "bundle.tar.gz" \
+              --policy-schemas-path "schemas.tar.gz" \
+              --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
+              --generate-vsa \
+              --vsa-output "$VSA_FILE" \
+              ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
+
+            if [ -f "$VSA_FILE" ] && jq empty "$VSA_FILE" 2>/dev/null; then
+              RESULT_RAW=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+              case "$RESULT_RAW" in
+                "true"|"PASSED") 
+                  echo "✓ Verification PASSED"
+                  OVERALL_STATUS="PASSED"
+                  ;;
+                "false"|"FAILED") 
+                  echo "✗ Verification FAILED"
+                  OVERALL_STATUS="FAILED"
+                  ;;
+                *) 
+                  echo "? Unknown result: $RESULT_RAW"
+                  OVERALL_STATUS="UNKNOWN"
+                  ;;
+              esac
+
+              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestations-${OVERALL_STATUS}.json"
+              echo "result-status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+              echo "Overall verification status: $OVERALL_STATUS"
+            else
+              echo "Error: Failed to generate valid VSA"
+              exit 1
+            fi
           else
-            echo "Warning: Unknown VSA result status: $RESULT_STATUS"
-            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+            echo "Error: No artifacts found to verify"
+            exit 1
           fi
       - name: Display VSA Summary
         if: success() || failure()
         run: |
-          VSA_FILE=$(find ${{ env.VSA_FOLDER }} -name "verification-summary-attestation-*.json" | head -1)
+          VSA_FILE=$(find ${{ env.VSA_FOLDER }} -name "verification-summary-attestation*.json*" | head -1)
           if [ -f "$VSA_FILE" ]; then
             echo "### Verification Summary Attestation (VSA) Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### Result: $(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+
+            RESULT_BOOL=$(jq -r '.predicate.verificationResult' "$VSA_FILE")
+            if [ "$RESULT_BOOL" = "true" ]; then
+              RESULT_STATUS="PASSED"
+            elif [ "$RESULT_BOOL" = "false" ]; then
+              RESULT_STATUS="FAILED"
+            else
+              RESULT_STATUS="UNKNOWN"
+            fi
+
+            echo "#### Result: $RESULT_STATUS" >> $GITHUB_STEP_SUMMARY
+            echo "#### Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "#### Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "#### Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "#### SLSA Levels: $(jq -r '.predicate.verifiedLevels | join(", ") // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+
+            SUBJECT_COUNT=$(jq '.subject | length' "$VSA_FILE")
+            if [ "$SUBJECT_COUNT" -gt 1 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "#### Verified Subjects:" >> $GITHUB_STEP_SUMMARY
+              jq -r '.subject[] | "- \(.uri // .name // "unknown")"' "$VSA_FILE" >> $GITHUB_STEP_SUMMARY
+            fi
+
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### VSA File: $(basename "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            cat "$VSA_FILE" | jq -r
           else
             echo "No VSA file found" >> $GITHUB_STEP_SUMMARY
           fi
-      - name: Attest to VSA
+      - name: Attest to VSA for Image
+        if: ${{ inputs.build-type == 'image' }}
         uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
         with:
-          subject-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ inputs.image-digest }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
-          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
+          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-image.outputs.result-status }}.json
+          push-to-registry: true
+          github-token: ${{ inputs.github-token || github.token }}
+      - name: Attest to VSA for Blob
+        if: ${{ inputs.build-type == 'blob' }}
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        with:
+          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          predicate-type: 'https://slsa.dev/verification_summary/v1'
+          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestations-${{ steps.verify-blob.outputs.result-status }}.json
           push-to-registry: true
           github-token: ${{ inputs.github-token || github.token }}
       - name: Upload VSA Artifact
@@ -249,5 +314,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-high-perms
-          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
+          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation${{ inputs.build-type == 'blob' && 's' || '' }}-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
           if-no-files-found: error

@@ -64,6 +64,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
+      attestations: write
     needs: [attest-blob]
     uses: ./.github/workflows/rw-lp-verify.yaml
     secrets: inherit
