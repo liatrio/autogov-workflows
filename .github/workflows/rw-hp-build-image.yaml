@@ -62,9 +62,9 @@ on:
       image-digest: 
         description: "image-digest"
         value: ${{ jobs.attest-image.outputs.image-digest }}
-      results-artifact-id: 
-        description: "Results artifact ID"
-        value: ${{ jobs.run-opa-image.outputs.results-artifact-id }}
+      vsa-artifact-id: 
+        description: "VSA artifact ID"
+        value: ${{ jobs.verify-image.outputs.vsa-artifact-id }}
 
 permissions: {}
 
@@ -86,7 +86,7 @@ jobs:
   verify-image: #image
     permissions:
       id-token: write
-      attestations: read
+      attestations: write
       contents: read
       packages: read
       actions: read
@@ -95,24 +95,11 @@ jobs:
     secrets: inherit
     with:
       build-type: image
-      registry: ${{ inputs.registry }}
+      subject-name: ${{ inputs.subject-name }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      registry: ${{ inputs.registry }}
       cert-identity: ${{ inputs.cert-identity }}
       autogov-verify-version: ${{ inputs.autogov-verify-version }}
-
-  run-opa-image: #image
-    permissions:
-      id-token: write
-      attestations: read
-      packages: read
-      actions: read
-    needs: [verify-image, attest-image]
-    uses: ./.github/workflows/rw-hp-run-opa.yaml
-    secrets: inherit
-    with:
-      build-type: image
-      registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
 
   release-image: #image
@@ -120,7 +107,7 @@ jobs:
       contents: write
       id-token: write
       actions: read
-    needs: [verify-image, attest-image, run-opa-image]
+    needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
@@ -131,5 +118,5 @@ jobs:
       attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
-      publish-attestations: ${{ inputs.publish-attestations }}
+      vsa-artifact-id: ${{ needs.verify-image.outputs.vsa-artifact-id }}
+      publish-vsa: true

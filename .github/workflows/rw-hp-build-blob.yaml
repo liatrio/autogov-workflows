@@ -58,9 +58,9 @@ on:
       blob-artifact-id: 
         description: "Blob artifact ID"
         value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: 
-        description: "Results artifact ID"
-        value: ${{ jobs.run-opa-blob.outputs.results-artifact-id }}
+      vsa-artifact-id: 
+        description: "VSA artifact ID"
+        value: ${{ jobs.verify-blob.outputs.vsa-artifact-id }}
 
 permissions: {}
 
@@ -80,7 +80,7 @@ jobs:
   verify-blob: #blob
     permissions:
       id-token: write
-      attestations: read
+      attestations: write
       contents: read
       packages: read
       actions: read
@@ -92,19 +92,6 @@ jobs:
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
       autogov-verify-version: ${{ inputs.autogov-verify-version }}
-
-  run-opa-blob: #blob
-    permissions:
-      id-token: write
-      attestations: read
-      packages: read
-      actions: read
-    needs: [verify-blob, attest-blob]
-    uses: ./.github/workflows/rw-hp-run-opa.yaml
-    secrets: inherit
-    with:
-      build-type: blob
-      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
 
   release-blob: #blob
@@ -112,7 +99,7 @@ jobs:
       contents: write
       id-token: write
       actions: read
-    needs: [verify-blob, attest-blob, run-opa-blob]
+    needs: [verify-blob, attest-blob]
     if: ${{ inputs.release-blob }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
@@ -123,5 +110,5 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
-      publish-attestations: ${{ inputs.publish-attestations }}
+      vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
+      publish-vsa: true
