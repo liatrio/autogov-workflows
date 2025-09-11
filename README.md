@@ -572,6 +572,138 @@ brew install oras-cli
 oras discover ghcr.io/your-org/your-repo@<image_digest>
 ```
 
+#### OCI v1.1 and the Referrers API
+
+The [OCI Image and Distribution Specs v1.1](https://opencontainers.org/posts/blog/2024-03-13-image-and-distribution-1-1) introduced significant improvements for artifact management, including the **Referrers API** which provides a standardized way to discover artifacts associated with container images.
+
+**Key Features:**
+
+- **Subject Field**: Manifests can now include a `subject` field to define associations with other manifests (used for signatures, attestations, and metadata)
+- **Referrers API**: New endpoint `GET /v2/<name>/referrers/<digest>` returns an OCI Index listing all manifests that reference a specific digest
+- **Artifact Type**: Enhanced `artifactType` field enables better artifact classification without requiring dedicated `config.mediaType` values
+
+**Example Referrers API Response:**
+
+```bash
+GET /v2/<name>/referrers/sha256:21edd7d11800e94bae9f4...
+```
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:9e6569b15e5ed981334003eb8...",
+      "size": 724,
+      "annotations": {
+        "org.opencontainers.image.created": "2024-03-02T15:16:17Z",
+        "org.opencontainers.image.description": "Example artifact for image sha256:21ed..."
+      },
+      "artifactType": "application/example"
+    }
+  ]
+}
+```
+
+The Referrers API allows tooling to select desired artifacts from the OCI Index using `artifactType` and `annotation` values, similar to how runtimes use platform information to select images from multi-platform indexes.
+
+#### GitHub Attestation Storage Method
+
+GitHub stores attestations **with** the container image in the OCI registry as additional manifests in the OCI index, not separately in GitHub's API. Each attestation manifest has the annotation `"vnd.docker.reference.type": "attestation-manifest"`.
+
+#### Example: Discovering GitHub Attestations
+
+```bash
+# Discover attestations attached to an image
+❯ oras discover ghcr.io/liatrio/liatrio-gh-autogov-workflows:latest --artifact-type application/vnd.in-toto+json
+ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e
+
+# Fetch the OCI index manifest to see all components
+❯ oras manifest fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e | jq .
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
+      "size": 1436,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a",
+      "size": 566,
+      "annotations": {
+        "vnd.docker.reference.digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
+        "vnd.docker.reference.type": "attestation-manifest"
+      },
+      "platform": {
+        "architecture": "unknown",
+        "os": "unknown"
+      }
+    }
+  ]
+}
+
+# Fetch the specific attestation manifest
+❯ oras manifest fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a | jq .
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:859ef09df31ef1ccf832323fb95f17c14b2fdbaa092056c95768c78f1c0aa05e",
+    "size": 167
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.in-toto+json",
+      "digest": "sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef",
+      "size": 1876,
+      "annotations": {
+        "in-toto.io/predicate-type": "https://slsa.dev/provenance/v0.2"
+      }
+    }
+  ]
+}
+
+# Retrieve the actual attestation content
+❯ oras blob fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef --output attestation.json
+❯ cat attestation.json | jq .
+{
+  "_type": "https://in-toto.io/Statement/v0.1",
+  "predicateType": "https://slsa.dev/provenance/v0.2",
+  "subject": [
+    {
+      "name": "pkg:docker/ghcr.io/liatrio/liatrio-gh-autogov-workflows@latest?platform=linux%2Famd64",
+      "digest": {
+        "sha256": "b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0"
+      }
+    }
+  ],
+  "predicate": {
+    "builder": {
+      "id": "https://github.com/liatrio/liatrio-gh-autogov-workflows/actions/runs/17273134791/attempts/1"
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "metadata": {
+      "https://mobyproject.org/buildkit@v1#metadata": {
+        "vcs": {
+          "revision": "0ba88277d047a99f4929d3e1ae33279e161489a1",
+          "source": "https://github.com/liatrio/liatrio-gh-autogov-workflows"
+        }
+      }
+    }
+  }
+}
+```
+
 For example, examining attestations for our policy library image:
 
 ```bash
