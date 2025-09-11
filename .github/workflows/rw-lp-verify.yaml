@@ -126,7 +126,7 @@ jobs:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
-          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestations.json"
+          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
 
           ARTIFACT_COUNT=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | wc -l)
           echo "Found $ARTIFACT_COUNT artifact(s) to verify in ${{ env.ARTIFACTS_FOLDER }}"
@@ -164,7 +164,7 @@ jobs:
                   ;;
               esac
 
-              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestations-${OVERALL_STATUS}.json"
+              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${OVERALL_STATUS}.json"
               echo "result-status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
               echo "Overall verification status: $OVERALL_STATUS"
             else
@@ -206,5 +206,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-low-perms
-          path: ${{ env.VSA_FOLDER }}/verification-summary-attestations-${{ steps.verify-blob.outputs.result-status }}.json
+          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
           if-no-files-found: error

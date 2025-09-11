@@ -190,7 +190,7 @@ jobs:
             mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
             echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
           else
-            echo "Error: Unknown VSA result status: $RESULT_RAW (normalized to $RESULT_STATUS)"
+            echo "Error: Unknown verification result: $RESULT_RAW"
             echo "Unable to process VSA with unknown verification status"
             exit 1
           fi
@@ -199,7 +199,7 @@ jobs:
         if: ${{ inputs.build-type == 'blob' }}
         run: |
           set +x
-          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestations.json"
+          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
 
           ARTIFACT_COUNT=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | wc -l)
           echo "Found $ARTIFACT_COUNT artifact(s) to verify in ${{ env.ARTIFACTS_FOLDER }}"
@@ -238,7 +238,7 @@ jobs:
                   ;;
               esac
 
-              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestations-${OVERALL_STATUS}.json"
+              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${OVERALL_STATUS}.json"
               echo "result-status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
               echo "Overall verification status: $OVERALL_STATUS"
             else
@@ -292,7 +292,7 @@ jobs:
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
-          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestations-${{ steps.verify-blob.outputs.result-status }}.json
+          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
           push-to-registry: true
           github-token: ${{ inputs.github-token || github.token }}
       - name: Upload VSA Artifact
@@ -300,5 +300,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-high-perms
-          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation${{ inputs.build-type == 'blob' && 's' || '' }}-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
+          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
           if-no-files-found: error
