@@ -854,9 +854,6 @@ attest:
 verify:
   permissions:
     contents: read
-run-opa:
-  permissions:
-    contents: read
 ```
 
 Otherwise the following permissions are using (e.g. container registry access etc):
@@ -874,10 +871,7 @@ verify:
     id-token: write
     attestations: read
     packages: read
-run-opa:
-  permissions:
-    id-token: write
-    attestations: read
+    contents: write
 ```
 
 ###### Using Lower Permissions: Image Digest Differences
@@ -1188,7 +1182,7 @@ The OCI image format specification can be found below:
 
 ### Limiting Inputs by Wrapping Reusable Workflow Calls in an Additional Workflow Layer
 
-It is good practice to wrap the actual call to each respective reusable workflow in an additional reusable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
+It is good practice to wrap the actual call to each respective reusable workflow in an additional reusable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify jobs) which helps to circumvent script injection attacks.
 
 ### Access
 
@@ -1196,7 +1190,7 @@ It is good practice to wrap the actual call to each respective reusable workflow
 
 [Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reusable workflows that call other reusable workflows.
 
-Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
+Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, and `rw-<permissions_path>-release.yaml`:
 
 ```yaml
 actions/attest-build-provenance/predicate@*,
@@ -1274,7 +1268,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.2'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
@@ -1282,7 +1276,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.2'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
@@ -1328,17 +1322,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
-
-#### `.github/workflows/rw-hp-run-opa.yaml`
-
-- `build-type` (required, string): Specify the type of build: "image" or "blob".
-- `subject-name` (required if `build-type` is `image`, string, default: '${{ github.repository }}'): Subject name as it should appear in the attestation. Required unless "subject-path" is specified, in which case it will be inferred from the path.
-- `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
-- `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
-- `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }}
-- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `opa-version` (required, string, default: 'v1.1.0'): The version of Open Policy Agent (OPA) to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.2'): The autogov-verify version to use.
 
 #### `.github/workflows/rw-hp-release.yaml`
 
@@ -1346,7 +1330,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
@@ -1372,10 +1355,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - No outputs for this action
 
-#### `.github/workflows/rw-hp-run-opa.yaml`
-
-- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
-
 #### `.github/workflows/rw-hp-release.yaml`
 
 - No outputs for this action
@@ -1395,22 +1374,12 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 
-#### `.github/workflows/rw-lp-run-opa.yaml`
-
-- `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
-- `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `opa-version` (required, string, default: 'v1.1.0'): The version of Open Policy Agent (OPA) to use.
-
 #### `.github/workflows/rw-lp-release.yaml`
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
 - `attest-metadata-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-metadata.outputs.attest-metadata-attestation-artifact-id }}: The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
-- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
@@ -1423,7 +1392,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `image-digest` (string): image-digest
-- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
 
@@ -1432,7 +1400,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `blob-artifact-id` (string): Blob artifact ID
-- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
 
@@ -1441,7 +1408,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (string): SBOM artifact ID
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `blob-artifact-id` (string): Blob artifact ID
-- `results-artifact-id` (string): Results artifact ID
 
 #### `.github/workflows/rw-lp-attest-blob.yaml`
 
@@ -1450,10 +1416,6 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/workflows/rw-lp-verify.yaml`
 
 - No outputs for this action
-
-#### `.github/workflows/rw-lp-run-opa.yaml`
-
-- `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 
 #### `.github/actions/build-image/action.yaml`
 
@@ -1584,7 +1546,6 @@ verify-<build-type>:
     image-digest: ${{ needs.attest-image.outputs.image-digest }}
     or
     blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-    results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
@@ -1606,45 +1567,13 @@ verify-<build-type>:
     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
-### Run OPA Workflow
-
-```yaml:.github/workflows/rw-hp-run-opa.yaml
-run-opa-<build-type>:
-  permissions:
-    attestations: read
-    id-token: write
-    packages: read
-  needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-run-opa.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
-  secrets: inherit
-  with:
-    build-type: <build-type>
-    image-digest: ${{ needs.attest-image.outputs.image-digest }}
-    or
-    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-```
-
-```yaml:.github/workflows/rw-lp-run-opa.yaml
-run-opa-<build-type>:
-  permissions:
-    attestations: read
-    id-token: write
-    packages: read
-  needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-run-opa.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
-  secrets: inherit
-  with:
-    build-type: <build-type>
-    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-```
-
 ### Release Workflow
 
 ```yaml:.github/workflows/rw-hp-release.yaml
 release-<build-type>:
   permissions:
     contents: write
-  needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
+  needs: [verify-<build-type>, attest-<build-type>]
   uses: liatrio-gh-autogov-workflows/.github/workflows/rw-hp-release.yaml
   secrets: inherit
   with:
@@ -1652,14 +1581,13 @@ release-<build-type>:
     attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
     attest-metadata-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestation-artifact-id }}
     attest-sbom-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestation-artifact-id }}
-    results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
 ```yaml:.github/workflows/rw-lp-release.yaml
 release-<build-type>:
   permissions:
     contents: write
-  needs: [verify-<build-type>, attest-<build-type>, run-opa-<build-type>]
+  needs: [verify-<build-type>, attest-<build-type>]
   uses: liatrio-gh-autogov-workflows/.github/workflows/rw-lp-release.yaml
   secrets: inherit
   with:
@@ -1667,7 +1595,6 @@ release-<build-type>:
     attest-build-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-build-attestation-artifact-id }}
     attest-metadata-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-metadata-attestation-artifact-id }}
     attest-sbom-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestation-artifact-id }}
-    results-artifact-id: ${{ needs.run-opa-<build-type>.outputs.results-artifact-id }}
 ```
 
 #### Automating Version Updates with Semantic Release
@@ -1729,7 +1656,7 @@ For more customization options, including beautiful emoji formatting for release
 
 ## Verification and VSA Generation
 
-The `autogov-verify` tool supports online/offline verification of attestations and generation of Verification Summary Attestations (VSA) without requiring network access to GitHub's API. This is useful for air-gapped environments or when working with pre-downloaded attestation bundles.
+The `autogov-verify` tool performs comprehensive attestation verification and generates Verification Summary Attestations (VSA) that include policy evaluation results. This consolidated approach combines signature verification, policy evaluation, and VSA generation in a single step.
 
 ### Attestation Format
 
@@ -1739,14 +1666,14 @@ Attestations must be in JSONL format (one JSON object per line). To convert regu
 jq -c '.' attestation.json > attestation.jsonl
 ```
 
-### Policy Evaluation
+### Integrated Policy Evaluation and VSA Generation
 
-Attestations are evaluated against OPA policies to determine compliance before creating the VSA:
+The `autogov-verify` tool now integrates policy evaluation directly into the verification process:
 
-- Extracts DSSE envelopes from attestation bundles
-- Converts to format expected by OPA policies
-- Evaluates against policy rules for SLSA provenance, SBOM, vulnerability scans, and metadata
-- Reports violations in the VSA
+- **Signature Verification**: Validates attestation signatures using Sigstore
+- **Policy Evaluation**: Automatically evaluates attestations against OPA policies for SLSA provenance, SBOM, vulnerability scans, and metadata compliance
+- **VSA Generation**: Creates comprehensive Verification Summary Attestations that include both verification results and policy compliance status
+- **Consolidated Output**: Single VSA file contains all verification and policy evaluation results, eliminating the need for separate OPA job outputs
 
 ## Troubleshooting
 

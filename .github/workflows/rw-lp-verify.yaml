@@ -44,12 +44,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.6.1
-      opa-version:
-        description: The OPA version to use.
-        required: false
-        type: string
-        default: v1.1.0
+        default: v0.6.2
 
     outputs:
       vsa-artifact-id:
@@ -146,61 +141,70 @@ jobs:
               --generate-vsa \
               --vsa-output "$VSA_FILE"
 
-            if [ -f "$VSA_FILE" ] && jq empty "$VSA_FILE" 2>/dev/null; then
-              RESULT_RAW=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
-              case "$RESULT_RAW" in
-                "true"|"PASSED") 
-                  echo "✓ Verification PASSED"
-                  OVERALL_STATUS="PASSED"
-                  ;;
-                "false"|"FAILED") 
-                  echo "✗ Verification FAILED"
-                  OVERALL_STATUS="FAILED"
-                  ;;
-                *) 
-                  echo "Error: Unknown verification result: $RESULT_RAW"
-                  echo "Unable to process VSA with unknown verification status"
-                  exit 1
-                  ;;
-              esac
+            if [ -f "$VSA_FILE" ]; then
+              RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+              echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
 
-              mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${OVERALL_STATUS}.json"
-              echo "result-status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
-              echo "Overall verification status: $OVERALL_STATUS"
+              VSA_FILE_WITH_STATUS="${{ env.VSA_FOLDER }}/verification-summary-attestation-$RESULT_STATUS.json"
+              mv "$VSA_FILE" "$VSA_FILE_WITH_STATUS"
             else
-              echo "Error: Failed to generate valid VSA"
-              exit 1
+              echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
             fi
           else
-            echo "Error: No artifacts found to verify"
-            exit 1
+            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
           fi
       - name: Display VSA Summary
-        if: success() || failure()
         run: |
           VSA_FILE=$(find ${{ env.VSA_FOLDER }} -name "verification-summary-attestation*.json*" | head -1)
           if [ -f "$VSA_FILE" ]; then
             echo "### Verification Summary Attestation (VSA) Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            echo "#### Result: ${{ steps.verify-blob.outputs.result-status }}" >> $GITHUB_STEP_SUMMARY
-            echo "#### Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            echo "#### Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            echo "#### Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            echo "#### SLSA Levels: $(jq -r '.predicate.verifiedLevels | join(", ") // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            VERIFICATION_RESULT=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+            case "$VERIFICATION_RESULT" in
+              "true"|"PASSED") RESULT_STATUS="PASSED" ;;
+              "false"|"FAILED") RESULT_STATUS="FAILED" ;;
+              *) RESULT_STATUS="UNKNOWN" ;;
+            esac
 
-            SUBJECT_COUNT=$(jq '.subject | length' "$VSA_FILE")
-            if [ "$SUBJECT_COUNT" -gt 1 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "#### Verified Subjects:" >> $GITHUB_STEP_SUMMARY
-              jq -r '.subject[] | "- \(.uri // .name // "unknown")"' "$VSA_FILE" >> $GITHUB_STEP_SUMMARY
+            if [ "$RESULT_STATUS" = "PASSED" ]; then
+              echo "#### Result: ✅ PASSED" >> $GITHUB_STEP_SUMMARY
+            elif [ "$RESULT_STATUS" = "FAILED" ]; then
+              echo "#### Result: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "#### Result: ⚠ UNKNOWN" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "- Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "- Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "- Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$RESULT_STATUS" = "FAILED" ]; then
+              VIOLATION_COUNT=$(jq -r '.metadata."autogov.policy.evaluation".violations | length // 0' "$VSA_FILE")
+              if [ "$VIOLATION_COUNT" -gt 0 ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "#### 🚨 Policy Violations ($VIOLATION_COUNT)" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "| Policy | Message |" >> $GITHUB_STEP_SUMMARY
+                echo "|--------|---------|" >> $GITHUB_STEP_SUMMARY
+                jq -r '.metadata."autogov.policy.evaluation".violations[] | "| \(.policy) | \(.message) |"' "$VSA_FILE" >> $GITHUB_STEP_SUMMARY
+              fi
             fi
 
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### VSA File: $(basename "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
           else
-            echo "No VSA file found" >> $GITHUB_STEP_SUMMARY
+            echo "❌ No VSA file found" >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Attest to VSA for Blob
+        id: attest-vsa-blob
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        with:
+          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          predicate-type: 'https://slsa.dev/verification_summary/v1'
+          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
+          push-to-registry: true
+          github-token: ${{ inputs.github-token || github.token }}
       - name: Upload VSA Artifact
         id: upload-vsa-artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

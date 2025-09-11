@@ -13,6 +13,13 @@
       "pinDigests": true,
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions"
+    },
+    {
+      "matchPackageNames": [
+        "softprops/action-gh-release"
+      ],
+      "enabled": false,
+      "description": "Disable updates for softprops/action-gh-release to maintain pinned versions"
     }
   ],
   "schedule": [
