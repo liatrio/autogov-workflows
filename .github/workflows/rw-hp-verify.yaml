@@ -304,5 +304,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-high-perms
-          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation${{ inputs.build-type == 'blob' && 's' || '' }}-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
+          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ (inputs.build-type == 'image' && steps.verify-image.outputs.result-status) || (inputs.build-type == 'blob' && steps.verify-blob.outputs.result-status) }}.json
           if-no-files-found: error
