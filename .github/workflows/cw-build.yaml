@@ -17,20 +17,20 @@ on:
 permissions: {}
 
 jobs:
-  # attest-image-hp: #image
-  #   if: github.event.pull_request.draft == false
-  #   permissions:
-  #     id-token: write
-  #     attestations: write
-  #     packages: write
-  #     contents: write
-  #     actions: read
-  #   uses: ./.github/workflows/rw-hp-build-image.yaml
-  #   secrets: inherit
-  #   with:
-  #     subject-name: ${{ github.repository }}
-  #     registry: ghcr.io
-  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+  attest-image-hp: #image
+    if: github.event.pull_request.draft == false
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+      contents: write
+      actions: read
+    uses: ./.github/workflows/rw-hp-build-image.yaml
+    secrets: inherit
+    with:
+      subject-name: ${{ github.repository }}
+      registry: ghcr.io
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
 
   # attest-blob-hp: #blob
   #   if: github.event.pull_request.draft == false
@@ -48,17 +48,17 @@ jobs:
   #       i_am_another_blob
   #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
 
-  attest-blob-lp: #blob
-    if: github.event.pull_request.draft == false
-    permissions:
-      id-token: write
-      attestations: write
-      contents: write
-      actions: read
-    uses: ./.github/workflows/rw-lp-build-blob.yaml
-    secrets: inherit
-    with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}
+  # attest-blob-lp: #blob
+  #   if: github.event.pull_request.draft == false
+  #   permissions:
+  #     id-token: write
+  #     attestations: write
+  #     contents: write
+  #     actions: read
+  #   uses: ./.github/workflows/rw-lp-build-blob.yaml
+  #   secrets: inherit
+  #   with:
+  #     subject-path: |
+  #       i_am_blob
+  #       i_am_another_blob
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}

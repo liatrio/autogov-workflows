@@ -1142,7 +1142,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
@@ -1150,7 +1150,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
@@ -1196,7 +1196,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 
 #### `.github/workflows/rw-hp-run-opa.yaml`
 
@@ -1595,41 +1595,9 @@ Example commands for different file types:
 
 For more customization options, including beautiful emoji formatting for release notes, check out the [semantic-release documentation](https://github.com/semantic-release/semantic-release/blob/master/docs/usage/configuration.md).
 
-## Offline Verification and VSA Generation
+## Verification and VSA Generation
 
-The `autogov-verify` tool supports offline verification of attestations and generation of Verification Summary Attestations (VSA) without requiring network access to GitHub's API. This is useful for air-gapped environments or when working with pre-downloaded attestation bundles.
-
-### Offline VSA Generation Features
-
-- **Attestation-Only Verification**: Verify attestations without requiring the original artifact
-- **OPA Policy Evaluation**: Full policy evaluation against offline attestations
-- **VSA Generation**: Create Verification Summary Attestations documenting verification results
-- **JSONL Format Support**: Process attestation bundles in JSON Lines format
-
-### Usage
-
-```bash
-# Offline verification with VSA generation
-./autogov-verify offline \
-  --attestations attestations.jsonl \
-  --cert-identity "https://github.com/org/repo/.github/workflows/workflow.yaml@sha" \
-  --cert-issuer "https://token.actions.githubusercontent.com" \
-  --generate-vsa \
-  --vsa-output verification-summary.json \
-  --policy-uri "https://github.com/liatrio/liatrio-rego-policy-library" \
-  --policy-bundle-path ./policy-bundle \
-  --policy-schemas-path ./schemas
-```
-
-### Flags for Offline VSA Generation
-
-- `--generate-vsa`: Enable VSA generation after verification
-- `--vsa-output`: Path for the generated VSA file (required with --generate-vsa)
-- `--policy-uri`: Policy URI reference for the VSA (required with --generate-vsa)
-- `--policy-bundle-path`: Local path to OPA policy bundle (.tar.gz or directory)
-- `--policy-schemas-path`: Path to JSON schemas for policy validation
-- `--blob-path`: (Optional) Path to artifact file or directory containing multiple artifacts for verification
-- `--source-ref`: Source repository reference (e.g., refs/heads/main)
+The `autogov-verify` tool supports online/offline verification of attestations and generation of Verification Summary Attestations (VSA) without requiring network access to GitHub's API. This is useful for air-gapped environments or when working with pre-downloaded attestation bundles.
 
 ### Attestation Format
 
@@ -1641,7 +1609,7 @@ jq -c '.' attestation.json > attestation.jsonl
 
 ### Policy Evaluation
 
-The offline mode evaluates attestations against OPA policies to determine compliance:
+Attestations are evaluated against OPA policies to determine compliance before creating the VSA:
 
 - Extracts DSSE envelopes from attestation bundles
 - Converts to format expected by OPA policies

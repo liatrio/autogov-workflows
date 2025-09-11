@@ -134,18 +134,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          # TODO: Revert to release download after testing
-          # gh release download ${{ inputs.autogov-verify-version }} \
-          #   --repo liatrio/autogov-verify \
-          #   --pattern "autogov-verify"
-
-          # Build from branch for testing
-          gh repo clone liatrio/autogov-verify autogov-verify-src -- --depth 1 --branch fix/fixes-flags
-          cd autogov-verify-src
-          go build -o ../autogov-verify .
-          cd ..
-          rm -rf autogov-verify-src
-          chmod +x autogov-verify
+          gh release download ${{ inputs.autogov-verify-version }} \
+            --repo liatrio/autogov-verify \
+            --pattern "autogov-verify"
+            chmod +x autogov-verify
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
         env:
@@ -263,15 +255,7 @@ jobs:
             echo "### Verification Summary Attestation (VSA) Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            RESULT_BOOL=$(jq -r '.predicate.verificationResult' "$VSA_FILE")
-            if [ "$RESULT_BOOL" = "true" ]; then
-              RESULT_STATUS="PASSED"
-            elif [ "$RESULT_BOOL" = "false" ]; then
-              RESULT_STATUS="FAILED"
-            else
-              RESULT_STATUS="UNKNOWN"
-            fi
-
+            RESULT_STATUS="${{ steps.verify-image.outputs.result-status }}${{ steps.verify-blob.outputs.result-status }}"
             echo "#### Result: $RESULT_STATUS" >> $GITHUB_STEP_SUMMARY
             echo "#### Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
             echo "#### Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
