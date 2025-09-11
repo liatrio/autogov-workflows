@@ -1,4 +1,4 @@
-name: Build Blob Low Permissions Reuseable Workflow
+name: Build Blob Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -42,9 +42,9 @@ on:
       blob-artifact-id: 
         description: "Blob artifact ID"
         value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: 
-        description: "Results artifact ID"
-        value: ${{ jobs.run-opa-blob.outputs.results-artifact-id }}
+      vsa-artifact-id: 
+        description: "VSA artifact ID"
+        value: ${{ jobs.verify-blob.outputs.vsa-artifact-id }}
 
 permissions: {}
 
@@ -64,6 +64,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
+      attestations: write
     needs: [attest-blob]
     uses: ./.github/workflows/rw-lp-verify.yaml
     secrets: inherit
@@ -75,28 +77,13 @@ jobs:
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
 
-  run-opa-blob: #blob
-    permissions:
-      id-token: write
-      contents: read
-      packages: read
-      actions: read
-    needs: [verify-blob, attest-blob]
-    uses: ./.github/workflows/rw-lp-run-opa.yaml
-    secrets: inherit
-    with:
-      attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
-      attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
-
   release-blob: #blob
     if: ${{ inputs.release-blob }}
     permissions:
       id-token: write
       contents: write
       actions: read
-    needs: [verify-blob, attest-blob, run-opa-blob]
+    needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit
     with:
@@ -105,5 +92,5 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
-      publish-attestations: ${{ inputs.publish-attestations }}
+      vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
+      publish-vsa: true

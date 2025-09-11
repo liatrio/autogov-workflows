@@ -1,4 +1,4 @@
-name: Release Low Permissions Reuseable Workflow
+name: Release Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -24,22 +24,22 @@ on:
         description: The artifact-id of the dependency scan attestation artifact.
         default: ${{ github.event.needs.attest-dependency-scan-low-perms.outputs.build-artifact-id }}
         type: string
-      results-artifact-id:
+      vsa-artifact-id:
         type: string
-        description: The artifact-id of the results artifact.
+        description: The artifact-id of the VSA artifact.
         required: false
-        default: ${{ github.event.needs.run-opa.outputs.results-artifact-id }}
+        default: ${{ github.event.needs.verify.outputs.vsa-artifact-id }}
       workflow-runner-label:
         type: string
         description: The label of the workflow runner
         default: ubuntu-latest
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         required: false
         type: string
-      publish-attestations:
-        description: Whether to publish attestations as release assets.
+      publish-vsa:
+        description: Whether to publish VSA as release assets.
         required: false
         type: boolean
         default: true
@@ -49,12 +49,12 @@ on:
         value: ${{ jobs.release-low-perms.outputs.semantic-release-version }}
 
 env:
-  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}"
+  ARTIFACT_IDS: '${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}'
   BLOB_ARTIFACT_ID: ${{ inputs.blob-artifact-id || '' }}
-  RESULTS_ARTIFACT_ID: ${{ inputs.results-artifact-id || '' }}
+  VSA_ARTIFACT_ID: ${{ inputs.vsa-artifact-id || '' }}
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
-  RESULTS_FOLDER: ./blob-results
+  VSA_FOLDER: ./vsa
 
 permissions: {}
 
@@ -80,9 +80,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Create Attestations and Artifacts Folders
-        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }}
+      - name: Create Attestations, Artifacts, and VSA Folders
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }} && mkdir ${{ env.VSA_FOLDER }}
       - name: Download Sigstore Bundle(s)
+        if: ${{ inputs.publish-vsa == false }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
@@ -96,13 +97,13 @@ jobs:
           artifact-ids: ${{ env.BLOB_ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - name: Download opa-run Results
-        if: ${{ env.RESULTS_ARTIFACT_ID != '' }}
+      - name: Download VSA
+        if: ${{ env.VSA_ARTIFACT_ID != '' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
-          artifact-ids: ${{ env.RESULTS_ARTIFACT_ID }}
-          path: ${{ env.RESULTS_FOLDER }}
+          artifact-ids: ${{ env.VSA_ARTIFACT_ID }}
+          path: ${{ env.VSA_FOLDER }}
           merge-multiple: true
       - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
         id: octo-sts
@@ -122,13 +123,16 @@ jobs:
             conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
-      - name: Upload Results/Sigstore Bundle as Release Asset
+          VSA_FOLDER: ${{ env.VSA_FOLDER }}
+          ATTESTATIONS_FOLDER: ${{ env.ATTESTATIONS_FOLDER }}
+          ARTIFACTS_FOLDER: ${{ env.ARTIFACTS_FOLDER }}
+      - name: Upload VSA and Assets as Release Asset
         if: steps.semantic-release.outputs.new_release_published == 'true'
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           files: |
-            ${{ env.RESULTS_ARTIFACT_ID != '' && format('{0}/results-*', env.RESULTS_FOLDER) || '' }}
-            ${{ inputs.publish-attestations && format('{0}/*', env.ATTESTATIONS_FOLDER) || '' }}
+            ${{ env.VSA_ARTIFACT_ID != '' && inputs.publish-vsa && format('{0}/*', env.VSA_FOLDER) || '' }}
+            ${{ inputs.publish-vsa == false && format('{0}/*', env.ATTESTATIONS_FOLDER) || '' }}
             ${{ env.ARTIFACTS_FOLDER }}/*
           tag_name: v${{ steps.semantic-release.outputs.new_release_version }}
           token: ${{ inputs.github-token || github.token }}

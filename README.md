@@ -38,7 +38,7 @@ inputs:
     required: false
   github-token:
     description: >
-      The GitHub token set throughout the reuseable workflow including the composite (build) action.
+      The GitHub token set throughout the reusable workflow including the composite (build) action.
     required: false
     default: ''
 outputs:
@@ -202,7 +202,7 @@ Pick one of the following four jobs (e.g. job definitions) depending on desired 
 
 **`cw-build.yaml`**:
 
-### Calling Reuseable Workflow
+### Calling Reusable Workflow
 
 ```yaml
 name: Build Entrypoint Caller Workflow
@@ -572,6 +572,138 @@ brew install oras-cli
 oras discover ghcr.io/your-org/your-repo@<image_digest>
 ```
 
+#### OCI v1.1 and the Referrers API
+
+The [OCI Image and Distribution Specs v1.1](https://opencontainers.org/posts/blog/2024-03-13-image-and-distribution-1-1) introduced significant improvements for artifact management, including the **Referrers API** which provides a standardized way to discover artifacts associated with container images.
+
+**Key Features:**
+
+- **Subject Field**: Manifests can now include a `subject` field to define associations with other manifests (used for signatures, attestations, and metadata)
+- **Referrers API**: New endpoint `GET /v2/<name>/referrers/<digest>` returns an OCI Index listing all manifests that reference a specific digest
+- **Artifact Type**: Enhanced `artifactType` field enables better artifact classification without requiring dedicated `config.mediaType` values
+
+**Example Referrers API Response:**
+
+```bash
+GET /v2/<name>/referrers/sha256:21edd7d11800e94bae9f4...
+```
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:9e6569b15e5ed981334003eb8...",
+      "size": 724,
+      "annotations": {
+        "org.opencontainers.image.created": "2024-03-02T15:16:17Z",
+        "org.opencontainers.image.description": "Example artifact for image sha256:21ed..."
+      },
+      "artifactType": "application/example"
+    }
+  ]
+}
+```
+
+The Referrers API allows tooling to select desired artifacts from the OCI Index using `artifactType` and `annotation` values, similar to how runtimes use platform information to select images from multi-platform indexes.
+
+#### GitHub Attestation Storage Method
+
+GitHub stores attestations **with** the container image in the OCI registry as additional manifests in the OCI index, not separately in GitHub's API. Each attestation manifest has the annotation `"vnd.docker.reference.type": "attestation-manifest"`.
+
+#### Example: Discovering GitHub Attestations
+
+```bash
+# Discover attestations attached to an image
+❯ oras discover ghcr.io/liatrio/liatrio-gh-autogov-workflows:latest --artifact-type application/vnd.in-toto+json
+ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e
+
+# Fetch the OCI index manifest to see all components
+❯ oras manifest fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e | jq .
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
+      "size": 1436,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a",
+      "size": 566,
+      "annotations": {
+        "vnd.docker.reference.digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
+        "vnd.docker.reference.type": "attestation-manifest"
+      },
+      "platform": {
+        "architecture": "unknown",
+        "os": "unknown"
+      }
+    }
+  ]
+}
+
+# Fetch the specific attestation manifest
+❯ oras manifest fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a | jq .
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:859ef09df31ef1ccf832323fb95f17c14b2fdbaa092056c95768c78f1c0aa05e",
+    "size": 167
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.in-toto+json",
+      "digest": "sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef",
+      "size": 1876,
+      "annotations": {
+        "in-toto.io/predicate-type": "https://slsa.dev/provenance/v0.2"
+      }
+    }
+  ]
+}
+
+# Retrieve the actual attestation content
+❯ oras blob fetch ghcr.io/liatrio/liatrio-gh-autogov-workflows@sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef --output attestation.json
+❯ cat attestation.json | jq .
+{
+  "_type": "https://in-toto.io/Statement/v0.1",
+  "predicateType": "https://slsa.dev/provenance/v0.2",
+  "subject": [
+    {
+      "name": "pkg:docker/ghcr.io/liatrio/liatrio-gh-autogov-workflows@latest?platform=linux%2Famd64",
+      "digest": {
+        "sha256": "b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0"
+      }
+    }
+  ],
+  "predicate": {
+    "builder": {
+      "id": "https://github.com/liatrio/liatrio-gh-autogov-workflows/actions/runs/17273134791/attempts/1"
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "metadata": {
+      "https://mobyproject.org/buildkit@v1#metadata": {
+        "vcs": {
+          "revision": "0ba88277d047a99f4929d3e1ae33279e161489a1",
+          "source": "https://github.com/liatrio/liatrio-gh-autogov-workflows"
+        }
+      }
+    }
+  }
+}
+```
+
 For example, examining attestations for our policy library image:
 
 ```bash
@@ -705,11 +837,11 @@ Both uploads and downloads via the official GitHub Actions are designed to be im
 
 ##### Reducing Permissions Further
 
-Our reuseable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
+Our reusable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
 
 Also, to avoid additional permissions for online verification the bundle and trusted-root are simply passed as artifacts to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
 
-The following permissions are used for images when used as a blob via the low permissions, or "lp", reuseable workflow files:
+The following permissions are used for images when used as a blob via the low permissions, or "lp", reusable workflow files:
 
 ```yaml
 attest:
@@ -1054,17 +1186,17 @@ The OCI image format specification can be found below:
 
 - [OCI Image Format Spec](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
 
-### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
+### Limiting Inputs by Wrapping Reusable Workflow Calls in an Additional Workflow Layer
 
-It is good practice to wrap the actual call to each respective reuseable workflow in an additional reuseable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
+It is good practice to wrap the actual call to each respective reusable workflow in an additional reusable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
 
 ### Access
 
 #### Workflow Access
 
-[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reuseable workflows that call other reuseable workflows.
+[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reusable workflows that call other reusable workflows.
 
-Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reuseable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
+Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
 
 ```yaml
 actions/attest-build-provenance/predicate@*,
@@ -1131,7 +1263,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/actions/build-image/action.yaml`
 
 - `subject-name` (required, string, default: '${{ github.repository }}'): Subject name as it should appear in the attestation.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 #### `.github/actions/build-blob/action.yaml`
 
@@ -1142,8 +1274,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
@@ -1151,8 +1282,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `ignore-dependency-vulnerabilities` (optional, boolean, default: true in workflows repo, false elsewhere): Whether to ignore dependency vulnerabilities during OPA evaluation.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
@@ -1168,7 +1298,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact-low-perms'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-image.yaml`
@@ -1177,7 +1307,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
@@ -1186,7 +1316,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-verify.yaml`
@@ -1198,7 +1328,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `autogov-verify-version` (optional, string, default: 'v0.4.4'): The autogov-verify version to use.
+- `autogov-verify-version` (optional, string, default: 'v0.6.1'): The autogov-verify version to use.
 
 #### `.github/workflows/rw-hp-run-opa.yaml`
 
@@ -1218,7 +1348,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 ### Outputs
 
@@ -1256,13 +1386,13 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-lp-verify.yaml`
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 
 #### `.github/workflows/rw-lp-run-opa.yaml`
@@ -1282,7 +1412,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 ### Outputs
 
@@ -1596,6 +1726,27 @@ Example commands for different file types:
 > Using single quotes in your sed commands or YAML's multi-line string syntax (`|-`) can help with complex strings.
 
 For more customization options, including beautiful emoji formatting for release notes, check out the [semantic-release documentation](https://github.com/semantic-release/semantic-release/blob/master/docs/usage/configuration.md).
+
+## Verification and VSA Generation
+
+The `autogov-verify` tool supports online/offline verification of attestations and generation of Verification Summary Attestations (VSA) without requiring network access to GitHub's API. This is useful for air-gapped environments or when working with pre-downloaded attestation bundles.
+
+### Attestation Format
+
+Attestations must be in JSONL format (one JSON object per line). To convert regular JSON:
+
+```bash
+jq -c '.' attestation.json > attestation.jsonl
+```
+
+### Policy Evaluation
+
+Attestations are evaluated against OPA policies to determine compliance before creating the VSA:
+
+- Extracts DSSE envelopes from attestation bundles
+- Converts to format expected by OPA policies
+- Evaluates against policy rules for SLSA provenance, SBOM, vulnerability scans, and metadata
+- Reports violations in the VSA
 
 ## Troubleshooting
 
