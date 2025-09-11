@@ -1,4 +1,4 @@
-name: Verify Low Permissions Reuseable Workflow
+name: Verify Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -31,7 +31,7 @@ on:
         required: true
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         default: ''
         required: false
         type: string
@@ -158,8 +158,9 @@ jobs:
                   OVERALL_STATUS="FAILED"
                   ;;
                 *) 
-                  echo "? Unknown result: $RESULT_RAW"
-                  OVERALL_STATUS="UNKNOWN"
+                  echo "Error: Unknown verification result: $RESULT_RAW"
+                  echo "Unable to process VSA with unknown verification status"
+                  exit 1
                   ;;
               esac
 

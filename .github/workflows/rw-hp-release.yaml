@@ -1,4 +1,4 @@
-name: Release High Permissions Reuseable Workflow
+name: Release High Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -38,7 +38,7 @@ on:
         default: ubuntu-latest
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         required: false
         type: string
       publish-vsa:

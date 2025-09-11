@@ -1,4 +1,4 @@
-name: Build Blob Low Permissions Reuseable Workflow
+name: Build Blob Low Permissions Reusable Workflow
 
 on:
   workflow_call:

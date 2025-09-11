@@ -1,4 +1,4 @@
-name: Build Blob High Permissions Reuseable Workflow
+name: Build Blob High Permissions Reusable Workflow
 
 on:
   workflow_call:

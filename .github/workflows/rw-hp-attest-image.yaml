@@ -1,4 +1,4 @@
-name: Attest Image High Permissions Reuseable Workflow
+name: Attest Image High Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -31,7 +31,7 @@ on:
         type: string
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         required: false
         type: string
       autogov-helper-version:

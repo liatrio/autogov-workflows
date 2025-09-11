@@ -1,4 +1,4 @@
-name: Verify High Permissions Reuseable Workflow
+name: Verify High Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -37,7 +37,7 @@ on:
         type: string
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         default: ''
         required: false
         type: string
@@ -190,8 +190,9 @@ jobs:
             mv "$VSA_FILE" "${{ env.VSA_FOLDER }}/verification-summary-attestation-${RESULT_STATUS}.json"
             echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
           else
-            echo "Warning: Unknown VSA result status: $RESULT_RAW (normalized to $RESULT_STATUS)"
-            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+            echo "Error: Unknown VSA result status: $RESULT_RAW (normalized to $RESULT_STATUS)"
+            echo "Unable to process VSA with unknown verification status"
+            exit 1
           fi
       - name: Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
@@ -231,8 +232,9 @@ jobs:
                   OVERALL_STATUS="FAILED"
                   ;;
                 *) 
-                  echo "? Unknown result: $RESULT_RAW"
-                  OVERALL_STATUS="UNKNOWN"
+                  echo "Error: Unknown verification result: $RESULT_RAW"
+                  echo "Unable to process VSA with unknown verification status"
+                  exit 1
                   ;;
               esac
 

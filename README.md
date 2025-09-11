@@ -38,7 +38,7 @@ inputs:
     required: false
   github-token:
     description: >
-      The GitHub token set throughout the reuseable workflow including the composite (build) action.
+      The GitHub token set throughout the reusable workflow including the composite (build) action.
     required: false
     default: ''
 outputs:
@@ -202,7 +202,7 @@ Pick one of the following four jobs (e.g. job definitions) depending on desired 
 
 **`cw-build.yaml`**:
 
-### Calling Reuseable Workflow
+### Calling Reusable Workflow
 
 ```yaml
 name: Build Entrypoint Caller Workflow
@@ -705,11 +705,11 @@ Both uploads and downloads via the official GitHub Actions are designed to be im
 
 ##### Reducing Permissions Further
 
-Our reuseable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
+Our reusable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
 
 Also, to avoid additional permissions for online verification the bundle and trusted-root are simply passed as artifacts to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
 
-The following permissions are used for images when used as a blob via the low permissions, or "lp", reuseable workflow files:
+The following permissions are used for images when used as a blob via the low permissions, or "lp", reusable workflow files:
 
 ```yaml
 attest:
@@ -1054,17 +1054,17 @@ The OCI image format specification can be found below:
 
 - [OCI Image Format Spec](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
 
-### Limiting Inputs by Wrapping Reuseable Workflow Calls in an Additional Workflow Layer
+### Limiting Inputs by Wrapping Reusable Workflow Calls in an Additional Workflow Layer
 
-It is good practice to wrap the actual call to each respective reuseable workflow in an additional reuseable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
+It is good practice to wrap the actual call to each respective reusable workflow in an additional reusable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify and/or opa eval jobs) which helps to circumvent script injection attacks.
 
 ### Access
 
 #### Workflow Access
 
-[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reuseable workflows that call other reuseable workflows.
+[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reusable workflows that call other reusable workflows.
 
-Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reuseable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
+Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, `rw-<permissions_path>-run-opa.yaml`, and `rw-<permissions_path>-release.yaml`:
 
 ```yaml
 actions/attest-build-provenance/predicate@*,
@@ -1131,7 +1131,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/actions/build-image/action.yaml`
 
 - `subject-name` (required, string, default: '${{ github.repository }}'): Subject name as it should appear in the attestation.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 #### `.github/actions/build-blob/action.yaml`
 
@@ -1166,7 +1166,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact-low-perms'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-image.yaml`
@@ -1175,7 +1175,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
@@ -1184,7 +1184,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.4.2'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-verify.yaml`
@@ -1216,7 +1216,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 ### Outputs
 
@@ -1254,13 +1254,13 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 #### `.github/workflows/rw-lp-verify.yaml`
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 
 #### `.github/workflows/rw-lp-run-opa.yaml`
@@ -1280,7 +1280,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-sbom.outputs.attest-sbom-attestation-artifact-id }}: The artifact-id of the SBOM attestation artifact.
 - `results-artifact-id` (optional, string): The artifact-id of the results artifact.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `github-token` (optional, string, default: ''): The GitHub token set throughout the reuseable workflow including the composite (build) action.
+- `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
 ### Outputs
 

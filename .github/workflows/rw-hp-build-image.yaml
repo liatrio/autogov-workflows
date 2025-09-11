@@ -1,4 +1,4 @@
-name: Build Image High Permissions Reuseable Workflow
+name: Build Image High Permissions Reusable Workflow
 
 on:
   workflow_call:
