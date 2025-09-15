@@ -286,10 +286,23 @@ jobs:
           predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
           push-to-registry: true
           github-token: ${{ inputs.github-token || github.token }}
+      - name: Rename VSA Bundle
+        id: rename-vsa-bundle
+        run: |
+          if [ "${{ inputs.build-type }}" = "image" ]; then
+            BUNDLE_DIR=$(dirname "${{ steps.attest-vsa-image.outputs.bundle-path }}")
+            VSA_PATH="$BUNDLE_DIR/vsa-${{ steps.verify-image.outputs.result-status }}.json"
+            mv "${{ steps.attest-vsa-image.outputs.bundle-path }}" "$VSA_PATH"
+          else
+            BUNDLE_DIR=$(dirname "${{ steps.attest-vsa-blob.outputs.bundle-path }}")
+            VSA_PATH="$BUNDLE_DIR/vsa-${{ steps.verify-blob.outputs.result-status }}.json"
+            mv "${{ steps.attest-vsa-blob.outputs.bundle-path }}" "$VSA_PATH"
+          fi
+          echo "vsa-bundle-path=$VSA_PATH" >> $GITHUB_OUTPUT
       - name: Upload Signed VSA Bundle Artifact
         id: upload-vsa-artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-high-perms
-          path: ${{ (inputs.build-type == 'image' && steps.attest-vsa-image.outputs.bundle-path) || (inputs.build-type == 'blob' && steps.attest-vsa-blob.outputs.bundle-path) }}
+          path: ${{ steps.rename-vsa-bundle.outputs.vsa-bundle-path }}
           if-no-files-found: error
