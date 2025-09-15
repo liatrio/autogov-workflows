@@ -205,10 +205,10 @@ jobs:
           predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
           push-to-registry: true
           github-token: ${{ inputs.github-token || github.token }}
-      - name: Upload VSA Artifact
+      - name: Upload Signed VSA Bundle Artifact
         id: upload-vsa-artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verification-summary-attestation-low-perms
-          path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
+          path: ${{ steps.attest-vsa-blob.outputs.bundle-path }}
           if-no-files-found: error
