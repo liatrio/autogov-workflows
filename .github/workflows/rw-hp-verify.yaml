@@ -107,7 +107,7 @@ jobs:
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }} && mkdir ${{ env.VSA_FOLDER }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ inputs.blob-artifact-id }}
@@ -118,13 +118,13 @@ jobs:
         run: |
           cd ${{ env.ATTESTATIONS_FOLDER }}
           find ../${{ env.ARTIFACTS_FOLDER }} -type f -exec gh attestation download {} --repo ${{ github.repository }} \;
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - uses: octo-sts/action@e480437973a6f6ac2e9caa40ecabedc870d76395 # v1.0.1
         id: octo-sts
         with:
           scope: liatrio
           identity: autogov-infra
       - name: Setup ORAS
-        uses: oras-project/setup-oras@8d34698a59f5ffe24821f0b48ab62a3de8b64b20 # v1.2.3
+        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
       - name: Install autogov-verify
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
@@ -268,7 +268,7 @@ jobs:
       - name: Attest to VSA for Image
         if: ${{ inputs.build-type == 'image' }}
         id: attest-vsa-image
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ inputs.image-digest }}
@@ -279,7 +279,7 @@ jobs:
       - name: Attest to VSA for Blob
         if: ${{ inputs.build-type == 'blob' }}
         id: attest-vsa-blob
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
