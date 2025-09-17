@@ -9,8 +9,9 @@ metadata:
     - autogov
     - automated-governance
     - github-actions
+    - reusable-workflow
     - workflow
 spec:
   owner: "group:default/tag-autogov"
   lifecycle: in-progress
-  type: library
+  type: service
