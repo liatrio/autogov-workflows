@@ -30,11 +30,6 @@ on:
         required: false
         type: string
         default: v0.4.2
-      publish-attestations:
-        description: Whether to publish attestations as release assets.
-        required: false
-        type: boolean
-        default: true
       release-image:
         description: Whether or not to run the release-image job.
         required: false
