@@ -107,7 +107,7 @@ jobs:
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }} && mkdir ${{ env.VSA_FOLDER }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ inputs.blob-artifact-id }}
@@ -301,7 +301,7 @@ jobs:
           echo "vsa-bundle-path=$VSA_PATH" >> $GITHUB_OUTPUT
       - name: Upload Signed VSA Bundle Artifact
         id: upload-vsa-artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: verification-summary-attestation-high-perms
           path: ${{ steps.rename-vsa-bundle.outputs.vsa-bundle-path }}

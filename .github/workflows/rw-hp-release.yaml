@@ -92,7 +92,7 @@ jobs:
         run: mkdir ${{ env.ARTIFACTS_FOLDER }}
       - name: Download Blob Artifact(s)
         if: ${{ inputs.build-type == 'blob' }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.BLOB_ARTIFACT_ID }}
@@ -102,7 +102,7 @@ jobs:
         run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.VSA_FOLDER }}
       - name: Download Sigstore Bundle(s)
         if: ${{ inputs.publish-vsa == false }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_IDS }}
@@ -110,7 +110,7 @@ jobs:
           merge-multiple: true
       - name: Download VSA
         if: ${{ env.VSA_ARTIFACT_ID != '' }}
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.VSA_ARTIFACT_ID }}
