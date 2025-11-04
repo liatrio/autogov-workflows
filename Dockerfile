@@ -1,3 +1,4 @@
+# uses our own image to avoid docker rate limiting
 FROM ghcr.io/liatrio/python:3.13-slim
 
 ENV VERSION="0.11.10"
