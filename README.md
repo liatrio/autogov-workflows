@@ -800,7 +800,7 @@ Error: No such object
 3. **Layer Types**: In the manifest, you'll notice different `artifactType` values corresponding to different attestations:
    - `application/vnd.dev.sigstore.bundle.v0.3+json`: Sigstore bundle format
    - `https://slsa.dev/provenance/v1`: SLSA provenance attestation
-   - `https://cosign.sigstore.dev/attestation/v1`: Cosign attestation
+   - `https://autogov.dev/attestation/metadata/v1`: Autogov etadata attestation
    - `https://cyclonedx.org/bom`: SBOM attestation
    - `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
 
