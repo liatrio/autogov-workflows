@@ -216,7 +216,7 @@ jobs:
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
-          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-type: 'https://autogov.dev/attestation/metadata/v1'
           predicate-path: metadata.json
           push-to-registry: true
       - name: Rename Metadata Bundle

@@ -224,7 +224,7 @@ jobs:
         id: attest-metadata
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
-          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-type: 'https://autogov.dev/attestation/metadata/v1'
           predicate-path: metadata.json
           push-to-registry: false
       - name: Rename Metadata Bundle
