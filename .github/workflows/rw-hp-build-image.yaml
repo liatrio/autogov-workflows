@@ -24,12 +24,12 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.7.0
+        default: v0.8.0
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.2
+        default: v0.4.3
       release-image:
         description: Whether or not to run the release-image job.
         required: false
