@@ -76,7 +76,7 @@ jobs:
           exit 1
       - name: Checkout code
         if: ${{ runner.environment == 'github-hosted'}}
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -105,13 +105,13 @@ jobs:
           artifact-ids: ${{ env.VSA_ARTIFACT_ID }}
           path: ${{ env.VSA_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@e480437973a6f6ac2e9caa40ecabedc870d76395 # v1.0.1
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: ${{ github.repository }}
           identity: release-ops
       - name: Run semantic-release
-        uses: cycjimmy/semantic-release-action@9cc899c47e6841430bbaedb43de1560a568dfd16 # v5.0.0
+        uses: cycjimmy/semantic-release-action@ba330626c4750c19d8299de843f05c7aa5574f62 # v5.0.2
         id: semantic-release
         with:
           extra_plugins: |
