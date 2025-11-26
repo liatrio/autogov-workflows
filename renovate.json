@@ -4,8 +4,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^\\.github/workflows/.*\\.yaml$"
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.*\\.yaml$/"
       ],
       "matchStrings": [
         "autogov-(?<tool>helper|verify)-version:[\\s\\S]*?default:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
@@ -15,8 +15,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^README\\.md$"
+      "managerFilePatterns": [
+        "/^README\\.md$/"
       ],
       "matchStrings": [
         "autogov-(?<tool>helper|verify)-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
