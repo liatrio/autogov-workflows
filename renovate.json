@@ -12,6 +12,17 @@
       ],
       "depNameTemplate": "liatrio/autogov-{{tool}}",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^README\\.md$"
+      ],
+      "matchStrings": [
+        "autogov-(?<tool>helper|verify)-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
+      ],
+      "depNameTemplate": "liatrio/autogov-{{tool}}",
+      "datasourceTemplate": "github-releases"
     }
   ],
   "packageRules": [
