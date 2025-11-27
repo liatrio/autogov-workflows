@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.3
+        default: v0.4.6
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
