@@ -56,6 +56,26 @@ on:
         required: false
         type: boolean
         default: ${{ github.repository != 'liatrio/liatrio-gh-autogov-workflows' }}
+      vuln-threshold-critical:
+        description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-high:
+        description: 'Maximum high vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-medium:
+        description: 'Maximum medium vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-low:
+        description: 'Maximum low vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
     outputs:
       vsa-artifact-id:
         description: The artifact ID of the uploaded VSA
@@ -155,6 +175,20 @@ jobs:
           gh release download \
             --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
             --pattern "schemas.tar.gz"
+      - name: Generate Vulnerability Threshold Config
+        run: |
+          cat > vulnerability-thresholds.json << 'EOF'
+          {
+            "vulnerability_thresholds": {
+              "critical": ${{ inputs.vuln-threshold-critical }},
+              "high": ${{ inputs.vuln-threshold-high }},
+              "medium": ${{ inputs.vuln-threshold-medium }},
+              "low": ${{ inputs.vuln-threshold-low }}
+            }
+          }
+          EOF
+          echo "Generated vulnerability threshold config:"
+          cat vulnerability-thresholds.json
       - name: Verification and VSA Generation for Image Attestation(s)
         env:
           GH_TOKEN: ${{ inputs.github-token || github.token }}
@@ -170,6 +204,7 @@ jobs:
             --source-ref "${{ github.ref }}" \
             --policy-bundle-path "bundle.tar.gz" \
             --policy-schemas-path "schemas.tar.gz" \
+            --policy-data-path "vulnerability-thresholds.json" \
             --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
             --generate-vsa \
             --vsa-output "$VSA_FILE" \
@@ -205,6 +240,7 @@ jobs:
               --source-ref "${{ github.ref }}" \
               --policy-bundle-path "bundle.tar.gz" \
               --policy-schemas-path "schemas.tar.gz" \
+              --policy-data-path "vulnerability-thresholds.json" \
               --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
               --generate-vsa \
               --vsa-output "$VSA_FILE" \
