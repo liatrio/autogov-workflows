@@ -50,7 +50,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.8.3
+        default: v0.9.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -179,7 +179,7 @@ jobs:
         run: |
           cat > vulnerability-thresholds.json << 'EOF'
           {
-            "vulnerability_thresholds": {
+            "vuln_thresholds": {
               "critical": ${{ inputs.vuln-threshold-critical }},
               "high": ${{ inputs.vuln-threshold-high }},
               "medium": ${{ inputs.vuln-threshold-medium }},
