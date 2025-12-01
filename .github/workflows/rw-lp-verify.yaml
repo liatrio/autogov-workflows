@@ -44,7 +44,27 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.8.3
+        default: v0.9.0
+      vuln-threshold-critical:
+        description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-high:
+        description: 'Maximum high vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-medium:
+        description: 'Maximum medium vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-low:
+        description: 'Maximum low vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
 
     outputs:
       vsa-artifact-id:
@@ -115,6 +135,20 @@ jobs:
           artifact-ids: ${{ inputs.blob-artifact-id }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
+      - name: Generate Vulnerability Threshold Config
+        run: |
+          cat > vulnerability-thresholds.json << 'EOF'
+          {
+            "vuln_thresholds": {
+              "critical": ${{ inputs.vuln-threshold-critical }},
+              "high": ${{ inputs.vuln-threshold-high }},
+              "medium": ${{ inputs.vuln-threshold-medium }},
+              "low": ${{ inputs.vuln-threshold-low }}
+            }
+          }
+          EOF
+          echo "Generated vulnerability threshold config:"
+          cat vulnerability-thresholds.json
       - name: Offline Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         env:
@@ -137,6 +171,7 @@ jobs:
               --source-ref "${{ github.ref }}" \
               --policy-bundle-path "bundle.tar.gz" \
               --policy-schemas-path "schemas.tar.gz" \
+              --policy-data-path "vulnerability-thresholds.json" \
               --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
               --generate-vsa \
               --vsa-output "$VSA_FILE"
