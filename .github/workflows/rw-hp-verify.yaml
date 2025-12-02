@@ -320,7 +320,7 @@ jobs:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
           predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
-          push-to-registry: true
+          push-to-registry: false
           github-token: ${{ inputs.github-token || github.token }}
       - name: Rename VSA Bundle
         id: rename-vsa-bundle
