@@ -128,7 +128,7 @@ jobs:
           ARTIFACTS_FOLDER: ${{ env.ARTIFACTS_FOLDER }}
       - name: Upload Signed VSA and Assets as Release Asset
         if: steps.semantic-release.outputs.new_release_published == 'true'
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
         with:
           files: |
             ${{ env.VSA_ARTIFACT_ID != '' && inputs.publish-vsa && format('{0}/*', env.VSA_FOLDER) || '' }}
