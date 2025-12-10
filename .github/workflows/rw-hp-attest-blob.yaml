@@ -127,7 +127,7 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -196,7 +196,7 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -276,7 +276,7 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -290,7 +290,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Generate SBOM
-        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
+        uses: anchore/sbom-action@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           format: cyclonedx-json
@@ -358,14 +358,14 @@ jobs:
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
       - name: Scan current project
-        uses: anchore/scan-action@40a61b52209e9d50e87917c5b901783d546b12d0 # v7.2.1
+        uses: anchore/scan-action@3c9a191a0fbab285ca6b8530b5de5a642cba332f # v7.2.2
         id: anchore-scan
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           output-format: json
           output-file: results.json
           fail-build: false
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio

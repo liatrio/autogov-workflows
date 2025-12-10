@@ -26,7 +26,7 @@ jobs:
           fetch-tags: true
 
       - name: Generate STS Token
-        uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+        uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: ${{ github.repository }}
@@ -195,7 +195,7 @@ jobs:
             }
       - name: Upload Certificate Identities as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           files: |
             cert-identities.json
