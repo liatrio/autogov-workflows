@@ -373,7 +373,7 @@ jobs:
           ./autogov-helper depscan \
             --results-path results.json \
             --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
-            --digest "${{ needs.build-high-perms.outputs.image-digest }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}" \
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
