@@ -1269,7 +1269,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `autogov-verify-version` (optional, string, default: 'v0.10.2'): The autogov-verify version to use.
-- `autogov-helper-version` (optional, string, default: 'v0.4.6'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.5.4'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
 #### `.github/workflows/rw-hp-build-blob.yaml`
@@ -1277,7 +1277,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
 - `autogov-verify-version` (optional, string, default: 'v0.10.2'): The autogov-verify version to use.
-- `autogov-helper-version` (optional, string, default: 'v0.4.6'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.5.4'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
 #### `.github/workflows/rw-lp-build-blob.yaml`
@@ -1293,7 +1293,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.4.6'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.5.4'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-image.yaml`
 
@@ -1302,7 +1302,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.4.6'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.5.4'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-attest-blob.yaml`
 
@@ -1311,7 +1311,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-helper-version` (optional, string, default: 'v0.4.6'): The autogov-helper version to use.
+- `autogov-helper-version` (optional, string, default: 'v0.5.4'): The autogov-helper version to use.
 
 #### `.github/workflows/rw-hp-verify.yaml`
 

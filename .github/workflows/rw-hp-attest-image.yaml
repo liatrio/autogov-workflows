@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.6
+        default: v0.5.4
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -373,7 +373,7 @@ jobs:
           ./autogov-helper depscan \
             --results-path results.json \
             --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
-            --digest "${{ needs.build-high-perms.outputs.image-digest }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}" \
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
