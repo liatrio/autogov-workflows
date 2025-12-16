@@ -38,7 +38,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.6
+        default: v0.5.4
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -156,7 +156,7 @@ jobs:
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: image-build-provenance-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
@@ -235,7 +235,7 @@ jobs:
             export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-metadata
         with:
           name: image-metadata-attestation-high-perms
@@ -316,7 +316,7 @@ jobs:
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: image-sbom-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
@@ -373,7 +373,7 @@ jobs:
           ./autogov-helper depscan \
             --results-path results.json \
             --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
-            --digest "${{ needs.build-high-perms.outputs.image-digest }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}" \
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
@@ -401,7 +401,7 @@ jobs:
             export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-dependency-scan
         with:
           name: image-dep-scan-attestation-high-perms
