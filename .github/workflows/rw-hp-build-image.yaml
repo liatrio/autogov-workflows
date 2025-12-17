@@ -29,7 +29,7 @@ on:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.5.4
+        default: v0.5.5
       release-image:
         description: Whether or not to run the release-image job.
         required: false
