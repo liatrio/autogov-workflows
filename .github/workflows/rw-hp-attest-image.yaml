@@ -139,9 +139,6 @@ jobs:
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
-      - name: Emit Provenance Attestation Content
-        run: |
-          ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -211,9 +208,6 @@ jobs:
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
-      - name: Emit Metadata Attestation Content
-        run: |
-          ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-metadata
@@ -283,9 +277,6 @@ jobs:
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
-      - name: Emit SBOM Attestation Content
-        run: |
-          ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -361,9 +352,6 @@ jobs:
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
-      - name: Emit Dependency Scan Attestation Content
-        run: |
-          ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-dependency-scan
