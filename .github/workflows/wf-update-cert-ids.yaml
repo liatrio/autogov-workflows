@@ -9,6 +9,8 @@ on:
     branches:
       - 'main'
 
+permissions: {}
+
 jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
@@ -24,14 +26,12 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
           fetch-tags: true
-
       - name: Generate STS Token
         uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-
       - name: Check if update is needed
         id: check-update
         run: |
@@ -44,7 +44,6 @@ jobs:
             echo "Tag SHA not found in cert-identities.json. Update needed."
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
       - name: Get release version from tag
         id: get-version
         if: steps.check-update.outputs.skip != 'true'
@@ -53,7 +52,6 @@ jobs:
           echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "Latest version: $LATEST_VERSION"
-
       - name: Get tag SHA
         id: get-tag-sha
         if: steps.check-update.outputs.skip != 'true'
@@ -63,141 +61,43 @@ jobs:
           echo "TAG_SHA=$TAG_SHA" >> $GITHUB_ENV
           echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
           echo "Tag SHA: $TAG_SHA"
-
       - name: Update certificate identities
         if: steps.check-update.outputs.skip != 'true'
         run: |
           export COMMIT_SHA="$TAG_SHA"
           ./scripts/update-cert-identities.sh "$VERSION"
 
-      - name: Get latest main commit SHA
-        id: get-main-sha
+      - name: Commit updated certificate identities
         if: steps.check-update.outputs.skip != 'true'
-        run: |
-          echo "sha=$(git rev-parse origin/main)" >> $GITHUB_OUTPUT
-
-      - name: Update files and tag
-        if: steps.check-update.outputs.skip != 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          MAIN_SHA: ${{ steps.get-main-sha.outputs.sha }}
-          VERSION: ${{ steps.get-version.outputs.version }}
-          TAG_SHA: ${{ steps.get-tag-sha.outputs.tag_sha }}
-        with:
-          github-token: ${{ steps.octo-sts.outputs.token }}
-          script: |
-            const { execSync } = require('child_process');
-            const fs = require('fs');
-
-            const modifiedFiles = execSync('git diff --name-only').toString().trim().split('\n').filter(Boolean);
-
-            if (modifiedFiles.length === 0) {
-              console.log('No files modified, skipping updates');
-              return;
-            }
-
-            console.log(`Found ${modifiedFiles.length} modified files: ${modifiedFiles.join(', ')}`);
-
-            const version = process.env.VERSION;
-            if (!version) {
-              console.log('No version found, skipping file updates and tag creation');
-              return;
-            }
-
-            const branch = context.ref.replace('refs/heads/', '');
-            console.log(`Using branch: ${branch}`);
-
-            try {
-              const mainSha = process.env.MAIN_SHA;
-              if (!mainSha) {
-                console.error('❌ ERROR: MAIN_SHA environment variable is not set');
-                process.exit(1);
-              }
-              
-              const { data: commitData } = await github.rest.git.getCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: mainSha
-              });
-              const baseTreeSha = commitData.tree.sha;
-
-              const treeItems = [];
-              let errorCount = 0;
-              
-              for (const filePath of modifiedFiles) {
-                console.log(`Processing file: ${filePath}`);
-
-                try {
-                  const content = fs.readFileSync(filePath, 'utf8');
-                  
-                  const { data: blobData } = await github.rest.git.createBlob({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    content: Buffer.from(content).toString('base64'),
-                    encoding: 'base64'
-                  });
-
-                  treeItems.push({
-                    path: filePath,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: blobData.sha
-                  });
-                  
-                  console.log(`Added ${filePath} to the commit tree`);
-                } catch (error) {
-                  console.log(`Error processing file ${filePath}: ${error.message}`);
-                  errorCount++;
-                }
-              }
-
-              if (treeItems.length === 0) {
-                console.error('❌ ERROR: Failed to process any files');
-                process.exit(1);
-              }
-
-              if (errorCount > 0) {
-                console.warn(`⚠️ WARNING: ${errorCount} files could not be processed`);
-              }
-
-              const { data: newTree } = await github.rest.git.createTree({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base_tree: baseTreeSha,
-                tree: treeItems
-              });
-
-              const { data: newCommit } = await github.rest.git.createCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                message: `chore(release): update certificate identities for v${version} 🤖 [skip ci]`,
-                tree: newTree.sha,
-                parents: [mainSha]
-              });
-
-              await github.rest.git.updateRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${branch}`,
-                sha: newCommit.sha
-              });
-
-              console.log(`Created single commit ${newCommit.sha} with all file changes`);
-
-              await new Promise(resolve => setTimeout(resolve, 3000));
-
-              console.log(`Successfully updated cert-identities.json in main branch`);
-              console.log(`IMPORTANT: Tag v${version} remains pointing to its original commit - this is intentional`);
-              console.log(`Certificate identities are now updated but not included in the release tag itself`);
-            } catch (error) {
-              console.error(`❌ ERROR: ${error.message}`);
-              process.exit(1);
-            }
+          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          if ! git diff --quiet cert-identities.json; then
+            git config --local user.name "octo-sts[bot]"
+            git config --local user.email "157150467+octo-sts[bot]@users.noreply.github.com"
+            git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+            git add cert-identities.json
+            git commit -m "chore(release): update certificate identities for v${{ steps.get-version.outputs.version }} 🤖 [skip ci]"
+            git push
+            echo "✅ Successfully committed updated certificate identities"
+          else
+            echo "ℹ️ No changes to certificate identities file"
+          fi
       - name: Upload Certificate Identities as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
-        with:
-          files: |
-            cert-identities.json
-          tag_name: v${{ steps.get-version.outputs.version }}
-          token: ${{ steps.octo-sts.outputs.token }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          # Verify cert-identities.json exists
+          if [ ! -f cert-identities.json ]; then
+            echo "ERROR: cert-identities.json not found"
+            exit 1
+          fi
+
+          # Verify release exists before uploading
+          if gh release view "v${{ steps.get-version.outputs.version }}" >/dev/null 2>&1; then
+            gh release upload "v${{ steps.get-version.outputs.version }}" cert-identities.json --clobber
+          else
+            echo "WARNING: Release v${{ steps.get-version.outputs.version }} not found, skipping upload"
+            exit 0
+          fi
