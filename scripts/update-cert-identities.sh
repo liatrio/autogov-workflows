@@ -65,105 +65,12 @@ for FILE in $RW_FILES; do
   echo "Including $DISPLAY_NAME v$VERSION in flattened identity format"
 done
 
-# create a flattened version using jq
+# load existing cert-identities.json or create new one
 if [ -f "cert-identities.json" ]; then
-  # check if already flattened format or need to convert
-  if jq -e '.identities' cert-identities.json >/dev/null 2>&1; then
-    echo "Existing flattened format detected, updating..."
-    # already flattened format
-    cp cert-identities.json cert-identities.tmp.json
-  else
-    echo "Converting to flattened format..."
-    # convert from legacy to flattened format
-    # start with empty identities array
-    echo '{"identities": []}' >cert-identities.tmp.json
-
-    # convert latest entries
-    for ENTRY in $(jq -c '.latest[]?' cert-identities.json 2>/dev/null || echo '[]'); do
-      if [ "$ENTRY" != "[]" ] && [ -n "$ENTRY" ]; then
-        VERSION=$(echo "$ENTRY" | jq -r '.version')
-        IDENTITY_URL=$(echo "$ENTRY" | jq -r '.identity')
-        ADDED=$(echo "$ENTRY" | jq -r '.added')
-        EXPIRES=$(echo "$ENTRY" | jq -r '.expires // ""')
-        SHA=$(echo "$IDENTITY_URL" | cut -d '@' -f 2)
-
-        # add as 'latest' status entry
-        jq --arg version "$VERSION" \
-          --arg sha "$SHA" \
-          --arg added "$ADDED" \
-          --arg expires "$EXPIRES" \
-          --arg identity "$IDENTITY_URL" \
-          '.identities += [{
-             "version": $version,
-             "sha": $sha,
-             "status": "latest",
-             "identities": [$identity],
-             "added": $added,
-             "expires": $expires
-           }]' cert-identities.tmp.json >cert-identities.tmp2.json
-        mv cert-identities.tmp2.json cert-identities.tmp.json
-      fi
-    done
-
-    # convert approved entries
-    for ENTRY in $(jq -c '.approved[]?' cert-identities.json 2>/dev/null || echo '[]'); do
-      if [ "$ENTRY" != "[]" ] && [ -n "$ENTRY" ]; then
-        VERSION=$(echo "$ENTRY" | jq -r '.version')
-        IDENTITY_URL=$(echo "$ENTRY" | jq -r '.identity')
-        ADDED=$(echo "$ENTRY" | jq -r '.added')
-        EXPIRES=$(echo "$ENTRY" | jq -r '.expires // ""')
-        SHA=$(echo "$IDENTITY_URL" | cut -d '@' -f 2)
-
-        # add as 'approved' status entry
-        jq --arg version "$VERSION" \
-          --arg sha "$SHA" \
-          --arg added "$ADDED" \
-          --arg expires "$EXPIRES" \
-          --arg identity "$IDENTITY_URL" \
-          '.identities += [{
-             "version": $version,
-             "sha": $sha,
-             "status": "approved",
-             "identities": [$identity],
-             "added": $added,
-             "expires": $expires
-           }]' cert-identities.tmp.json >cert-identities.tmp2.json
-        mv cert-identities.tmp2.json cert-identities.tmp.json
-      fi
-    done
-
-    # convert revoked entries
-    for ENTRY in $(jq -c '.revoked[]?' cert-identities.json 2>/dev/null || echo '[]'); do
-      if [ "$ENTRY" != "[]" ] && [ -n "$ENTRY" ]; then
-        VERSION=$(echo "$ENTRY" | jq -r '.version')
-        IDENTITY_URL=$(echo "$ENTRY" | jq -r '.identity')
-        ADDED=$(echo "$ENTRY" | jq -r '.added')
-        REVOKED=$(echo "$ENTRY" | jq -r '.revoked // ""')
-        REASON=$(echo "$ENTRY" | jq -r '.reason // ""')
-        SHA=$(echo "$IDENTITY_URL" | cut -d '@' -f 2)
-
-        # add as 'revoked' status entry
-        jq --arg version "$VERSION" \
-          --arg sha "$SHA" \
-          --arg added "$ADDED" \
-          --arg revoked "$REVOKED" \
-          --arg reason "$REASON" \
-          --arg identity "$IDENTITY_URL" \
-          '.identities += [{
-             "version": $version,
-             "sha": $sha,
-             "status": "revoked",
-             "identities": [$identity],
-             "added": $added,
-             "revoked": $revoked,
-             "reason": $reason
-           }]' cert-identities.tmp.json >cert-identities.tmp2.json
-        mv cert-identities.tmp2.json cert-identities.tmp.json
-      fi
-    done
-  fi
+  echo "Loading existing certificate identities..."
+  cp cert-identities.json cert-identities.tmp.json
 else
-  # create new empty identities list
+  echo "Creating new certificate identities file..."
   echo '{"identities": []}' >cert-identities.tmp.json
 fi
 
