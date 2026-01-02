@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.14.2...v0.15.0) (2026-01-02)
+
+
+### Features
+
+* adds release-please / removes semantic-release ([#234](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/234)) ([376f7fc](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/376f7fc13442ba67f8e14163ddda5b520ed6ba56))
+
+
+### Bug Fixes
+
+* align release-please manifest with current release v0.14.2 ([8b7cf74](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/8b7cf74b48b0cb7c53497629c9a5a0b4eda052db))
+
 ## [0.13.0](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.12.0...v0.13.0) (2026-01-02)
 
 
