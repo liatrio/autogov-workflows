@@ -191,7 +191,7 @@ jobs:
       - name: Upload Certificate Identities as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
         env:
-          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           # Verify cert-identities.json exists
           if [ ! -f cert-identities.json ]; then

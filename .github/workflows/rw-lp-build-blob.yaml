@@ -102,6 +102,7 @@ jobs:
       id-token: write
       contents: write
       actions: read
+      pull-requests: write
     needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit

@@ -121,7 +121,7 @@ jobs:
       - name: Upload Release Assets
         if: ${{ steps.release-please.outputs.release_created }}
         env:
-          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           # upload release assets to draft release
           # VSA files if they exist and publish-vsa is enabled
@@ -141,6 +141,6 @@ jobs:
       - name: Publish Immutable Release
         if: ${{ steps.release-please.outputs.release_created }}
         env:
-          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           gh release edit "${{ steps.release-please.outputs.tag_name }}" --draft=false
