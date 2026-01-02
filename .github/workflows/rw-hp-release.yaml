@@ -123,7 +123,7 @@ jobs:
           scope: ${{ github.repository }}
           identity: release-ops
       - name: Create Release
-        uses: googleapis/release-please-action@cae0771f97b7e8a5b9e3581de2de5f0e69f8a336 # v4.4.0
+        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         id: release-please
         with:
           token: ${{ steps.octo-sts.outputs.token }}
