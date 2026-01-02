@@ -758,7 +758,7 @@ Example of Sigstore Bundle Attestation / `application/vnd.dev.sigstore.bundle.v0
 - `artifactType` defines the Sigstore bundle's media type, useful for registry compatibility.
 - The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
 - The `layers` array holds the Sigstore bundle content, with its size and hash.
-`subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
+- `subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
 
 #### Important Notes About Attestation Layers
 

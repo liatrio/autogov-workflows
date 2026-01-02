@@ -4,3 +4,4 @@ permissions:
   actions: read
   contents: write
   packages: write
+  pull_requests: write
