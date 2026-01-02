@@ -34,3 +34,4 @@
 * makes flags consistent w/ latest autogov-helper release. ([#271](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/271)) ([4e0226c](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/4e0226c523e8a76e57f5106c5a6ba1778d08c12d))
 * reverts softprops/action-gh-release from v2.5.0 to v2.4.2. ([#264](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/264)) ([e51fa5f](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/e51fa5ff79db20f1cf7d52fa21da4203d5ee3bf9))
 * updates gh trusted root file. ([#252](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/252)) ([7a72d60](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/7a72d60dc48a629cac6670eef6634682db4f5d79))
+
