@@ -9,6 +9,8 @@ on:
     branches:
       - 'main'
 
+permissions: {}
+
 jobs:
   update-cert-identities:
     runs-on: ubuntu-latest
@@ -24,14 +26,12 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
           fetch-tags: true
-
       - name: Generate STS Token
         uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: ${{ github.repository }}
           identity: release-ops
-
       - name: Check if update is needed
         id: check-update
         run: |
@@ -44,7 +44,6 @@ jobs:
             echo "Tag SHA not found in cert-identities.json. Update needed."
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
       - name: Get release version from tag
         id: get-version
         if: steps.check-update.outputs.skip != 'true'
@@ -53,7 +52,6 @@ jobs:
           echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "Latest version: $LATEST_VERSION"
-
       - name: Get tag SHA
         id: get-tag-sha
         if: steps.check-update.outputs.skip != 'true'
@@ -63,19 +61,16 @@ jobs:
           echo "TAG_SHA=$TAG_SHA" >> $GITHUB_ENV
           echo "tag_sha=$TAG_SHA" >> $GITHUB_OUTPUT
           echo "Tag SHA: $TAG_SHA"
-
       - name: Update certificate identities
         if: steps.check-update.outputs.skip != 'true'
         run: |
           export COMMIT_SHA="$TAG_SHA"
           ./scripts/update-cert-identities.sh "$VERSION"
-
       - name: Get latest main commit SHA
         id: get-main-sha
         if: steps.check-update.outputs.skip != 'true'
         run: |
           echo "sha=$(git rev-parse origin/main)" >> $GITHUB_OUTPUT
-
       - name: Update files and tag
         if: steps.check-update.outputs.skip != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -195,9 +190,19 @@ jobs:
             }
       - name: Upload Certificate Identities as Release Asset
         if: steps.check-update.outputs.skip != 'true' && steps.get-version.outputs.version != ''
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
-        with:
-          files: |
-            cert-identities.json
-          tag_name: v${{ steps.get-version.outputs.version }}
-          token: ${{ steps.octo-sts.outputs.token }}
+        env:
+          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          # Verify cert-identities.json exists
+          if [ ! -f cert-identities.json ]; then
+            echo "ERROR: cert-identities.json not found"
+            exit 1
+          fi
+
+          # Verify release exists before uploading
+          if gh release view "v${{ steps.get-version.outputs.version }}" >/dev/null 2>&1; then
+            gh release upload "v${{ steps.get-version.outputs.version }}" cert-identities.json --clobber
+          else
+            echo "WARNING: Release v${{ steps.get-version.outputs.version }} not found, skipping upload"
+            exit 0
+          fi
