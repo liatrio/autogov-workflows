@@ -2,9 +2,11 @@
 
 ## [0.15.0](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.14.2...v0.15.0) (2026-01-02)
 
+
 ### Features
 
 * adds release-please / removes semantic-release ([#234](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/234)) ([376f7fc](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/376f7fc13442ba67f8e14163ddda5b520ed6ba56))
+
 
 ### Bug Fixes
 
@@ -12,11 +14,13 @@
 
 ## [0.13.0](https://github.com/liatrio/liatrio-gh-autogov-workflows/compare/v0.12.0...v0.13.0) (2026-01-02)
 
+
 ### Features
 
 * add vuln threshold inputs to verification workflows ([#257](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/257)) ([9155f79](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/9155f79451f7843af5c035acc9ff631cbb8d89a5))
 * adds release-please / removes semantic-release ([#234](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/234)) ([376f7fc](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/376f7fc13442ba67f8e14163ddda5b520ed6ba56))
 * bumps autogov-verify, supports public sigstore and other oidc issuers. ([#261](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/261)) ([6ec9a79](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/6ec9a792694dbd3d312bcad8136db0586d45b822))
+
 
 ### Bug Fixes
 
@@ -30,3 +34,4 @@
 * makes flags consistent w/ latest autogov-helper release. ([#271](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/271)) ([4e0226c](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/4e0226c523e8a76e57f5106c5a6ba1778d08c12d))
 * reverts softprops/action-gh-release from v2.5.0 to v2.4.2. ([#264](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/264)) ([e51fa5f](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/e51fa5ff79db20f1cf7d52fa21da4203d5ee3bf9))
 * updates gh trusted root file. ([#252](https://github.com/liatrio/liatrio-gh-autogov-workflows/issues/252)) ([7a72d60](https://github.com/liatrio/liatrio-gh-autogov-workflows/commit/7a72d60dc48a629cac6670eef6634682db4f5d79))
+
