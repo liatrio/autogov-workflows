@@ -1,4 +1,4 @@
-name: Verify Low Permissions Reuseable Workflow
+name: Verify Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -31,7 +31,7 @@ on:
         required: true
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         default: ''
         required: false
         type: string
@@ -40,20 +40,56 @@ on:
         description: The label of the workflow runner
         required: false
         default: ubuntu-latest
+      autogov-verify-version:
+        description: The autogov-verify version to use.
+        required: false
+        type: string
+        default: v0.10.6
+      vuln-threshold-critical:
+        description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-high:
+        description: 'Maximum high vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-medium:
+        description: 'Maximum medium vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-low:
+        description: 'Maximum low vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+
+    outputs:
+      vsa-artifact-id:
+        description: The artifact-id of the VSA attestation artifact.
+        value: ${{ jobs.verify-low-perms.outputs.vsa-artifact-id }}
 
 permissions: {}
 
 env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
-  ARTIFACT_IDS: "${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}"
+  ARTIFACT_IDS: '${{ inputs.attest-build-attestation-artifact-id }},${{ inputs.attest-metadata-attestation-artifact-id }},${{ inputs.attest-sbom-attestation-artifact-id }},${{ inputs.attest-dependency-scan-attestation-artifact-id }}'
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
+  VSA_FOLDER: ./vsa
+  POLICY_REPO_NAME: liatrio-rego-policy-library
 
 jobs:
   verify-low-perms:
+    outputs:
+      vsa-artifact-id: ${{ steps.upload-vsa-artifact.outputs.artifact-id }}
     permissions:
       contents: read
       actions: read
+      id-token: write
+      attestations: write
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
@@ -61,56 +97,160 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Download Trusted Roots
-        run: gh attestation trusted-root > trusted_root.json
-      - name: Create Attestations Folder
-        run: mkdir ${{ env.ATTESTATIONS_FOLDER }}
+      - name: Create Attestations, Artifacts, and VSA Folders
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: mkdir ${{ env.ATTESTATIONS_FOLDER }} && mkdir ${{ env.ARTIFACTS_FOLDER }} && mkdir ${{ env.VSA_FOLDER }}
       - name: Download Sigstore Bundle(s)
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_IDS }}
           path: ${{ env.ATTESTATIONS_FOLDER }}
           merge-multiple: true
-      - name: Process Sigstore Bundle(s)
-        run: find ${{ env.ATTESTATIONS_FOLDER }} -name "*.jsonl" -exec cat {} \; > ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl
-      - name: Process Sigstore Bundle for Offline Blob Verification
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov-verify
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          cp ${{ env.ATTESTATIONS_FOLDER }}/sigstore-bundle.jsonl ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl
-          cd ${{ env.ATTESTATIONS_FOLDER }}
-          find . -name "*.jsonl" ! -name "all_attestations.jsonl" -delete
+          gh release download ${{ inputs.autogov-verify-version }} \
+            --repo liatrio/autogov-verify \
+            --pattern "autogov-verify"
+            chmod +x autogov-verify
+      - name: Download Policy Schemas
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download \
+            --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
+            --pattern "schemas.tar.gz" \
+            --pattern "bundle.tar.gz"
       - name: Download Blob Artifact(s)
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ inputs.blob-artifact-id }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - name: Offline Verification of Blob Attestation(s)
+      - name: Generate Vulnerability Threshold Config
+        run: |
+          cat > vulnerability-thresholds.json << 'EOF'
+          {
+            "vuln_thresholds": {
+              "critical": ${{ inputs.vuln-threshold-critical }},
+              "high": ${{ inputs.vuln-threshold-high }},
+              "medium": ${{ inputs.vuln-threshold-medium }},
+              "low": ${{ inputs.vuln-threshold-low }}
+            }
+          }
+          EOF
+          echo "Generated vulnerability threshold config:"
+          cat vulnerability-thresholds.json
+      - name: Offline Verification and VSA Generation for Blob Attestation(s)
+        id: verify-blob
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           set +x
-          find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
-              --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
-              --custom-trusted-root trusted_root.json \
-              --format json \
-              --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-            | grep "^${{ github.ref }}$"
+          VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
 
-            gh attestation verify \
-              $ARTIFACT \
-              --deny-self-hosted-runners \
-              --repo ${{ github.repository }} \
+          ARTIFACT_COUNT=$(find ${{ env.ARTIFACTS_FOLDER }} -type f | wc -l)
+          echo "Found $ARTIFACT_COUNT artifact(s) to verify in ${{ env.ARTIFACTS_FOLDER }}"
+
+          if [ "$ARTIFACT_COUNT" -gt 0 ]; then
+            echo "Artifacts to verify:"
+            find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
+
+            ./autogov-verify offline \
+              --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
+              --attestations "${{ env.ATTESTATIONS_FOLDER }}" \
               --cert-identity "${{ inputs.cert-identity }}" \
-              --bundle ${{ env.ATTESTATIONS_FOLDER }}/all_attestations.jsonl \
-              --custom-trusted-root trusted_root.json \
-              --format json \
-              --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-            | grep -E \
-              'blob-artifact-name|subject-path|workflow-runner-label|show-summary' | \
-            jq -r
-          done
+              --source-ref "${{ github.ref }}" \
+              --policy-bundle-path "bundle.tar.gz" \
+              --policy-schemas-path "schemas.tar.gz" \
+              --policy-data-path "vulnerability-thresholds.json" \
+              --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
+              --generate-vsa \
+              --vsa-output "$VSA_FILE"
+
+            if [ -f "$VSA_FILE" ]; then
+              RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+              echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
+
+              VSA_FILE_WITH_STATUS="${{ env.VSA_FOLDER }}/verification-summary-attestation-$RESULT_STATUS.json"
+              mv "$VSA_FILE" "$VSA_FILE_WITH_STATUS"
+            else
+              echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+          fi
+      - name: Display VSA Summary
+        run: |
+          VSA_FILE=$(find ${{ env.VSA_FOLDER }} -name "verification-summary-attestation*.json*" | head -1)
+          if [ -f "$VSA_FILE" ]; then
+            echo "### Verification Summary Attestation (VSA) Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            VERIFICATION_RESULT=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
+            case "$VERIFICATION_RESULT" in
+              "true"|"PASSED") RESULT_STATUS="PASSED" ;;
+              "false"|"FAILED") RESULT_STATUS="FAILED" ;;
+              *) RESULT_STATUS="UNKNOWN" ;;
+            esac
+
+            if [ "$RESULT_STATUS" = "PASSED" ]; then
+              echo "#### Result: ✅ PASSED" >> $GITHUB_STEP_SUMMARY
+            elif [ "$RESULT_STATUS" = "FAILED" ]; then
+              echo "#### Result: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "#### Result: ⚠ UNKNOWN" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "- Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "- Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "- Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$RESULT_STATUS" = "FAILED" ]; then
+              VIOLATION_COUNT=$(jq -r '.metadata."autogov.policy.evaluation".violations | length // 0' "$VSA_FILE")
+              if [ "$VIOLATION_COUNT" -gt 0 ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "#### 🚨 Policy Violations ($VIOLATION_COUNT)" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "| Policy | Message |" >> $GITHUB_STEP_SUMMARY
+                echo "|--------|---------|" >> $GITHUB_STEP_SUMMARY
+                jq -r '.metadata."autogov.policy.evaluation".violations[] | "| \(.policy) | \(.message) |"' "$VSA_FILE" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### VSA File: $(basename "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No VSA file found" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Attest to VSA for Blob
+        id: attest-vsa-blob
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        with:
+          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          predicate-type: 'https://slsa.dev/verification_summary/v1'
+          predicate-path: ${{ env.VSA_FOLDER }}/verification-summary-attestation-${{ steps.verify-blob.outputs.result-status }}.json
+          push-to-registry: false
+          github-token: ${{ inputs.github-token || github.token }}
+      - name: Rename VSA Bundle for Blob
+        id: rename-vsa-bundle
+        run: |
+          BUNDLE_DIR=$(dirname "${{ steps.attest-vsa-blob.outputs.bundle-path }}")
+          VSA_PATH="$BUNDLE_DIR/vsa-${{ steps.verify-blob.outputs.result-status }}.json"
+          mv "${{ steps.attest-vsa-blob.outputs.bundle-path }}" "$VSA_PATH"
+          echo "vsa-bundle-path=$VSA_PATH" >> $GITHUB_OUTPUT
+      - name: Upload Signed VSA Bundle Artifact
+        id: upload-vsa-artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: verification-summary-attestation-low-perms
+          path: ${{ steps.rename-vsa-bundle.outputs.vsa-bundle-path }}
+          if-no-files-found: error

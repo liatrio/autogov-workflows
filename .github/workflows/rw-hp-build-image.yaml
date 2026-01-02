@@ -1,4 +1,4 @@
-name: Build Image High Permissions Reuseable Workflow
+name: Build Image High Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -20,32 +20,60 @@ on:
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
         required: true
         type: string
-      ignore-dependency-vulnerabilities:
-        description: Whether to ignore dependency vulnerabilities during OPA evaluation.
-        required: false
-        type: boolean
-        # defaults to true in workflows repo, false elsewhere
-        default: ${{ github.repository == format('{0}/{1}', github.repository_owner, 'liatrio-gh-autogov-workflows') }}
       autogov-verify-version:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.4.4
+        default: v0.10.6
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.2
-      publish-attestations:
-        description: Whether to publish attestations as release assets.
-        required: false
-        type: boolean
-        default: true
+        default: v0.5.5
       release-image:
-        description: Whether to run the release-image job.
+        description: Whether or not to run the release-image job.
         required: false
         type: boolean
         default: true
+      vuln-threshold-critical:
+        description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-high:
+        description: 'Maximum high vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-medium:
+        description: 'Maximum medium vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-low:
+        description: 'Maximum low vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+    outputs:
+      attest-build-attestation-artifact-id:
+        description: "Attestation artifact ID"
+        value: ${{ jobs.attest-image.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestation-artifact-id:
+        description: "Metadata artifact ID" 
+        value: ${{ jobs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
+      attest-sbom-attestation-artifact-id:
+        description: "SBOM artifact ID"  
+        value: ${{ jobs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id: 
+        description: "Dependency scan artifact ID" 
+        value: ${{ jobs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
+      image-digest: 
+        description: "image-digest"
+        value: ${{ jobs.attest-image.outputs.image-digest }}
+      vsa-artifact-id: 
+        description: "VSA artifact ID"
+        value: ${{ jobs.verify-image.outputs.vsa-artifact-id }}
 
 permissions: {}
 
@@ -67,41 +95,31 @@ jobs:
   verify-image: #image
     permissions:
       id-token: write
-      attestations: read
+      attestations: write
+      packages: write
       contents: read
-      packages: read
       actions: read
     needs: [attest-image]
     uses: ./.github/workflows/rw-hp-verify.yaml
     secrets: inherit
     with:
       build-type: image
-      registry: ${{ inputs.registry }}
+      subject-name: ${{ inputs.subject-name }}
       image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      registry: ${{ inputs.registry }}
       cert-identity: ${{ inputs.cert-identity }}
       autogov-verify-version: ${{ inputs.autogov-verify-version }}
-
-  run-opa-image: #image
-    permissions:
-      id-token: write
-      attestations: read
-      packages: read
-      actions: read
-    needs: [verify-image, attest-image]
-    uses: ./.github/workflows/rw-hp-run-opa.yaml
-    secrets: inherit
-    with:
-      build-type: image
-      registry: ${{ inputs.registry }}
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      ignore-dependency-vulnerabilities: ${{ inputs.ignore-dependency-vulnerabilities }}
+      vuln-threshold-critical: ${{ inputs.vuln-threshold-critical }}
+      vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
+      vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}
+      vuln-threshold-low: ${{ inputs.vuln-threshold-low }}
 
   release-image: #image
     permissions:
       contents: write
       id-token: write
       actions: read
-    needs: [verify-image, attest-image, run-opa-image]
+    needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
     uses: ./.github/workflows/rw-hp-release.yaml
     secrets: inherit
@@ -112,5 +130,5 @@ jobs:
       attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-image.outputs.results-artifact-id }}
-      publish-attestations: ${{ inputs.publish-attestations }}
+      vsa-artifact-id: ${{ needs.verify-image.outputs.vsa-artifact-id }}
+      publish-vsa: true

@@ -1,4 +1,4 @@
-name: Attest Blob Low Permissions Reuseable Workflow
+name: Attest Blob Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -34,14 +34,14 @@ on:
         type: string
       github-token:
         description: >
-          The GitHub token set throughout the reuseable workflow including the composite (build) action.
+          The GitHub token set throughout the reusable workflow including the composite (build) action.
         required: false
         type: string
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
         type: string
-        default: v0.4.2
+        default: v0.5.5
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
@@ -85,7 +85,7 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -95,7 +95,7 @@ jobs:
         uses: ./.github/actions/build-blob
       - name: Upload Blob
         id: upload-blob
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ inputs.blob-artifact-name }}
           path: ${{ inputs.subject-path }}
@@ -121,13 +121,13 @@ jobs:
           exit 1
       - name: Download Blob Artifact(s)
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: liatrio
@@ -142,7 +142,7 @@ jobs:
           chmod +x autogov-helper
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           github-token: ${{ inputs.github-token || github.token }}
@@ -164,7 +164,7 @@ jobs:
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: blob-build-provenance-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
@@ -190,13 +190,13 @@ jobs:
           exit 1
       - name: Download Blob Artifact(s)
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: liatrio
@@ -220,11 +220,11 @@ jobs:
             --subject-path ${{ env.ARTIFACTS_FOLDER }}
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         id: attest-metadata
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
-          predicate-type: 'https://cosign.sigstore.dev/attestation/v1'
+          predicate-type: 'https://autogov.dev/attestation/metadata/v1'
           predicate-path: metadata.json
           push-to-registry: false
       - name: Rename Metadata Bundle
@@ -243,7 +243,7 @@ jobs:
             export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-metadata
         with:
           name: blob-metadata-attestation-low-perms
@@ -270,13 +270,13 @@ jobs:
           exit 1
       - name: Download Blob Artifact(s)
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: liatrio
@@ -290,7 +290,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Generate SBOM
-        uses: anchore/sbom-action@7b36ad622f042cab6f59a75c2ac24ccb256e9b45 # v0.20.4
+        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           format: cyclonedx-json
@@ -302,7 +302,7 @@ jobs:
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         id: attest-sbom
-        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2.4.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           sbom-path: sbom.cyclonedx.json
@@ -325,7 +325,7 @@ jobs:
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: blob-sbom-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
@@ -351,21 +351,21 @@ jobs:
           exit 1
       - name: Download Blob Artifact(s)
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           github-token: ${{ inputs.github-token || github.token }}
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
       - name: Scan current project
-        uses: anchore/scan-action@df395807f4554463d4455b8047cf58e37b6acaae # v6.5.0
+        uses: anchore/scan-action@40a61b52209e9d50e87917c5b901783d546b12d0 # v7.2.1
         id: anchore-scan
         with:
           path: ${{ env.ARTIFACTS_FOLDER }}
           output-format: json
           output-file: results.json
           fail-build: false
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
           scope: liatrio
@@ -388,7 +388,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2.4.0
+        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
         id: attest-dep-scan
         with:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
@@ -411,7 +411,7 @@ jobs:
             export OTEL_EXPORTER_OTLP_ENDPOINT=https://${{ env.OTEL_EXPORTER_OTLP_ENDPOINT }}
             ./autogov-helper att-span --bundle-path ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-dependency-scan
         with:
           name: blob-dep-scan-attestation-low-perms

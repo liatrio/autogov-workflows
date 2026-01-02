@@ -7,7 +7,11 @@ metadata:
     github.com/project-slug: liatrio/liatrio-gh-autogov-workflows
   tags:
     - autogov
+    - automated-governance
+    - github-actions
+    - reusable-workflow
+    - workflow
 spec:
-  type: library
+  owner: "group:default/tag-autogov"
   lifecycle: in-progress
-  owner: tag-autogov
+  type: service

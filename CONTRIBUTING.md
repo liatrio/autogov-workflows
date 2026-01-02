@@ -151,7 +151,7 @@ Example of Attesting Image:
         id: attest-image-data
         subject-name: ${{ format('{0}/{1}', inputs.registry, github.repository) }}
         subject-digest: ${{ needs.build-<perms>.outputs.image-digest }}
-        predicate-type: '<PREDICATE URI>' # example: 'https://cosign.sigstore.dev/attestation/v1'
+        predicate-type: '<PREDICATE URI>' # example: 'https://autogov.dev/attestation/metadata/v1'
         predicate-path: '<PATH TO PREDICATE>' # example.json
         push-to-registry: true
     ```
@@ -162,7 +162,7 @@ Example of Attesting Blob:
         uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
         id: attest-blob-data
         subject-path: ${{ inputs.subject-path }}
-        predicate-type: '<PREDICATE URI>' # example: 'https://cosign.sigstore.dev/attestation/v1'
+        predicate-type: '<PREDICATE URI>' # example: 'https://autogov.dev/attestation/metadata/v1'
         predicate-path: '<PATH TO PREDICATE>' # example.json
         push-to-registry: true
     ```

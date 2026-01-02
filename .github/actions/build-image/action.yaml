@@ -16,7 +16,7 @@ inputs:
     default: ghcr.io
   github-token:
     description: >
-      The GitHub token set throughout the reuseable workflow including the composite (build) action.
+      The GitHub token set throughout the reusable workflow including the composite (build) action.
     required: false
     default: ''
 outputs:
@@ -30,14 +30,14 @@ runs:
     - name: Get Next Semantic Release Tag # premptively tags pushed/registry image w/ release tag
       id: semantic-release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
+      uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
       with:
         dry: true
         allow-initial-development-versions: true
         github-token: ${{ inputs.github-token || github.token }}
     - name: Image Metadata
       id: meta
-      uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
       with:
         images: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
         tags: |
@@ -46,11 +46,11 @@ runs:
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
           type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a # v3.3.0
+      uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
     - name: Log in to GitHub Container Registry
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
         registry: ${{ inputs.registry }}
         username: ${{ github.actor }}

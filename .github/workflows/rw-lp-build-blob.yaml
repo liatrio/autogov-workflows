@@ -1,4 +1,4 @@
-name: Build Blob Low Permissions Reuseable Workflow
+name: Build Blob Low Permissions Reusable Workflow
 
 on:
   workflow_call:
@@ -16,16 +16,50 @@ on:
         description: >
           The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
         required: true
-      publish-attestations:
-        description: Whether to publish attestations as release assets.
-        required: false
-        type: boolean
-        default: true
       release-blob:
-        description: Whether to run the release-blob job.
+        description:  Whether or not to run the release-blob job.
         required: false
         type: boolean
         default: true
+      vuln-threshold-critical:
+        description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-high:
+        description: 'Maximum high vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-medium:
+        description: 'Maximum medium vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+      vuln-threshold-low:
+        description: 'Maximum low vulnerabilities allowed (0=none, -1=unlimited)'
+        required: false
+        type: string
+        default: '0'
+    outputs:
+      attest-build-attestation-artifact-id:
+        description: "Attestation artifact ID"
+        value: ${{ jobs.attest-blob.outputs.attest-build-attestation-artifact-id }}
+      attest-metadata-attestation-artifact-id:
+        description: "Metadata artifact ID" 
+        value: ${{ jobs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
+      attest-sbom-attestation-artifact-id:
+        description: "SBOM artifact ID"  
+        value: ${{ jobs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
+      attest-dependency-scan-attestation-artifact-id: 
+        description: "Dependency scan artifact ID" 
+        value: ${{ jobs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
+      blob-artifact-id: 
+        description: "Blob artifact ID"
+        value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
+      vsa-artifact-id: 
+        description: "VSA artifact ID"
+        value: ${{ jobs.verify-blob.outputs.vsa-artifact-id }}
 
 permissions: {}
 
@@ -45,6 +79,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
+      attestations: write
     needs: [attest-blob]
     uses: ./.github/workflows/rw-lp-verify.yaml
     secrets: inherit
@@ -55,21 +91,10 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
-
-  run-opa-blob: #blob
-    permissions:
-      id-token: write
-      contents: read
-      packages: read
-      actions: read
-    needs: [verify-blob, attest-blob]
-    uses: ./.github/workflows/rw-lp-run-opa.yaml
-    secrets: inherit
-    with:
-      attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
-      attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
+      vuln-threshold-critical: ${{ inputs.vuln-threshold-critical }}
+      vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
+      vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}
+      vuln-threshold-low: ${{ inputs.vuln-threshold-low }}
 
   release-blob: #blob
     if: ${{ inputs.release-blob }}
@@ -77,7 +102,7 @@ jobs:
       id-token: write
       contents: write
       actions: read
-    needs: [verify-blob, attest-blob, run-opa-blob]
+    needs: [verify-blob, attest-blob]
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit
     with:
@@ -86,5 +111,5 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-      results-artifact-id: ${{ needs.run-opa-blob.outputs.results-artifact-id }}
-      publish-attestations: ${{ inputs.publish-attestations }}
+      vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
+      publish-vsa: true

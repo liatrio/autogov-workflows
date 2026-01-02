@@ -5,7 +5,6 @@ on:
   push:
     branches: ['**']
     paths-ignore:
-      - .github/workflows/wf-slack-alert.yaml
       - README.md
       - CONTRIBUTING.md
       - catalog-info.yaml
@@ -13,6 +12,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - catalog-info.yaml
+      - renovate.json
 
 permissions: {}
 
@@ -31,13 +35,17 @@ jobs:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      vuln-threshold-critical: '-1'
+      vuln-threshold-high: '-1'
+      vuln-threshold-medium: '-1'
+      vuln-threshold-low: '-1'
 
   # attest-blob-hp: #blob
   #   if: github.event.pull_request.draft == false
   #   permissions:
   #     id-token: write
   #     attestations: write
-  #     packages: read
+  #     packages: write
   #     contents: write
   #     actions: read
   #   uses: ./.github/workflows/rw-hp-build-blob.yaml
@@ -53,7 +61,6 @@ jobs:
   #   permissions:
   #     id-token: write
   #     attestations: write
-  #     packages: read
   #     contents: write
   #     actions: read
   #   uses: ./.github/workflows/rw-lp-build-blob.yaml

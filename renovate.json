@@ -1,6 +1,30 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "configMigration": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.*\\.yaml$/"
+      ],
+      "matchStrings": [
+        "autogov-(?<tool>helper|verify)-version:[\\s\\S]*?default:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "liatrio/autogov-{{tool}}",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^README\\.md$/"
+      ],
+      "matchStrings": [
+        "autogov-(?<tool>helper|verify)-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
+      ],
+      "depNameTemplate": "liatrio/autogov-{{tool}}",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
   "packageRules": [
     {
       "extends": [
