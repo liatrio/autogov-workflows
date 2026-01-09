@@ -70,16 +70,44 @@ jobs:
       - name: Commit updated certificate identities
         if: steps.check-update.outputs.skip != 'true'
         env:
-          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           if ! git diff --quiet cert-identities.json; then
-            git config --local user.name "octo-sts[bot]"
-            git config --local user.email "157150467+octo-sts[bot]@users.noreply.github.com"
-            git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
-            git add cert-identities.json
-            git commit -m "chore(release): update certificate identities for v${{ steps.get-version.outputs.version }} 🤖 [skip ci]"
-            git push
-            echo "✅ Successfully committed updated certificate identities"
+            # Get current main branch SHA
+            MAIN_SHA=$(gh api /repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')
+
+            # Get base tree from current commit
+            BASE_TREE=$(gh api /repos/${{ github.repository }}/git/commits/${MAIN_SHA} --jq '.tree.sha')
+
+            # Create blob for updated file
+            BLOB_SHA=$(gh api /repos/${{ github.repository }}/git/blobs \
+              -f content="$(base64 -w0 cert-identities.json)" \
+              -f encoding="base64" \
+              --jq '.sha')
+
+            # Create new tree with updated file
+            NEW_TREE=$(gh api /repos/${{ github.repository }}/git/trees \
+              -f base_tree="${BASE_TREE}" \
+              -f 'tree[][path]=cert-identities.json' \
+              -f 'tree[][mode]=100644' \
+              -f 'tree[][type]=blob' \
+              -f "tree[][sha]=${BLOB_SHA}" \
+              --jq '.sha')
+
+            # Create commit via API (bypasses signature requirement for authorized apps)
+            NEW_COMMIT=$(gh api /repos/${{ github.repository }}/git/commits \
+              -f message="chore(release): update certificate identities for v${{ steps.get-version.outputs.version }} 🤖 [skip ci]" \
+              -f tree="${NEW_TREE}" \
+              -f 'parents[]'="${MAIN_SHA}" \
+              --jq '.sha')
+
+            # Update main branch reference
+            gh api /repos/${{ github.repository }}/git/refs/heads/main \
+              -X PATCH \
+              -f sha="${NEW_COMMIT}" \
+              -f force=false
+
+            echo "✅ Successfully committed updated certificate identities via API"
           else
             echo "ℹ️ No changes to certificate identities file"
           fi
