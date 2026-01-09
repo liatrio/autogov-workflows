@@ -23,10 +23,17 @@ outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
     value: ${{ steps.build-image.outputs.digest }}
+  subject-name-sanitized:
+    description: The sanitized (lowercase) subject name for OCI compliance.
+    value: ${{ steps.sanitize.outputs.name }}
 
 runs:
   using: composite
   steps:
+    - name: Sanitize subject name for OCI compliance
+      id: sanitize
+      shell: bash
+      run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
     - name: Get Next Semantic Release Tag # premptively tags pushed/registry image w/ release tag
       id: semantic-release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -39,7 +46,7 @@ runs:
       id: meta
       uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
       with:
-        images: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+        images: ${{ format('{0}/{1}', inputs.registry, steps.sanitize.outputs.name) }}
         tags: |
           type=ref,event=branch
           type=sha

@@ -45,10 +45,17 @@ outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
     value: ${{ steps.build-image.outputs.digest }}
+  subject-name-sanitized:
+    description: The sanitized (lowercase) subject name for OCI compliance.
+    value: ${{ steps.sanitize.outputs.name }}
 
 runs:
   using: composite
   steps:
+    - name: Sanitize subject name for OCI compliance
+      id: sanitize
+      shell: bash
+      run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
     - name: Get Next Semantic Release Tag
       id: semantic-release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -1420,6 +1427,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/actions/build-image/action.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
+- `subject-name-sanitized` (string): The sanitized (lowercase) subject name for OCI compliance. Use this value when referencing OCI image paths to ensure compliance with OCI naming requirements.
 
 #### `.github/actions/build-blob/action.yaml`
 
