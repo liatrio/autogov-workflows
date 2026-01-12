@@ -7,10 +7,14 @@ plugins:
   - - "@semantic-release/release-notes-generator"
     - preset: conventionalcommits
   - - "@semantic-release/exec"
-    - prepareCmd: sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile
+    - prepareCmd: |
+        sed -i 's/ENV VERSION *= *".*"/ENV VERSION="${nextRelease.version}"/' Dockerfile
+        export COMMIT_SHA=$(git rev-parse HEAD)
+        ./scripts/update-cert-identities.sh "${nextRelease.version}"
   - - "@semantic-release-extras/verified-git-commit"
     - assets:
         - Dockerfile
+        - cert-identities.json
       commitMessage: |-
         chore(release): ${nextRelease.version} [skip ci]
 
