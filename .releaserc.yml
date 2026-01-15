@@ -24,3 +24,6 @@ plugins:
       failTitle: false
       failCommentCondition: false
       labels: ["automated", "release"]
+      assets:
+        - path: cert-identities.json
+          label: Certificate Identities
