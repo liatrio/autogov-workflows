@@ -50,7 +50,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.10.6
+        default: v0.13.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -151,8 +151,8 @@ jobs:
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
             --repo liatrio/autogov-verify \
-            --pattern "autogov-verify"
-            chmod +x autogov-verify
+            --pattern "autogov"
+            chmod +x autogov
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
         env:
@@ -197,7 +197,7 @@ jobs:
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
-          ./autogov-verify \
+          ./autogov verify \
             --image-digest "${{ inputs.image-digest }}" \
             --repo "${{ github.repository }}" \
             --cert-identity "${{ inputs.cert-identity }}" \
@@ -233,7 +233,7 @@ jobs:
             echo "Artifacts to verify:"
             find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
 
-            ./autogov-verify \
+            ./autogov verify \
               --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
               --repo "${{ github.repository }}" \
               --cert-identity "${{ inputs.cert-identity }}" \

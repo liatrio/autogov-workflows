@@ -22,7 +22,7 @@ on:
         description: 'The autogov-verify version to use.'
         required: false
         type: string
-        default: v0.12.0
+        default: v0.13.0
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
@@ -84,9 +84,9 @@ jobs:
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
             --repo liatrio/autogov-verify \
-            --pattern "autogov-verify"
-          chmod +x autogov-verify
-          sudo mv autogov-verify /usr/local/bin/autogov
+            --pattern "autogov"
+          chmod +x autogov
+          sudo mv autogov /usr/local/bin/autogov
 
       - name: Show release plan
         run: |
