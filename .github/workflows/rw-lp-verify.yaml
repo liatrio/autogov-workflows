@@ -44,7 +44,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.10.6
+        default: v0.13.0
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -118,8 +118,8 @@ jobs:
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
             --repo liatrio/autogov-verify \
-            --pattern "autogov-verify"
-            chmod +x autogov-verify
+            --pattern "autogov"
+            chmod +x autogov
       - name: Download Policy Schemas
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
@@ -164,7 +164,7 @@ jobs:
             echo "Artifacts to verify:"
             find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
 
-            ./autogov-verify offline \
+            ./autogov offline \
               --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
               --attestations "${{ env.ATTESTATIONS_FOLDER }}" \
               --cert-identity "${{ inputs.cert-identity }}" \
