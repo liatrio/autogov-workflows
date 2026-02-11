@@ -1,0 +1,145 @@
+name: Release Cut High Permissions Reusable Workflow
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Branch to cut the release from (default: main).'
+        required: false
+        type: string
+        default: main
+      mutations-config:
+        description: 'Path to the mutations config file (e.g. .autogov-release.yaml).'
+        required: false
+        type: string
+        default: ''
+      dry-run:
+        description: 'Run in dry-run mode (no commits, tags, or releases created).'
+        required: false
+        type: boolean
+        default: false
+      autogov-verify-version:
+        description: 'The autogov-verify version to use.'
+        required: false
+        type: string
+        default: v0.12.0
+      workflow-runner-label:
+        description: 'The label of the workflow runner.'
+        required: false
+        type: string
+        default: ubuntu-latest
+    outputs:
+      version:
+        description: 'The version of the release that was cut.'
+        value: ${{ jobs.release-cut-high-perms.outputs.version }}
+      tag:
+        description: 'The tag created for the release.'
+        value: ${{ jobs.release-cut-high-perms.outputs.tag }}
+      commit-sha:
+        description: 'The SHA of the release commit.'
+        value: ${{ jobs.release-cut-high-perms.outputs.commit-sha }}
+      commit-verified:
+        description: 'Whether the release commit is verified.'
+        value: ${{ jobs.release-cut-high-perms.outputs.commit-verified }}
+
+permissions: {}
+
+jobs:
+  release-cut-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.branch) }}
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    outputs:
+      version: ${{ steps.release-cut.outputs.version }}
+      tag: ${{ steps.release-cut.outputs.tag }}
+      commit-sha: ${{ steps.release-cut.outputs.commit-sha }}
+      commit-verified: ${{ steps.verify-signature.outputs.verified }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+
+      - name: Checkout code
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+        id: octo-sts
+        with:
+          scope: liatrio/autogov-verify
+          identity: autogov-infra
+
+      - name: Install autogov
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download ${{ inputs.autogov-verify-version }} \
+            --repo liatrio/autogov-verify \
+            --pattern "autogov-verify"
+          chmod +x autogov-verify
+          sudo mv autogov-verify /usr/local/bin/autogov
+
+      - name: Show release plan
+        run: |
+          echo "=== Release Plan ==="
+          autogov release plan --repo . -o json
+          echo ""
+          autogov release plan --repo .
+
+      - name: Run release cut
+        id: release-cut
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ARGS="--repo . --branch ${{ inputs.branch }}"
+
+          if [ -n "${{ inputs.mutations-config }}" ]; then
+            ARGS="$ARGS --mutations-config ${{ inputs.mutations-config }}"
+          fi
+
+          if [ "${{ inputs.dry-run }}" == "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "=== Running: autogov release cut $ARGS -o json ==="
+          OUTPUT=$(autogov release cut $ARGS -o json)
+          echo "$OUTPUT"
+
+          # parse outputs
+          VERSION=$(echo "$OUTPUT" | jq -r '.version // empty')
+          TAG=$(echo "$OUTPUT" | jq -r '.tag_name // empty')
+          COMMIT_SHA=$(echo "$OUTPUT" | jq -r '.commit_sha // empty')
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "commit-sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify commit signature
+        id: verify-signature
+        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.commit-sha != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ steps.release-cut.outputs.commit-sha }}"
+          echo "=== Verifying commit ${COMMIT_SHA} ==="
+          RESULT=$(gh api repos/${{ github.repository }}/commits/${COMMIT_SHA} \
+            --jq '{verified: .commit.verification.verified, reason: .commit.verification.reason}')
+          echo "$RESULT"
+
+          VERIFIED=$(echo "$RESULT" | jq -r '.verified')
+          echo "verified=${VERIFIED}" >> "$GITHUB_OUTPUT"
+
+          if [ "$VERIFIED" != "true" ]; then
+            echo "::error::Release commit is NOT verified!"
+            exit 1
+          fi
+          echo "::notice::Release commit is verified ✅"
