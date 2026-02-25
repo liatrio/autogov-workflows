@@ -118,7 +118,7 @@ jobs:
             exit 1
           fi
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
@@ -138,7 +138,7 @@ jobs:
         run: |
           cd ${{ env.ATTESTATIONS_FOLDER }}
           find ../${{ env.ARTIFACTS_FOLDER }} -type f -exec gh attestation download {} --repo ${{ github.repository }} \;
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -304,7 +304,7 @@ jobs:
       - name: Attest to VSA for Image
         if: ${{ inputs.build-type == 'image' }}
         id: attest-vsa-image
-        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ inputs.image-digest }}
@@ -315,7 +315,7 @@ jobs:
       - name: Attest to VSA for Blob
         if: ${{ inputs.build-type == 'blob' }}
         id: attest-vsa-blob
-        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
