@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       autogov-verify-version:
-        description: 'The autogov-verify version to use.'
+        description: 'The autogov release version to download and use.'
         required: false
         type: string
         default: v0.16.0
