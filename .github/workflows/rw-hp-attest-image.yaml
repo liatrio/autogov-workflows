@@ -80,7 +80,7 @@ jobs:
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -110,12 +110,12 @@ jobs:
           exit 1
       - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -130,7 +130,7 @@ jobs:
           chmod +x autogov-helper
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
@@ -167,12 +167,12 @@ jobs:
           exit 1
       - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -197,7 +197,7 @@ jobs:
             --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         id: attest-metadata
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -236,12 +236,12 @@ jobs:
           exit 1
       - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -255,7 +255,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Generate SBOM
-        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
+        uses: anchore/sbom-action@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
           format: cyclonedx-json
@@ -305,12 +305,12 @@ jobs:
           exit 1
       - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -324,7 +324,7 @@ jobs:
             --pattern "autogov-helper"
           chmod +x autogov-helper
       - name: Scan current project
-        uses: anchore/scan-action@40a61b52209e9d50e87917c5b901783d546b12d0 # v7.2.1
+        uses: anchore/scan-action@7037fa011853d5a11690026fb85feee79f4c946c # v7.3.2
         id: anchore-scan
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
@@ -341,7 +341,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         id: attest-dep-scan
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}

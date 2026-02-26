@@ -76,7 +76,7 @@ jobs:
           exit 1
       - name: Checkout code
         if: ${{ runner.environment == 'github-hosted'}}
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -105,7 +105,7 @@ jobs:
           artifact-ids: ${{ env.VSA_ARTIFACT_ID }}
           path: ${{ env.VSA_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: ${{ github.repository }}
@@ -128,7 +128,7 @@ jobs:
           ARTIFACTS_FOLDER: ${{ env.ARTIFACTS_FOLDER }}
       - name: Upload Signed VSA and Assets as Release Asset
         if: steps.semantic-release.outputs.new_release_published == 'true'
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           files: |
             ${{ env.VSA_ARTIFACT_ID != '' && inputs.publish-vsa && format('{0}/*', env.VSA_FOLDER) || '' }}

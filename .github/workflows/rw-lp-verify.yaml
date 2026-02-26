@@ -107,7 +107,7 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_IDS }}
           path: ${{ env.ATTESTATIONS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
           scope: liatrio
@@ -233,7 +233,7 @@ jobs:
           fi
       - name: Attest to VSA for Blob
         id: attest-vsa-blob
-        uses: actions/attest@daf44fb950173508f38bd2406030372c1d1162b1 # v3.0.0
+        uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           predicate-type: 'https://slsa.dev/verification_summary/v1'
