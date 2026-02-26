@@ -150,3 +150,12 @@ jobs:
             exit 1
           fi
           echo "::notice::Release commit is verified ✅"
+
+      - name: Publish release
+        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
+        run: |
+          echo "=== Publishing release ${{ steps.release-cut.outputs.tag }} ==="
+          autogov release publish --tag "${{ steps.release-cut.outputs.tag }}" --repo .
+          echo "::notice::Release ${{ steps.release-cut.outputs.tag }} published ✅"
