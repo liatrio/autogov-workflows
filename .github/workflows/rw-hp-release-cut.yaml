@@ -121,6 +121,14 @@ jobs:
           OUTPUT=$(autogov release cut $ARGS -o json)
           echo "$OUTPUT"
 
+          # check if no release was needed
+          NO_RELEASE=$(echo "$OUTPUT" | jq -r '.no_release // false')
+          if [ "$NO_RELEASE" == "true" ]; then
+            REASON=$(echo "$OUTPUT" | jq -r '.reason // empty')
+            echo "::notice::No release needed: ${REASON}"
+            exit 0
+          fi
+
           # parse outputs
           VERSION=$(echo "$OUTPUT" | jq -r '.version // empty')
           TAG=$(echo "$OUTPUT" | jq -r '.tag_name // empty')
