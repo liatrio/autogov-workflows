@@ -22,7 +22,7 @@ on:
         description: 'The autogov-verify version to use.'
         required: false
         type: string
-        default: v0.13.0
+        default: v0.16.0
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
@@ -98,7 +98,8 @@ jobs:
       - name: Run release cut
         id: release-cut
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           ARGS="--repo . --branch ${{ inputs.branch }}"
 
