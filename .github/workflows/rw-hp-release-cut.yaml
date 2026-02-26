@@ -22,7 +22,7 @@ on:
         description: 'The autogov release version to download and use.'
         required: false
         type: string
-        default: v0.16.2
+        default: v0.16.3
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
