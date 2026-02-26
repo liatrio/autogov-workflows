@@ -88,6 +88,12 @@ jobs:
           chmod +x autogov
           sudo mv autogov /usr/local/bin/autogov
 
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
+        id: octo-sts-release
+        with:
+          scope: liatrio/liatrio-gh-autogov-workflows
+          identity: release-ops
+
       - name: Show release plan
         run: |
           echo "=== Release Plan ==="
@@ -98,7 +104,7 @@ jobs:
       - name: Run release cut
         id: release-cut
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           ARGS="--repo . --branch ${{ inputs.branch }}"
