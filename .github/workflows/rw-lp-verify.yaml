@@ -44,7 +44,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.13.0
+        default: v0.16.0
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
