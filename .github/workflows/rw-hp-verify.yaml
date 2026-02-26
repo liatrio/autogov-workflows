@@ -158,9 +158,8 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download \
-            --repo liatrio/liatrio-gh-autogov-workflows \
-            --pattern "cert-identities.json"
+          gh api repos/liatrio/liatrio-gh-autogov-workflows/contents/cert-identities.json \
+            --jq '.content' | base64 -d > cert-identities.json
       - name: Download Policy Bundle
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
