@@ -24,7 +24,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.13.0
+        default: v0.16.3
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
@@ -121,14 +121,8 @@ jobs:
       actions: read
     needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
-    uses: ./.github/workflows/rw-hp-release.yaml
+    uses: ./.github/workflows/rw-hp-release-cut.yaml
     secrets: inherit
     with:
-      build-type: image
-      image-digest: ${{ needs.attest-image.outputs.image-digest }}
-      attest-build-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
-      attest-sbom-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      vsa-artifact-id: ${{ needs.verify-image.outputs.vsa-artifact-id }}
-      publish-vsa: true
+      mutations-config: .autogov-release.yaml
+      autogov-verify-version: ${{ inputs.autogov-verify-version }}

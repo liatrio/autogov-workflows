@@ -1,0 +1,8 @@
+mutations:
+  - path: Dockerfile
+    type: regexReplace
+    field: 'ENV VERSION="[^"]*"'
+    replace: 'ENV VERSION="${version}"'
+  - path: cert-identities.json
+    type: exec
+    field: './scripts/update-cert-identities.sh ${version}'
