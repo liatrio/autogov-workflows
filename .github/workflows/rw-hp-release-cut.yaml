@@ -75,7 +75,7 @@ jobs:
       - uses: octo-sts/action@d6c70ad3b9ac85df6da6b9749014d7283987cfec # v1.0.3
         id: octo-sts
         with:
-          scope: liatrio/autogov-verify
+          scope: liatrio
           identity: autogov-infra
 
       - name: Install autogov
