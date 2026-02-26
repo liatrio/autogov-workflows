@@ -22,7 +22,7 @@ on:
         description: 'The autogov release version to download and use.'
         required: false
         type: string
-        default: v0.16.3
+        default: v0.16.6
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
@@ -68,9 +68,9 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.sha }}
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
