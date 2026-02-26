@@ -24,7 +24,7 @@ on:
         description: The autogov-verify version to use.
         required: false
         type: string
-        default: v0.16.3
+        default: v0.16.6
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
