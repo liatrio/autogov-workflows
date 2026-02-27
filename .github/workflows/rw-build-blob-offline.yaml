@@ -25,7 +25,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.18.0
+        default: v0.18.1
       release-blob:
         description: Whether or not to run the release-blob job.
         required: false
