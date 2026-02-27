@@ -110,14 +110,14 @@ if [ -z "$VERSION_EXISTS" ]; then
      }] + .identities' cert-identities.tmp.json >cert-identities.tmp2.json
   mv cert-identities.tmp2.json cert-identities.tmp.json
 else
-  echo "Version $VERSION already exists, updating to latest status..."
-  # update existing entry
+  echo "Version $VERSION already exists, updating entry..."
+  # update existing entry regardless of current status — re-releases must overwrite stale SHAs
   jq --arg version "$VERSION" \
     --arg sha "$COMMIT_SHA" \
     --arg added "$TODAY" \
     --arg expires "$EXPIRY_DATE" \
     --argjson identities "$IDENTITIES_JSON" \
-    '.identities = (.identities | map(if .version == $version and .status == "latest" then {
+    '.identities = (.identities | map(if .version == $version then {
        "version": $version,
        "sha": $sha,
        "status": "latest",
