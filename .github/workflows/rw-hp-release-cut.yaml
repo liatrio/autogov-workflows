@@ -18,7 +18,7 @@ on:
         required: false
         type: boolean
         default: false
-      autogov-verify-version:
+      autogov-version:
         description: 'The autogov release version to download and use.'
         required: false
         type: string
@@ -85,7 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download ${{ inputs.autogov-verify-version }} \
+          gh release download ${{ inputs.autogov-version }} \
             --repo liatrio/autogov \
             --pattern "autogov"
           chmod +x autogov
