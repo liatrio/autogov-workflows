@@ -219,7 +219,7 @@ on:
     push:
 
 jobs:
-  attest-image-hp: #image
+  build-image:
     permissions:
       id-token: write
       attestations: write
@@ -232,7 +232,7 @@ jobs:
       registry: ghcr.io
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
-  attest-blob-hp: #blob
+  build-blob:
     permissions:
       id-token: write
       attestations: write
@@ -246,7 +246,7 @@ jobs:
         i_am_another_blob
       cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
-  attest-blob-lp: #blob
+  build-blob-offline:
     permissions:
       id-token: write
       attestations: write

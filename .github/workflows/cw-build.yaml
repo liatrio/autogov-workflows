@@ -21,7 +21,7 @@ on:
 permissions: {}
 
 jobs:
-  attest-image-hp: #image
+  build-image:
     if: github.event_name != 'pull_request'
     permissions:
       id-token: write
@@ -40,7 +40,7 @@ jobs:
       vuln-threshold-medium: '-1'
       vuln-threshold-low: '-1'
 
-  # attest-blob-hp: #blob
+  # build-blob:
   #   if: github.event_name != 'pull_request'
   #   permissions:
   #     id-token: write
@@ -56,7 +56,7 @@ jobs:
   #       i_am_another_blob
   #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
 
-  # attest-blob-lp: #blob
+  # build-blob-offline:
   #   if: github.event_name != 'pull_request'
   #   permissions:
   #     id-token: write
