@@ -20,7 +20,7 @@ fi
 echo "Updating certificate identities for version $VERSION"
 
 echo "Processing workflow files for cert-identities.json..."
-RW_FILES=$(find .github/workflows -name "rw-*-attest-*.yaml" -o -name "rw-*-attest-*.yml" -type f)
+RW_FILES=$(find .github/workflows \( -name "rw-attest-*.yaml" -o -name "rw-*-attest-*.yaml" -o -name "rw-attest-*.yml" -o -name "rw-*-attest-*.yml" \) -type f)
 
 if [ -z "$RW_FILES" ]; then
   echo "No reusable workflow files found"
