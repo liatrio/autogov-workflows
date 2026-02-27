@@ -100,7 +100,6 @@ jobs:
       id-token: write
       attestations: write
       packages: write
-      artifact-metadata: write
     outputs:
       provenance-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
     steps:
@@ -158,7 +157,6 @@ jobs:
       id-token: write
       attestations: write
       packages: write
-      artifact-metadata: write
     outputs:
       metadata-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
     steps:
@@ -228,7 +226,6 @@ jobs:
       attestations: write
       contents: read
       packages: write
-      artifact-metadata: write
     outputs:
       sbom-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
     steps:
@@ -298,7 +295,6 @@ jobs:
       attestations: write
       packages: write
       contents: read
-      artifact-metadata: write
     outputs:
       dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
     steps:
