@@ -21,7 +21,7 @@ on:
 permissions: {}
 
 jobs:
-  attest-image-hp: #image
+  build-image:
     if: github.event_name != 'pull_request'
     permissions:
       id-token: write
@@ -29,18 +29,18 @@ jobs:
       packages: write
       contents: write
       actions: read
-    uses: ./.github/workflows/rw-hp-build-image.yaml
+    uses: ./.github/workflows/rw-build-image.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
       vuln-threshold-critical: '-1'
       vuln-threshold-high: '-1'
       vuln-threshold-medium: '-1'
       vuln-threshold-low: '-1'
 
-  # attest-blob-hp: #blob
+  # build-blob:
   #   if: github.event_name != 'pull_request'
   #   permissions:
   #     id-token: write
@@ -48,25 +48,25 @@ jobs:
   #     packages: write
   #     contents: write
   #     actions: read
-  #   uses: ./.github/workflows/rw-hp-build-blob.yaml
+  #   uses: ./.github/workflows/rw-build-blob.yaml
   #   secrets: inherit
   #   with:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
 
-  # attest-blob-lp: #blob
+  # build-blob-offline:
   #   if: github.event_name != 'pull_request'
   #   permissions:
   #     id-token: write
   #     attestations: write
   #     contents: write
   #     actions: read
-  #   uses: ./.github/workflows/rw-lp-build-blob.yaml
+  #   uses: ./.github/workflows/rw-build-blob-offline.yaml
   #   secrets: inherit
   #   with:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}

@@ -1,4 +1,4 @@
-name: Verify Low Permissions Reusable Workflow
+name: Verify Offline Reusable Workflow
 
 on:
   workflow_call:
@@ -27,7 +27,7 @@ on:
       cert-identity:
         type: string
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-attest-blob-offline.yaml
         required: true
       github-token:
         description: >

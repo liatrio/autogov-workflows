@@ -1,4 +1,4 @@
-name: Release Cut High Permissions Reusable Workflow
+name: Release Cut Reusable Workflow
 
 on:
   workflow_call:

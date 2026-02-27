@@ -1,4 +1,4 @@
-name: Build Image High Permissions Reusable Workflow
+name: Build Image Reusable Workflow
 
 on:
   workflow_call:
@@ -17,11 +17,11 @@ on:
         type: string
       cert-identity:
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-attest-image.yaml.
         required: true
         type: string
       autogov-version:
-        description: The autogov version to use (input name retained for backwards compatibility).
+        description: The autogov version to use.
         required: false
         type: string
         default: v0.18.0
@@ -60,39 +60,39 @@ on:
         description: "Attestation artifact ID"
         value: ${{ jobs.attest-image.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestation-artifact-id:
-        description: "Metadata artifact ID" 
+        description: "Metadata artifact ID"
         value: ${{ jobs.attest-image.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id:
-        description: "SBOM artifact ID"  
+        description: "SBOM artifact ID"
         value: ${{ jobs.attest-image.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: 
-        description: "Dependency scan artifact ID" 
+      attest-dependency-scan-attestation-artifact-id:
+        description: "Dependency scan artifact ID"
         value: ${{ jobs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
-      image-digest: 
+      image-digest:
         description: "image-digest"
         value: ${{ jobs.attest-image.outputs.image-digest }}
-      vsa-artifact-id: 
+      vsa-artifact-id:
         description: "VSA artifact ID"
         value: ${{ jobs.verify-image.outputs.vsa-artifact-id }}
 
 permissions: {}
 
 jobs:
-  attest-image: #image
+  attest-image:
     permissions:
       id-token: write
       attestations: write
       packages: write
       contents: read
       actions: read
-    uses: ./.github/workflows/rw-hp-attest-image.yaml
+    uses: ./.github/workflows/rw-attest-image.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
       registry: ${{ inputs.registry }}
       autogov-helper-version: ${{ inputs.autogov-helper-version }}
 
-  verify-image: #image
+  verify-image:
     permissions:
       id-token: write
       attestations: write
@@ -100,7 +100,7 @@ jobs:
       contents: read
       actions: read
     needs: [attest-image]
-    uses: ./.github/workflows/rw-hp-verify.yaml
+    uses: ./.github/workflows/rw-verify.yaml
     secrets: inherit
     with:
       build-type: image
@@ -114,14 +114,14 @@ jobs:
       vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}
       vuln-threshold-low: ${{ inputs.vuln-threshold-low }}
 
-  release-image: #image
+  release-image:
     permissions:
       contents: write
       id-token: write
       actions: read
     needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
-    uses: ./.github/workflows/rw-hp-release-cut.yaml
+    uses: ./.github/workflows/rw-release-cut.yaml
     secrets: inherit
     with:
       mutations-config: .autogov-release.yaml

@@ -1,22 +1,19 @@
-name: Attest Blob High Permissions Reusable Workflow
+name: Attest Image Reusable Workflow
 
 on:
   workflow_call:
     inputs:
-      subject-path:
+      subject-name:
         description: >
-          Path to the artifact serving as the subject of the attestation. Must
-          specify exactly one of "subject-path" or "subject-digest". May contain a
-          glob pattern or list of paths (total subject count cannot exceed 2500).
-          examples: https://github.com/actions/attest-build-provenance?tab=readme-ov-file#examples
+          Subject name as it should appear in the attestation. Required unless
+          "subject-path" is specified, in which case it will be inferred from the
+          path.
         required: true
         type: string
-      blob-artifact-name:
-        description: >
-          The name of artifact for the blob(s) built from the build-blob action found in
-          ./.github/actions/build-blob/action.yaml.
-        default: blob-build-artifact-high-perms
-        required: false
+      registry:
+        description: Container registry to push image.
+        default: ghcr.io
+        required: true
         type: string
       show-summary:
         description: >
@@ -27,10 +24,10 @@ on:
         type: boolean
       workflow-runner-label:
         description: >
-          The label used for runner/OS selection
-          examples: https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#example-specifying-an-operating-system.
-        required: false
+          The label used for runner/OS selection, examples:
+          https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job#example-specifying-an-operating-system.
         default: ubuntu-latest
+        required: false
         type: string
       github-token:
         description: >
@@ -43,9 +40,9 @@ on:
         type: string
         default: v0.5.5
     outputs:
-      blob-artifact-id:
-        description: The artifact-id of the blob artifact(s).
-        value: ${{ jobs.build-high-perms.outputs.blob-artifact-id }}
+      image-digest:
+        description: The image digest of the image that was built from the build-image job.
+        value: ${{ jobs.build-high-perms.outputs.image-digest }}
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
         value: ${{ jobs.attest-build-high-perms.outputs.provenance-artifact-id }}
@@ -71,9 +68,11 @@ jobs:
   build-high-perms:
     permissions:
       contents: read
+      packages: write
     runs-on: ${{ inputs.workflow-runner-label }}
     outputs:
-      blob-artifact-id: ${{ steps.upload-blob.outputs.artifact-id }}
+      image-digest: ${{ steps.build-image.outputs.image-digest }}
+      subject-name-sanitized: ${{ steps.build-image.outputs.subject-name-sanitized }}
     steps:
       - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
@@ -85,28 +84,22 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Build Blob
+      - name: Build Image
         if: ${{ runner.environment == 'github-hosted' }}
-        id: build-blob
-        uses: ./.github/actions/build-blob
-      - name: Upload Blob
-        id: upload-blob
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        id: build-image
+        uses: ./.github/actions/build-image
         with:
-          name: ${{ inputs.blob-artifact-name }}
-          path: ${{ inputs.subject-path }}
-          if-no-files-found: error
+          subject-name: ${{ inputs.subject-name }}
+          registry: ${{ inputs.registry }}
 
   attest-build-high-perms:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
-      contents: read
-      actions: read
-    env:
-      ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
+      packages: write
     outputs:
       provenance-artifact-id: ${{ steps.upload-provenance.outputs.artifact-id }}
     steps:
@@ -115,14 +108,13 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Download Blob Artifact(s)
+      - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          github-token: ${{ inputs.github-token || github.token }}
-          artifact-ids: ${{ env.ARTIFACT_ID }}
-          path: ${{ env.ARTIFACTS_FOLDER }}
-          merge-multiple: true
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
@@ -140,9 +132,10 @@ jobs:
         id: attest-build-provenance
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
-          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           github-token: ${{ inputs.github-token || github.token }}
-          push-to-registry: false
+          push-to-registry: true
       - name: Rename Provenance Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -151,7 +144,7 @@ jobs:
         id: upload-provenance
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: blob-build-provenance-attestation-high-perms
+          name: image-build-provenance-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
           if-no-files-found: error
 
@@ -159,12 +152,11 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
+      contents: read
       id-token: write
       attestations: write
-      contents: read
-      actions: read
-    env:
-      ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
+      packages: write
     outputs:
       metadata-artifact-id: ${{ steps.upload-metadata.outputs.artifact-id }}
     steps:
@@ -173,14 +165,13 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Download Blob Artifact(s)
+      - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          github-token: ${{ inputs.github-token || github.token }}
-          artifact-ids: ${{ env.ARTIFACT_ID }}
-          path: ${{ env.ARTIFACTS_FOLDER }}
-          merge-multiple: true
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
@@ -201,17 +192,19 @@ jobs:
           set +x
           ./autogov-helper metadata \
             --output metadata.json \
-            --type blob \
-            --subject-path ${{ env.ARTIFACTS_FOLDER }}
+            --type image \
+            --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
         uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         id: attest-metadata
         with:
-          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           predicate-type: 'https://autogov.dev/attestation/metadata/v1'
           predicate-path: metadata.json
-          push-to-registry: false
+          push-to-registry: true
       - name: Rename Metadata Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -220,7 +213,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-metadata
         with:
-          name: blob-metadata-attestation-high-perms
+          name: image-metadata-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
           if-no-files-found: error
 
@@ -228,12 +221,11 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
       contents: read
-      actions: read
-    env:
-      ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
+      packages: write
     outputs:
       sbom-artifact-id: ${{ steps.upload-sbom.outputs.artifact-id }}
     steps:
@@ -242,14 +234,13 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Download Blob Artifact(s)
+      - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          github-token: ${{ inputs.github-token || github.token }}
-          artifact-ids: ${{ env.ARTIFACT_ID }}
-          path: ${{ env.ARTIFACTS_FOLDER }}
-          merge-multiple: true
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
@@ -266,7 +257,7 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
         with:
-          path: ${{ env.ARTIFACTS_FOLDER }}
+          image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
           format: cyclonedx-json
           output-file: sbom.cyclonedx.json
           upload-release-assets: false
@@ -278,10 +269,11 @@ jobs:
         id: attest-sbom
         uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
-          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           sbom-path: sbom.cyclonedx.json
           github-token: ${{ inputs.github-token || github.token }}
-          push-to-registry: false
+          push-to-registry: true
       - name: Rename SBOM Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -290,7 +282,7 @@ jobs:
         id: upload-sbom
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: blob-sbom-attestation-high-perms
+          name: image-sbom-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
           if-no-files-found: error
 
@@ -298,12 +290,11 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     needs: build-high-perms
     permissions:
+      actions: read
       id-token: write
       attestations: write
+      packages: write
       contents: read
-      actions: read
-    env:
-      ARTIFACT_ID: ${{ needs.build-high-perms.outputs.blob-artifact-id }}
     outputs:
       dependency-scan-artifact-id: ${{ steps.upload-dependency-scan.outputs.artifact-id }}
     steps:
@@ -312,22 +303,13 @@ jobs:
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
-      - name: Download Blob Artifact(s)
+      - name: Login to GitHub Container Registry
         if: ${{ runner.environment == 'github-hosted' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          github-token: ${{ inputs.github-token || github.token }}
-          artifact-ids: ${{ env.ARTIFACT_ID }}
-          path: ${{ env.ARTIFACTS_FOLDER }}
-          merge-multiple: true
-      - name: Scan current project
-        uses: anchore/scan-action@7037fa011853d5a11690026fb85feee79f4c946c # v7.3.2
-        id: anchore-scan
-        with:
-          path: ${{ env.ARTIFACTS_FOLDER }}
-          output-format: json
-          output-file: results.json
-          fail-build: false
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
         with:
@@ -341,23 +323,32 @@ jobs:
             --repo liatrio/autogov-helper \
             --pattern "autogov-helper"
           chmod +x autogov-helper
+      - name: Scan current project
+        uses: anchore/scan-action@7037fa011853d5a11690026fb85feee79f4c946c # v7.3.2
+        id: anchore-scan
+        with:
+          image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
+          output-format: json
+          output-file: results.json
+          fail-build: false
       - name: Generate Dependency Scan Attestation
         run: |
           set +x
           ./autogov-helper depscan \
-            --type blob \
             --results-path results.json \
-            --subject-path ${{ env.ARTIFACTS_FOLDER }} \
+            --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}" \
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
         uses: actions/attest@e59cbc1ad1ac2d59339667419eb8cdde6eb61e3d # v3.2.0
         id: attest-dep-scan
         with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
           predicate-path: depscan.json
-          push-to-registry: false
-          subject-path: ${{ env.ARTIFACTS_FOLDER }}
+          push-to-registry: true
       - name: Rename Dependency Scan Bundle
         run: |
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
@@ -366,6 +357,6 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: upload-dependency-scan
         with:
-          name: blob-dep-scan-attestation-high-perms
+          name: image-dep-scan-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
           if-no-files-found: error
