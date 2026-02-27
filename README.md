@@ -230,7 +230,7 @@ jobs:
     with:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
   attest-blob-hp: #blob
     permissions:
@@ -244,7 +244,7 @@ jobs:
       subject-path: |
         i_am_blob
         i_am_another_blob
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 
   attest-blob-lp: #blob
     permissions:
@@ -257,7 +257,7 @@ jobs:
       subject-path: |
         i_am_blob
         i_am_another_blob
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 4. **Run the Workflow**:
@@ -407,7 +407,7 @@ Again, verifying via the Reusable Workflow's GitHub reference (e.g. commit SHA, 
 ```yaml
 cert-identity:
     description: >
-        The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+        The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
 ```
 
 Our approach guarantees that both the source repository and the signer workflow originate from approved branches or tags, providing confidence that the artifact was built to meet SLSA Level 3 requirements as long as whomever is verifying is diligent and remembers to include the `cert-identity` (e.g. also known as `signer-workflow`) flag via the gh-cli.
@@ -508,7 +508,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
   manifest.json
 ```
 
@@ -537,7 +537,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
   manifest.json
 ```
 
@@ -551,7 +551,7 @@ cosign verify-blob-attestation \
   --insecure-ignore-sct \
   --new-bundle-format \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${github.ref}" \
   <path_to_blob>
 ```
 
@@ -1274,7 +1274,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
-- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
 - `autogov-verify-version` (optional, string, default: 'v0.13.0'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
@@ -1282,7 +1282,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/workflows/rw-build-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
-- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
 - `autogov-verify-version` (optional, string, default: 'v0.13.0'): The autogov-verify version to use.
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
@@ -1290,10 +1290,10 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 #### `.github/workflows/rw-build-blob-offline.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
-- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml.
+- `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-attest-blob-offline.yaml.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
-#### `.github/workflows/rw-lp-attest-blob.yaml`
+#### `.github/workflows/rw-attest-blob-offline.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact-low-perms'): The name of the blob(s) built from the build-blob action.
@@ -1302,7 +1302,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 
-#### `.github/workflows/rw-hp-attest-image.yaml`
+#### `.github/workflows/rw-attest-image.yaml`
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
@@ -1311,7 +1311,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 
-#### `.github/workflows/rw-hp-attest-blob.yaml`
+#### `.github/workflows/rw-attest-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
@@ -1320,18 +1320,18 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 
-#### `.github/workflows/rw-hp-verify.yaml`
+#### `.github/workflows/rw-verify.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `subject-name` (optional, string, default: '${{ github.repository }}'): Subject name as it should appear in the attestation.
 - `image-digest` (optional, string, default: ${{ inputs.build-type == 'image' && github.event.needs.build.outputs.image-digest }})
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
-- `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+- `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml_or_rw-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `autogov-verify-version` (optional, string, default: 'v0.13.0'): The autogov-verify version to use.
 
-#### `.github/workflows/rw-hp-release.yaml`
+#### `.github/workflows/rw-release.yaml`
 
 - `build-type` (required, string): Specify the type of build: "image" or "blob".
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
@@ -1342,7 +1342,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 ### Outputs
 
-#### `.github/workflows/rw-hp-attest-image.yaml`
+#### `.github/workflows/rw-attest-image.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
@@ -1350,7 +1350,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
-#### `.github/workflows/rw-hp-attest-blob.yaml`
+#### `.github/workflows/rw-attest-blob.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the build artifacts.
 - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
@@ -1358,15 +1358,15 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
 
-#### `.github/workflows/rw-hp-verify.yaml`
+#### `.github/workflows/rw-verify.yaml`
 
 - No outputs for this action
 
-#### `.github/workflows/rw-hp-release.yaml`
+#### `.github/workflows/rw-release.yaml`
 
 - No outputs for this action
 
-#### `.github/workflows/rw-lp-attest-blob.yaml`
+#### `.github/workflows/rw-attest-blob-offline.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `blob-artifact-name` (optional, string, default: 'blob-build-artifact'): The name of the blob(s) built from the build-blob action.
@@ -1374,14 +1374,14 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 
-#### `.github/workflows/rw-lp-verify.yaml`
+#### `.github/workflows/rw-verify-offline.yaml`
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
-- `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml_or_rw-hp-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
+- `cert-identity` (optional, string, default: '<https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml_or_rw-attest-image.yaml@refs/heads/main>'): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 
-#### `.github/workflows/rw-lp-release.yaml`
+#### `.github/workflows/rw-release-offline.yaml`
 
 - `blob-artifact-id` (optional, string, default: ${{ inputs.build-type == 'blob' && github.event.needs.build.outputs.blob-artifact-id }})
 - `attest-build-attestation-artifact-id` (required, string, default: ${{ github.event.needs.attest-build.outputs.attest-build-attestation-artifact-id }}: The artifact-id of the build provenance attestation artifact.
@@ -1416,11 +1416,11 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `blob-artifact-id` (string): Blob artifact ID
 
-#### `.github/workflows/rw-lp-attest-blob.yaml`
+#### `.github/workflows/rw-attest-blob-offline.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the build artifacts.
 
-#### `.github/workflows/rw-lp-verify.yaml`
+#### `.github/workflows/rw-verify-offline.yaml`
 
 - No outputs for this action
 
@@ -1433,7 +1433,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - No outputs for this action
 
-#### `.github/workflows/rw-lp-release.yaml`
+#### `.github/workflows/rw-release-offline.yaml`
 
 - No outputs for this action
 
@@ -1450,12 +1450,12 @@ attest-image: #image
     attestations: write
     packages: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     subject-name: ${{ github.repository }}
     registry: ghcr.io
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
 ```
 
 #### `rw-build-blob.yaml`
@@ -1472,7 +1472,7 @@ attest-image: #blob
     subject-path: |
       i_am_blob
       i_am_another_blob
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 #### `rw-build-blob-offline.yaml`
@@ -1488,50 +1488,50 @@ attest-image: #blob
     subject-path: |
       i_am_blob
       i_am_another_blob
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ### Attest Workflows
 
-#### `rw-hp-attest-image.yaml`
+#### `rw-attest-image.yaml`
 
-```yaml:.github/workflows/rw-hp-attest-image.yaml
+```yaml:.github/workflows/rw-attest-image.yaml
 attest-image: #image
   permissions:
     id-token: write
     attestations: write
     packages: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-name: ${{ github.repository }}
     registry: ghcr.io
 ```
 
-#### `rw-hp-attest-blob.yaml`
+#### `rw-attest-blob.yaml`
 
-```yaml:.github/workflows/rw-hp-attest-blob.yaml
+```yaml:.github/workflows/rw-attest-blob.yaml
 attest-blob: #blob
   permissions:
     id-token: write
     attestations: write
     contents: read
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-path: |
       i_am_blob
       i_am_another_blob
 ```
 
-#### `rw-lp-attest-blob.yaml`
+#### `rw-attest-blob-offline.yaml`
 
-```yaml:.github/workflows/rw-lp-attest-blob.yaml
+```yaml:.github/workflows/rw-attest-blob-offline.yaml
   attest-blob: #blob
     permissions:
       id-token: write
       attestations: write
       contents: read
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     with:
       subject-path: |
         i_am_blob
@@ -1540,31 +1540,31 @@ attest-blob: #blob
 
 ### Verify Workflow
 
-```yaml:.github/workflows/rw-hp-verify.yaml
+```yaml:.github/workflows/rw-verify.yaml
 verify-<build-type>:
   permissions:
     id-token: write
     attestations: read
     packages: read
   needs: [attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
     image-digest: ${{ needs.attest-image.outputs.image-digest }}
     or
     blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
-```yaml:.github/workflows/rw-lp-verify.yaml
+```yaml:.github/workflows/rw-verify-offline.yaml
 verify-<build-type>:
   permissions:
     id-token: write
     attestations: read
     packages: read
   needs: [attest-<build-type>]
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-verify-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1572,17 +1572,17 @@ verify-<build-type>:
     attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
     attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
     attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
 ### Release Workflow
 
-```yaml:.github/workflows/rw-hp-release.yaml
+```yaml:.github/workflows/rw-release.yaml
 release-<build-type>:
   permissions:
     contents: write
   needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-hp-release.yaml
+  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-release.yaml
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1591,12 +1591,12 @@ release-<build-type>:
     attest-sbom-attestation-artifact-id: ${{ needs.attest-<build-type>.outputs.attest-sbom-attestation-artifact-id }}
 ```
 
-```yaml:.github/workflows/rw-lp-release.yaml
+```yaml:.github/workflows/rw-release-offline.yaml
 release-<build-type>:
   permissions:
     contents: write
   needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-lp-release.yaml
+  uses: liatrio-gh-autogov-workflows/.github/workflows/rw-release-offline.yaml
   secrets: inherit
   with:
     build-type: <build-type>
@@ -1607,7 +1607,7 @@ release-<build-type>:
 
 #### Automating Version Updates with Semantic Release
 
-To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-hp-release.yaml` and `rw-lp-release.yaml`), you can utilize a `.releaserc.yml` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
+To update a file (or files) as part of a release (e.g. automatic version bumping in configuration files, documentation, code etc) using the release workflows (`rw-release.yaml` and `rw-release-offline.yaml`), you can utilize a `.releaserc.yml` file and configure the exec plugin for the [cycjimmy/semantic-release-action](https://github.com/cycjimmy/semantic-release-action).
 
 This approach ensures that all version references are consistently updated with each release, maintaining synchronization across your codebase.
 

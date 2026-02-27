@@ -1,4 +1,4 @@
-name: Attest Blob Low Permissions Reusable Workflow
+name: Attest Blob Offline Reusable Workflow
 
 on:
   workflow_call:

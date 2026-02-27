@@ -17,7 +17,7 @@ on:
         type: string
       cert-identity:
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-hp-attest-image.yaml.
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-attest-image.yaml.
         required: true
         type: string
       autogov-version:
@@ -85,7 +85,7 @@ jobs:
       packages: write
       contents: read
       actions: read
-    uses: ./.github/workflows/rw-hp-attest-image.yaml
+    uses: ./.github/workflows/rw-attest-image.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
@@ -100,7 +100,7 @@ jobs:
       contents: read
       actions: read
     needs: [attest-image]
-    uses: ./.github/workflows/rw-hp-verify.yaml
+    uses: ./.github/workflows/rw-verify.yaml
     secrets: inherit
     with:
       build-type: image
@@ -121,7 +121,7 @@ jobs:
       actions: read
     needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
-    uses: ./.github/workflows/rw-hp-release-cut.yaml
+    uses: ./.github/workflows/rw-release-cut.yaml
     secrets: inherit
     with:
       mutations-config: .autogov-release.yaml

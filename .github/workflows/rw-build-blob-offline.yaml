@@ -19,7 +19,7 @@ on:
       cert-identity:
         type: string
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-lp-attest-blob.yaml.
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-attest-blob-offline.yaml.
         required: true
       autogov-version:
         description: The autogov version to use.
@@ -80,7 +80,7 @@ jobs:
       attestations: write
       contents: read
       actions: read
-    uses: ./.github/workflows/rw-lp-attest-blob.yaml
+    uses: ./.github/workflows/rw-attest-blob-offline.yaml
     secrets: inherit
     with:
       subject-path: ${{ inputs.subject-path }}
@@ -92,7 +92,7 @@ jobs:
       contents: read
       actions: read
     needs: [attest-blob]
-    uses: ./.github/workflows/rw-lp-verify.yaml
+    uses: ./.github/workflows/rw-verify-offline.yaml
     secrets: inherit
     with:
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
@@ -114,7 +114,7 @@ jobs:
       actions: read
     needs: [verify-blob, attest-blob]
     if: ${{ inputs.release-blob }}
-    uses: ./.github/workflows/rw-lp-release.yaml
+    uses: ./.github/workflows/rw-release-offline.yaml
     secrets: inherit
     with:
       attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
