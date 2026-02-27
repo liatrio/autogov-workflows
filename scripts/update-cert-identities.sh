@@ -78,7 +78,7 @@ fi
 IDENTITIES_JSON="["
 for i in "${!WORKFLOW_IDENTITIES[@]}"; do
   IDENTITIES_JSON+="\"${WORKFLOW_IDENTITIES[$i]}\""
-  if [ $i -lt $((${#WORKFLOW_IDENTITIES[@]} - 1)) ]; then
+  if [ "$i" -lt $((${#WORKFLOW_IDENTITIES[@]} - 1)) ]; then
     IDENTITIES_JSON+=","
   fi
 done
