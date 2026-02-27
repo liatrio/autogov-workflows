@@ -33,7 +33,7 @@ inputs:
     required: true
     default: ${{ github.repository }}
     description: >
-      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to flip from high permissions to low permissions.
+      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to switch between online and offline verification.
     default: "false"
     required: false
   github-token:
@@ -225,7 +225,7 @@ jobs:
       attestations: write
       packages: write
       contents: write
-    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}
@@ -238,7 +238,7 @@ jobs:
       attestations: write
       packages: read
       contents: write
-    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-path: |
@@ -251,7 +251,7 @@ jobs:
       id-token: write
       attestations: write
       contents: write
-    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+    uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
     secrets: inherit
     with:
       subject-path: |
@@ -848,7 +848,7 @@ Our reusable workflow(s) require a number of permissions especially with image b
 
 Also, to avoid additional permissions for online verification the bundle and trusted-root are simply passed as artifacts to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
 
-The following permissions are used for images when used as a blob via the low permissions, or "lp", reusable workflow files:
+The following permissions are used when using the offline blob workflow (`rw-build-blob-offline.yaml`):
 
 ```yaml
 attest:
@@ -1220,9 +1220,9 @@ docker/setup-buildx-action@*,
 docker/setup-qemu-action@*,
 github/dependabot-action@*,
 go-semantic-release/action@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-image.yaml@*,
-liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@*,
+liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob.yaml@*,
+liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-image.yaml@*,
+liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@*,
 ```
 
 It is also necessary to [allow access to workflows from other internal/private repositories](https://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository) to avoid having to provide further permissions with the fine grained personal access token discussed below.
@@ -1270,7 +1270,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - No inputs for this action
 
-#### `.github/workflows/rw-hp-build-image.yaml`
+#### `.github/workflows/rw-build-image.yaml`
 
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (optional, string, default: 'ghcr.io'): Container registry to push image.
@@ -1279,7 +1279,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 
-#### `.github/workflows/rw-hp-build-blob.yaml`
+#### `.github/workflows/rw-build-blob.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-<permissions_path>-attest-image.yaml, if verifying blob(s), the workflow name should be rw-<permissions_path>-attest-blob.yaml.
@@ -1287,7 +1287,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `autogov-helper-version` (optional, string, default: 'v0.5.5'): The autogov-helper version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 
-#### `.github/workflows/rw-lp-build-blob.yaml`
+#### `.github/workflows/rw-build-blob-offline.yaml`
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml.
@@ -1392,7 +1392,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 ### Outputs
 
-#### `.github/workflows/rw-hp-build-image.yaml`
+#### `.github/workflows/rw-build-image.yaml`
 
 - `attest-build-attestation-artifact-id` (string): Attestation artifact ID
 - `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
@@ -1400,7 +1400,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `image-digest` (string): image-digest
 
-#### `.github/workflows/rw-hp-build-blob.yaml`
+#### `.github/workflows/rw-build-blob.yaml`
 
 - `attest-build-attestation-artifact-id` (string): Attestation artifact ID
 - `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
@@ -1408,7 +1408,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-dependency-scan-attestation-artifact-id` (string): Dependency scan artifact ID
 - `blob-artifact-id` (string): Blob artifact ID
 
-#### `.github/workflows/rw-lp-build-blob.yaml`
+#### `.github/workflows/rw-build-blob-offline.yaml`
 
 - `attest-build-attestation-artifact-id` (string): Attestation artifact ID
 - `attest-metadata-attestation-artifact-id` (string): Metadata artifact ID
@@ -1441,9 +1441,9 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 ### Entrypoint Workflows
 
-#### `rw-hp-build-image.yaml`
+#### `rw-build-image.yaml`
 
-```yaml:.github/workflows/rw-hp-build-image.yaml
+```yaml:.github/workflows/rw-build-image.yaml
 attest-image: #image
   permissions:
     id-token: write
@@ -1458,16 +1458,16 @@ attest-image: #image
     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-image.yaml@${{ github.ref }}
 ```
 
-#### `rw-hp-build-blob.yaml`
+#### `rw-build-blob.yaml`
 
-```yaml:.github/workflows/rw-hp-build-blob.yaml
+```yaml:.github/workflows/rw-build-blob.yaml
 attest-image: #blob
   permissions:
     id-token: write
     attestations: write
     packages: read
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-path: |
       i_am_blob
@@ -1475,15 +1475,15 @@ attest-image: #blob
     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-hp-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
 ```
 
-#### `rw-lp-build-blob.yaml`
+#### `rw-build-blob-offline.yaml`
 
-```yaml:.github/workflows/rw-lp-build-blob.yaml
+```yaml:.github/workflows/rw-build-blob-offline.yaml
 attest-image: #blob
   permissions:
     id-token: write
     attestations: write
     contents: write
-  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-lp-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
+  uses: liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official liatrio-gh-autogov-workflows release
   with:
     subject-path: |
       i_am_blob
