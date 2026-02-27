@@ -91,7 +91,7 @@ jobs:
         uses: ./.github/actions/build-blob
       - name: Upload Blob
         id: upload-blob
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.blob-artifact-name }}
           path: ${{ inputs.subject-path }}
@@ -149,7 +149,7 @@ jobs:
           mv ${{ steps.attest-build-provenance.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
       - name: Upload Provenance Sigstore Bundle
         id: upload-provenance
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: blob-build-provenance-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-build-provenance-attestation.jsonl
@@ -217,7 +217,7 @@ jobs:
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-metadata.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-metadata-attestation.jsonl
       - name: Upload Metadata Sigstore Bundle
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         id: upload-metadata
         with:
           name: blob-metadata-attestation-low-perms
@@ -288,7 +288,7 @@ jobs:
           mv ${{ steps.attest-sbom.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
       - name: Upload SBOM Attestation
         id: upload-sbom
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: blob-sbom-attestation-low-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-sbom-attestation.jsonl
@@ -363,7 +363,7 @@ jobs:
           mkdir ${{ env.ATTESTATIONS_FOLDER }}
           mv ${{ steps.attest-dep-scan.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
       - name: Upload Dependency Scan Sigstore Bundle
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         id: upload-dependency-scan
         with:
           name: blob-dep-scan-attestation-low-perms
