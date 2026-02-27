@@ -40,8 +40,8 @@ on:
         description: The label of the workflow runner
         required: false
         default: ubuntu-latest
-      autogov-verify-version:
-        description: The autogov-verify version to use.
+      autogov-version:
+        description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
         default: v0.17.0
@@ -112,12 +112,12 @@ jobs:
         with:
           scope: liatrio
           identity: autogov-infra
-      - name: Install autogov-verify
+      - name: Install autogov
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
+          gh release download ${{ inputs.autogov-version }} \
+            --repo liatrio/autogov \
             --pattern "autogov"
             chmod +x autogov
       - name: Download Policy Schemas

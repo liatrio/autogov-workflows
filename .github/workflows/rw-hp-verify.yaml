@@ -46,11 +46,11 @@ on:
         default: ubuntu-latest
         required: false
         type: string
-      autogov-verify-version:
-        description: The autogov-verify version to use.
+      autogov-version:
+        description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.17.0
+        default: v0.18.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -145,12 +145,12 @@ jobs:
           identity: autogov-infra
       - name: Setup ORAS
         uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
-      - name: Install autogov-verify
+      - name: Install autogov
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
+          gh release download ${{ inputs.autogov-version }} \
+            --repo liatrio/autogov \
             --pattern "autogov"
             chmod +x autogov
       - name: Download cert-identities file
@@ -196,7 +196,7 @@ jobs:
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
-          ./autogov verify \
+          ./autogov verify attestation \
             --image-digest "${{ inputs.image-digest }}" \
             --repo "${{ github.repository }}" \
             --cert-identity "${{ inputs.cert-identity }}" \
@@ -232,7 +232,7 @@ jobs:
             echo "Artifacts to verify:"
             find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
 
-            ./autogov verify \
+            ./autogov verify attestation \
               --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
               --repo "${{ github.repository }}" \
               --cert-identity "${{ inputs.cert-identity }}" \
