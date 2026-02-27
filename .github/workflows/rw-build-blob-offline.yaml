@@ -80,6 +80,7 @@ jobs:
       attestations: write
       contents: read
       actions: read
+      artifact-metadata: write
     uses: ./.github/workflows/rw-attest-blob-offline.yaml
     secrets: inherit
     with:
@@ -91,6 +92,7 @@ jobs:
       attestations: write
       contents: read
       actions: read
+      artifact-metadata: write
     needs: [attest-blob]
     uses: ./.github/workflows/rw-verify-offline.yaml
     secrets: inherit

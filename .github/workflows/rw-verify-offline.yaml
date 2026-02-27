@@ -90,6 +90,7 @@ jobs:
       actions: read
       id-token: write
       attestations: write
+      artifact-metadata: write
     runs-on: ${{ inputs.workflow-runner-label }}
     steps:
       - name: Fail if Runner is self-hosted
