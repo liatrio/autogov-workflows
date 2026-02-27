@@ -20,7 +20,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.18.2
+        default: v0.18.3
       autogov-helper-version:
         description: The autogov-helper version to use.
         required: false
