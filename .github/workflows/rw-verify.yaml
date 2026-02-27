@@ -152,7 +152,7 @@ jobs:
           gh release download ${{ inputs.autogov-version }} \
             --repo liatrio/autogov \
             --pattern "autogov"
-            chmod +x autogov
+          chmod +x autogov
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
         env:
