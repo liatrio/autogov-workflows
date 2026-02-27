@@ -29,7 +29,7 @@ jobs:
       packages: write
       contents: write
       actions: read
-    uses: ./.github/workflows/rw-hp-build-image.yaml
+    uses: ./.github/workflows/rw-build-image.yaml
     secrets: inherit
     with:
       subject-name: ${{ github.repository }}

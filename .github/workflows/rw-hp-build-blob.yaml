@@ -1,4 +1,5 @@
 name: Build Blob High Permissions Reusable Workflow
+# DEPRECATED: use rw-build-blob.yaml instead.
 
 on:
   workflow_call:

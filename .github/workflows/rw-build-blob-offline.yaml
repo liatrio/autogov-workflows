@@ -1,5 +1,9 @@
-name: Build Blob Low Permissions Reusable Workflow
-# DEPRECATED: use rw-build-blob-offline.yaml instead.
+name: Build Blob Offline Reusable Workflow
+
+# Offline variant: attestation bundles are passed as artifact IDs and downloaded
+# before verification. Uses `autogov offline` rather than `autogov verify attestation`,
+# so no GitHub API calls are made at verify time and packages:write is not required.
+# Use rw-build-blob.yaml instead if online verification is acceptable.
 
 on:
   workflow_call:
@@ -15,10 +19,15 @@ on:
       cert-identity:
         type: string
         description: >
-          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). Since blob is the only build type that uses this workflow, the workflow name should be rw-lp-attest-blob.yaml
+          The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). The workflow name should be rw-lp-attest-blob.yaml.
         required: true
+      autogov-version:
+        description: The autogov version to use.
+        required: false
+        type: string
+        default: v0.18.0
       release-blob:
-        description:  Whether or not to run the release-blob job.
+        description: Whether or not to run the release-blob job.
         required: false
         type: boolean
         default: true
@@ -47,25 +56,25 @@ on:
         description: "Attestation artifact ID"
         value: ${{ jobs.attest-blob.outputs.attest-build-attestation-artifact-id }}
       attest-metadata-attestation-artifact-id:
-        description: "Metadata artifact ID" 
+        description: "Metadata artifact ID"
         value: ${{ jobs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
       attest-sbom-attestation-artifact-id:
-        description: "SBOM artifact ID"  
+        description: "SBOM artifact ID"
         value: ${{ jobs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: 
-        description: "Dependency scan artifact ID" 
+      attest-dependency-scan-attestation-artifact-id:
+        description: "Dependency scan artifact ID"
         value: ${{ jobs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
-      blob-artifact-id: 
+      blob-artifact-id:
         description: "Blob artifact ID"
         value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
-      vsa-artifact-id: 
+      vsa-artifact-id:
         description: "VSA artifact ID"
         value: ${{ jobs.verify-blob.outputs.vsa-artifact-id }}
 
 permissions: {}
 
 jobs:
-  attest-blob: #blob
+  attest-blob:
     permissions:
       id-token: write
       attestations: write
@@ -76,12 +85,12 @@ jobs:
     with:
       subject-path: ${{ inputs.subject-path }}
 
-  verify-blob: #blob
+  verify-blob:
     permissions:
-      contents: read
-      actions: read
       id-token: write
       attestations: write
+      contents: read
+      actions: read
     needs: [attest-blob]
     uses: ./.github/workflows/rw-lp-verify.yaml
     secrets: inherit
@@ -92,18 +101,19 @@ jobs:
       attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
       attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
+      autogov-version: ${{ inputs.autogov-version }}
       vuln-threshold-critical: ${{ inputs.vuln-threshold-critical }}
       vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
       vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}
       vuln-threshold-low: ${{ inputs.vuln-threshold-low }}
 
-  release-blob: #blob
-    if: ${{ inputs.release-blob }}
+  release-blob:
     permissions:
-      id-token: write
       contents: write
+      id-token: write
       actions: read
     needs: [verify-blob, attest-blob]
+    if: ${{ inputs.release-blob }}
     uses: ./.github/workflows/rw-lp-release.yaml
     secrets: inherit
     with:
