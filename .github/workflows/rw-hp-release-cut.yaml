@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: v0.17.0
+      vsa-artifact-id:
+        description: 'The artifact ID of the VSA to upload as a release asset.'
+        required: false
+        type: string
+        default: ''
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
@@ -81,7 +86,7 @@ jobs:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
+            --repo liatrio/autogov \
             --pattern "autogov"
           chmod +x autogov
           sudo mv autogov /usr/local/bin/autogov
@@ -158,4 +163,26 @@ jobs:
             exit 1
           fi
           echo "::notice::Release commit is verified ✅"
+
+      - name: Download VSA artifact
+        if: ${{ inputs.vsa-artifact-id != '' && steps.release-cut.outputs.tag != '' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          github-token: ${{ github.token }}
+          artifact-ids: ${{ inputs.vsa-artifact-id }}
+          path: ./vsa
+          merge-multiple: true
+
+      - name: Upload release assets
+        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
+        run: |
+          TAG="${{ steps.release-cut.outputs.tag }}"
+          if [ -f "cert-identities.json" ]; then
+            gh release upload "${TAG}" cert-identities.json --repo ${{ github.repository }}
+          fi
+          if [ -d "./vsa" ] && [ "$(ls -A ./vsa 2>/dev/null)" ]; then
+            gh release upload "${TAG}" ./vsa/* --repo ${{ github.repository }}
+          fi
 

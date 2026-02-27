@@ -150,7 +150,7 @@ jobs:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
+            --repo liatrio/autogov \
             --pattern "autogov"
             chmod +x autogov
       - name: Download cert-identities file
@@ -196,7 +196,7 @@ jobs:
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
-          ./autogov verify \
+          ./autogov verify attestation \
             --image-digest "${{ inputs.image-digest }}" \
             --repo "${{ github.repository }}" \
             --cert-identity "${{ inputs.cert-identity }}" \
@@ -232,7 +232,7 @@ jobs:
             echo "Artifacts to verify:"
             find ${{ env.ARTIFACTS_FOLDER }} -type f -exec basename {} \;
 
-            ./autogov verify \
+            ./autogov verify attestation \
               --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
               --repo "${{ github.repository }}" \
               --cert-identity "${{ inputs.cert-identity }}" \

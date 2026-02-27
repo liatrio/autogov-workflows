@@ -117,7 +117,7 @@ jobs:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-verify-version }} \
-            --repo liatrio/autogov-verify \
+            --repo liatrio/autogov \
             --pattern "autogov"
             chmod +x autogov
       - name: Download Policy Schemas
