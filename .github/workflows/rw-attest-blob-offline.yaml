@@ -71,7 +71,6 @@ jobs:
   build-low-perms:
     permissions:
       contents: read
-      artifact-metadata: write
     runs-on: ${{ inputs.workflow-runner-label }}
     outputs:
       blob-artifact-id: ${{ steps.upload-blob.outputs.artifact-id }}
@@ -106,7 +105,6 @@ jobs:
       attestations: write
       contents: read
       actions: read
-      artifact-metadata: write
     env:
       ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
@@ -165,7 +163,6 @@ jobs:
       attestations: write
       contents: read
       actions: read
-      artifact-metadata: write
     env:
       ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
@@ -235,7 +232,6 @@ jobs:
       attestations: write
       contents: read
       actions: read
-      artifact-metadata: write
     env:
       ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
@@ -306,7 +302,6 @@ jobs:
       attestations: write
       contents: read
       actions: read
-      artifact-metadata: write
     env:
       ARTIFACT_ID: ${{ needs.build-low-perms.outputs.blob-artifact-id }}
     outputs:
