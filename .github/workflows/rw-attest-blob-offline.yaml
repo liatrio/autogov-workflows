@@ -37,11 +37,11 @@ on:
           The GitHub token set throughout the reusable workflow including the composite (build) action.
         required: false
         type: string
-      autogov-helper-version:
-        description: The autogov-helper version to use.
+      autogov-version:
+        description: The autogov version to use.
         required: false
         type: string
-        default: v0.5.5
+        default: v0.20.0
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
@@ -125,19 +125,6 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
-        id: octo-sts
-        with:
-          scope: liatrio
-          identity: autogov-infra
-      - name: Install autogov-helper
-        run: |
-          set +x
-          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
-            --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
       - name: Attest Provenance
         id: attest-build-provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
@@ -189,20 +176,20 @@ jobs:
         with:
           scope: liatrio
           identity: autogov-infra
-      - name: Install autogov-helper
+      - name: Install autogov
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          set +x
-          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
-            --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
+          gh release download ${{ inputs.autogov-version }} \
+            --repo liatrio/autogov \
+            --pattern "autogov"
+          chmod +x autogov
       - name: Generate Metadata Attestation
         env:
           GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
         run: |
           set +x
-          ./autogov-helper metadata \
+          ./autogov predicate metadata \
             --output metadata.json \
             --type blob \
             --subject-path ${{ env.ARTIFACTS_FOLDER }}
@@ -254,19 +241,6 @@ jobs:
           artifact-ids: ${{ env.ARTIFACT_ID }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
-        id: octo-sts
-        with:
-          scope: liatrio
-          identity: autogov-infra
-      - name: Install autogov-helper
-        run: |
-          set +x
-          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
-            --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
       - name: Generate SBOM
         uses: anchore/sbom-action@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
         with:
@@ -338,18 +312,18 @@ jobs:
         with:
           scope: liatrio
           identity: autogov-infra
-      - name: Install autogov-helper
+      - name: Install autogov
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          set +x
-          export GH_TOKEN=${{ steps.octo-sts.outputs.token }}
-          gh release download ${{ inputs.autogov-helper-version }} \
-            --repo liatrio/autogov-helper \
-            --pattern "autogov-helper"
-          chmod +x autogov-helper
+          gh release download ${{ inputs.autogov-version }} \
+            --repo liatrio/autogov \
+            --pattern "autogov"
+          chmod +x autogov
       - name: Generate Dependency Scan Attestation
         run: |
           set +x
-          ./autogov-helper depscan \
+          ./autogov predicate depscan \
             --type blob \
             --results-path results.json \
             --subject-path ${{ env.ARTIFACTS_FOLDER }} \

@@ -20,12 +20,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.18.3
-      autogov-helper-version:
-        description: The autogov-helper version to use.
-        required: false
-        type: string
-        default: v0.5.5
+        default: v0.20.0
       release-blob:
         description: Whether or not to run the release-blob job.
         required: false
@@ -85,7 +80,7 @@ jobs:
     secrets: inherit
     with:
       subject-path: ${{ inputs.subject-path }}
-      autogov-helper-version: ${{ inputs.autogov-helper-version }}
+      autogov-version: ${{ inputs.autogov-version }}
 
   verify-blob:
     permissions:
