@@ -115,20 +115,20 @@ jobs:
           GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          ARGS="--repo . --branch ${{ inputs.branch }}"
+          ARGS=(--repo . --branch "${{ inputs.branch }}")
 
           if [ -n "${{ inputs.mutations-config }}" ]; then
-            ARGS="$ARGS --mutations-config ${{ inputs.mutations-config }}"
+            ARGS+=(--mutations-config "${{ inputs.mutations-config }}")
           fi
 
           if [ "${{ inputs.dry-run }}" == "true" ]; then
-            ARGS="$ARGS --dry-run"
+            ARGS+=(--dry-run)
           else
-            ARGS="$ARGS --publish"
+            ARGS+=(--publish)
           fi
 
-          echo "=== Running: autogov release cut $ARGS -o json ==="
-          OUTPUT=$(autogov release cut $ARGS -o json)
+          echo "=== Running: autogov release cut ${ARGS[*]} -o json ==="
+          OUTPUT=$(autogov release cut "${ARGS[@]}" -o json)
           echo "$OUTPUT"
 
           # check if no release was needed
@@ -144,9 +144,11 @@ jobs:
           TAG=$(echo "$OUTPUT" | jq -r '.tag_name // empty')
           COMMIT_SHA=$(echo "$OUTPUT" | jq -r '.commit_sha // empty')
 
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "commit-sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+            echo "commit-sha=${COMMIT_SHA}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Verify commit signature
         id: verify-signature
