@@ -72,13 +72,16 @@ jobs:
     runs-on: ${{ inputs.workflow-runner-label }}
     outputs:
       image-digest: ${{ steps.build-image.outputs.image-digest }}
-      subject-name-sanitized: ${{ steps.build-image.outputs.subject-name-sanitized }}
+      subject-name-sanitized: ${{ steps.sanitize.outputs.name }}
     steps:
       - name: Fail if Runner is self-hosted
         if: ${{ runner.environment != 'github-hosted' }}
         run: |
           echo "Job is running on a self-hosted runner. Terminating job..."
           exit 1
+      - name: Sanitize subject name
+        id: sanitize
+        run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
