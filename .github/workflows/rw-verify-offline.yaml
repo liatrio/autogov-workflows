@@ -44,7 +44,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.17.0
+        default: v0.20.0
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -120,7 +120,7 @@ jobs:
           gh release download ${{ inputs.autogov-version }} \
             --repo liatrio/autogov \
             --pattern "autogov"
-            chmod +x autogov
+          chmod +x autogov
       - name: Download Policy Schemas
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
