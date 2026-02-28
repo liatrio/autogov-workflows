@@ -1,7 +1,7 @@
 # uses our own image to avoid docker rate limiting
 FROM ghcr.io/liatrio/python:3.13-slim
 
-ENV VERSION="0.20.17"
+ENV VERSION="0.21.0"
 
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.description="Dedicated reusable automated governance workflows for internal Liatrio use."
