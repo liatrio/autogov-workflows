@@ -113,11 +113,6 @@ jobs:
     uses: ./.github/workflows/rw-release.yaml
     secrets: inherit
     with:
-      build-type: blob
-      attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-      attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
-      attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-      attest-dependency-scan-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
-      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      autogov-version: ${{ inputs.autogov-version }}
       vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
-      publish-vsa: true
+      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
