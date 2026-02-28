@@ -35,7 +35,7 @@ on:
         required: false
         type: string
       autogov-version:
-        description: The autogov version to use.
+        description: The autogov version to use for predicate generation.
         required: false
         type: string
         default: v0.20.0
