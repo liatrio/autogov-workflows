@@ -118,7 +118,7 @@ jobs:
       actions: read
     needs: [verify-image, attest-image]
     if: ${{ inputs.release-image }}
-    uses: ./.github/workflows/rw-release-cut.yaml
+    uses: ./.github/workflows/rw-release.yaml
     secrets: inherit
     with:
       mutations-config: .autogov-release.yaml
