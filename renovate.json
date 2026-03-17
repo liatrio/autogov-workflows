@@ -8,9 +8,9 @@
         "/^\\.github/workflows/.*\\.yaml$/"
       ],
       "matchStrings": [
-        "autogov-(?<tool>helper|verify)-version:[\\s\\S]*?default:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+        "autogov-version:[\\s\\S]*?default:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
       ],
-      "depNameTemplate": "liatrio/autogov-{{tool}}",
+      "depNameTemplate": "liatrio/autogov",
       "datasourceTemplate": "github-releases"
     },
     {
@@ -19,9 +19,9 @@
         "/^README\\.md$/"
       ],
       "matchStrings": [
-        "autogov-(?<tool>helper|verify)-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
+        "autogov-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
       ],
-      "depNameTemplate": "liatrio/autogov-{{tool}}",
+      "depNameTemplate": "liatrio/autogov",
       "datasourceTemplate": "github-releases"
     }
   ],
