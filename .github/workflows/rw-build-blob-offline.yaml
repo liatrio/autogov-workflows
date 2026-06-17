@@ -31,6 +31,15 @@ on:
         required: false
         type: boolean
         default: true
+      mutations-config:
+        description: >
+          Path to the mutations config file (e.g. .autogov-release.yaml) passed
+          through to the release-blob job's `autogov release cut --mutations-config`.
+          When set, file content mutations (such as in-file version comment updates)
+          are applied during the release commit. Leave empty to skip mutations.
+        required: false
+        type: string
+        default: ''
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -121,5 +130,6 @@ jobs:
     secrets: inherit
     with:
       autogov-version: ${{ inputs.autogov-version }}
+      mutations-config: ${{ inputs.mutations-config }}
       vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
