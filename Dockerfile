@@ -1,5 +1,16 @@
-# uses our own image to avoid docker rate limiting
-FROM ghcr.io/liatrio/python:3.13-slim
+# public stock python so external consumers can build without liatrio registry auth
+FROM python:3.13-slim
+
+# apply latest os security patches and upgrade pip (mirrors the prior base image)
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir --upgrade pip
+
+# non-root user previously provided by the base image
+RUN useradd -m -u 1000 -s /bin/bash appuser
+WORKDIR /app
 
 ENV VERSION="0.21.0"
 
