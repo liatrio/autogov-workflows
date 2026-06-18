@@ -50,7 +50,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.20.0
+        default: v0.23.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -144,8 +144,6 @@ jobs:
         with:
           scope: liatrio
           identity: autogov-infra
-      - name: Setup ORAS
-        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
       - name: Install autogov
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
@@ -161,20 +159,14 @@ jobs:
         run: |
           gh api repos/liatrio/liatrio-gh-autogov-workflows/contents/cert-identities.json \
             --jq '.content' | base64 -d > cert-identities.json
-      - name: Download Policy Bundle
-        env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
-        run: |
-          set +x
-          oras pull \
-            ghcr.io/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}:latest
-      - name: Download Policy Schemas
+      - name: Download Policy Bundle and Schemas
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           gh release download \
             --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
-            --pattern "schemas.tar.gz"
+            --pattern "schemas.tar.gz" \
+            --pattern "bundle.tar.gz"
       - name: Generate Vulnerability Threshold Config
         run: |
           cat > vulnerability-thresholds.json << 'EOF'
