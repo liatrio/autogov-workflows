@@ -88,7 +88,7 @@ env:
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
   VSA_FOLDER: ./vsa
-  POLICY_REPO_NAME: liatrio-rego-policy-library
+  POLICY_REPO_NAME: autogov-policy-library
 
 jobs:
   verify-high-perms:

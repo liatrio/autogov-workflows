@@ -65,7 +65,7 @@ env:
   GH_TOKEN: ${{ inputs.github-token || github.token }}
   ARTIFACTS_FOLDER: ./artifacts
   ATTESTATIONS_FOLDER: ./attestations
-  POLICY_REF: https://github.com/liatrio/liatrio-rego-policy-library
+  POLICY_REF: https://github.com/liatrio/autogov-policy-library
 
 jobs:
   build-low-perms:
