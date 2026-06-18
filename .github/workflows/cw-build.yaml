@@ -35,7 +35,7 @@ jobs:
     with:
       subject-name: ${{ github.repository }}
       registry: ghcr.io
-      cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
+      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
       vuln-threshold-critical: '-1'
       vuln-threshold-high: '-1'
       vuln-threshold-medium: '-1'
@@ -55,7 +55,7 @@ jobs:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
 
   # build-blob-offline:
   #   if: github.event_name != 'pull_request'
@@ -70,4 +70,4 @@ jobs:
   #     subject-path: |
   #       i_am_blob
   #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/liatrio-gh-autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
+  #     cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
