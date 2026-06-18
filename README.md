@@ -1241,10 +1241,8 @@ permissions:
   contents: read
 
 repositories:
-  - liatrio-rego-policy-library
-  - demo-gh-autogov-policy-library
-  - autogov-helper
-  - autogov-verify
+  - your-policy-library
+  - your-workflows
 ```
 
 For any additional permissions, a local `*.sts.yaml` can be created. For example, the creation of the release tag uses the `.github/chainguard/release-ops.sts.yaml` file:
