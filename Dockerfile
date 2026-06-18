@@ -15,7 +15,7 @@ WORKDIR /app
 ENV VERSION="0.21.0"
 
 LABEL org.opencontainers.image.version="${VERSION}"
-LABEL org.opencontainers.image.description="Dedicated reusable automated governance workflows for internal Liatrio use."
+LABEL org.opencontainers.image.description="Reusable automated governance workflows."
 LABEL org.opencontainers.image.authors="AutoGov"
 
 USER root
