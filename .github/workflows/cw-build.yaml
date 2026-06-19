@@ -18,6 +18,14 @@ on:
       - catalog-info.yaml
       - renovate.json
 
+concurrency:
+  # serialize per-ref so back-to-back pushes don't race the release-cut
+  # fast-forward update of main; never cancel a main run mid-publish
+  # (cw-build pins an autogov without idempotent-resume), but cancel
+  # superseded pr/branch builds to save ci.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions: {}
 
 jobs:
