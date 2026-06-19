@@ -7,7 +7,6 @@ on:
     paths-ignore:
       - README.md
       - CONTRIBUTING.md
-      - catalog-info.yaml
       - renovate.json
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -15,7 +14,6 @@ on:
     paths-ignore:
       - README.md
       - CONTRIBUTING.md
-      - catalog-info.yaml
       - renovate.json
 
 concurrency:
