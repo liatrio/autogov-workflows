@@ -12,7 +12,7 @@ RUN apt-get update && \
 RUN useradd -m -u 1000 -s /bin/bash appuser
 WORKDIR /app
 
-ENV VERSION="0.21.0"
+ENV VERSION="0.21.3"
 
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.description="Reusable automated governance workflows."
