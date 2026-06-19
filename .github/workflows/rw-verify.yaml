@@ -55,7 +55,7 @@ on:
         description: Whether to use cert-identity-list for validation
         required: false
         type: boolean
-        default: ${{ github.repository != 'liatrio/liatrio-gh-autogov-workflows' }}
+        default: ${{ github.repository != 'liatrio/autogov-workflows' }}
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -88,7 +88,7 @@ env:
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
   VSA_FOLDER: ./vsa
-  POLICY_REPO_NAME: liatrio-rego-policy-library
+  POLICY_REPO_NAME: autogov-policy-library
 
 jobs:
   verify-high-perms:
@@ -157,7 +157,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
-          gh api repos/liatrio/liatrio-gh-autogov-workflows/contents/cert-identities.json \
+          gh api repos/liatrio/autogov-workflows/contents/cert-identities.json \
             --jq '.content' | base64 -d > cert-identities.json
       - name: Download Policy Bundle and Schemas
         env:

@@ -59,7 +59,7 @@ WORKFLOW_IDENTITIES=()
 
 for FILE in $RW_FILES; do
   # cert-id with commit sha
-  IDENTITY="https://github.com/liatrio/liatrio-gh-autogov-workflows/$FILE@$COMMIT_SHA"
+  IDENTITY="https://github.com/liatrio/autogov-workflows/$FILE@$COMMIT_SHA"
   WORKFLOW_IDENTITIES+=("$IDENTITY")
   DISPLAY_NAME=$(basename "$FILE" | sed 's/\.ya\?ml$//' | tr '[:lower:]' '[:upper:]' | sed 's/RW-//')
   echo "Including $DISPLAY_NAME v$VERSION in flattened identity format"
