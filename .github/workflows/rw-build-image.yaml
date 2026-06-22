@@ -84,6 +84,8 @@ jobs:
       contents: read
       actions: read
       artifact-metadata: write
+      # passed through to the nested source-review attestation job (reads PR reviews)
+      pull-requests: read
     uses: ./.github/workflows/rw-attest-image.yaml
     secrets: inherit
     with:

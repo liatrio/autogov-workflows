@@ -36,6 +36,10 @@ jobs:
       contents: write
       actions: read
       artifact-metadata: write
+      # required so the source-review attestation job (nested in rw-attest-image)
+      # can read this repo's PR reviews — a reusable job cannot request a scope the
+      # caller did not grant.
+      pull-requests: read
     uses: ./.github/workflows/rw-build-image.yaml
     secrets: inherit
     with:
@@ -55,6 +59,7 @@ jobs:
   #     packages: write
   #     contents: write
   #     actions: read
+  #     pull-requests: read
   #   uses: ./.github/workflows/rw-build-blob.yaml
   #   secrets: inherit
   #   with:
