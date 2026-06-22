@@ -1,9 +1,21 @@
 {
   "identities": [
     {
+      "version": "0.21.5",
+      "sha": "5f416bdf73308dc247ce6ede0d69616b540e5da2",
+      "status": "latest",
+      "identities": [
+        "https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@5f416bdf73308dc247ce6ede0d69616b540e5da2",
+        "https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@5f416bdf73308dc247ce6ede0d69616b540e5da2",
+        "https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@5f416bdf73308dc247ce6ede0d69616b540e5da2"
+      ],
+      "added": "2026-06-22",
+      "expires": "2027-06-22"
+    },
+    {
       "version": "0.21.4",
       "sha": "78d1fd38d1d065a7b1e3ac44dfab08c0ed4ea781",
-      "status": "latest",
+      "status": "approved",
       "identities": [
         "https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@78d1fd38d1d065a7b1e3ac44dfab08c0ed4ea781",
         "https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@78d1fd38d1d065a7b1e3ac44dfab08c0ed4ea781",
@@ -1659,7 +1671,7 @@
   ],
   "metadata": {
     "last_updated": "2026-06-22",
-    "version": "v0.21.4",
+    "version": "v0.21.5",
     "maintainer": "@liatrio/tag-autogov"
   }
 }
