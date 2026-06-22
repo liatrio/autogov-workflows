@@ -1,5 +1,5 @@
 # public stock python so external consumers can build without liatrio registry auth
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # apply latest os security patches and upgrade pip (mirrors the prior base image)
 RUN apt-get update && \
