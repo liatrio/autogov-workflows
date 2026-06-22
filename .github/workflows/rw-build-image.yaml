@@ -63,6 +63,9 @@ on:
       attest-dependency-scan-attestation-artifact-id:
         description: "Dependency scan artifact ID"
         value: ${{ jobs.attest-image.outputs.attest-dependency-scan-attestation-artifact-id }}
+      attest-source-review-attestation-artifact-id:
+        description: "Source-review (PR-approval) artifact ID"
+        value: ${{ jobs.attest-image.outputs.attest-source-review-attestation-artifact-id }}
       image-digest:
         description: "image-digest"
         value: ${{ jobs.attest-image.outputs.image-digest }}

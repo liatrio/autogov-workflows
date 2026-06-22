@@ -59,6 +59,9 @@ on:
       attest-dependency-scan-attestation-artifact-id:
         description: "Dependency scan artifact ID"
         value: ${{ jobs.attest-blob.outputs.attest-dependency-scan-attestation-artifact-id }}
+      attest-source-review-attestation-artifact-id:
+        description: "Source-review (PR-approval) artifact ID"
+        value: ${{ jobs.attest-blob.outputs.attest-source-review-attestation-artifact-id }}
       blob-artifact-id:
         description: "Blob artifact ID"
         value: ${{ jobs.attest-blob.outputs.blob-artifact-id }}
