@@ -38,7 +38,7 @@ on:
         description: The autogov version to use for predicate generation.
         required: false
         type: string
-        default: v0.20.0
+        default: v0.28.0
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.
@@ -55,6 +55,9 @@ on:
       attest-dependency-scan-attestation-artifact-id:
         description: The artifact-id of the dependency scan attestation artifact.
         value: ${{ jobs.attest-dependency-scan-high-perms.outputs.dependency-scan-artifact-id }}
+      attest-source-review-attestation-artifact-id:
+        description: The artifact-id of the source-review (PR-approval) attestation artifact.
+        value: ${{ jobs.attest-source-review-high-perms.outputs.source-review-artifact-id }}
 
 permissions: {}
 
@@ -340,4 +343,85 @@ jobs:
         with:
           name: image-dep-scan-attestation-high-perms
           path: ${{ env.ATTESTATIONS_FOLDER }}/attest-dep-scan-attestation.jsonl
+          if-no-files-found: error
+
+  attest-source-review-high-perms:
+    runs-on: ${{ inputs.workflow-runner-label }}
+    needs: build-high-perms
+    permissions:
+      actions: read
+      contents: read
+      # pull-requests:read lets autogov read this repo's PR reviews for the built
+      # commit. Branch-protection thresholds would additionally need
+      # Administration:read (which github.token lacks) — they are best-effort, so
+      # the gate bars on its own min_approvals, not on the discovered required count.
+      pull-requests: read
+      id-token: write
+      attestations: write
+      packages: write
+      artifact-metadata: write
+    outputs:
+      source-review-artifact-id: ${{ steps.upload-source-review.outputs.artifact-id }}
+    steps:
+      - name: Fail if Runner is self-hosted
+        if: ${{ runner.environment != 'github-hosted' }}
+        run: |
+          echo "Job is running on a self-hosted runner. Terminating job..."
+          exit 1
+      - name: Login to GitHub Container Registry
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ inputs.github-token || github.token }}
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
+        id: octo-sts
+        with:
+          scope: liatrio
+          identity: autogov-infra
+      - name: Install autogov
+        env:
+          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+        run: |
+          gh release download ${{ inputs.autogov-version }} \
+            --repo liatrio/autogov \
+            --pattern "autogov"
+          chmod +x autogov
+      - name: Generate Source Review Attestation
+        env:
+          # token for the GitHub PR-reviews API on the source repo (pull-requests +
+          # contents read, declared above). NOT the octo-sts token, which is scoped
+          # for the cross-repo binary download.
+          GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
+        run: |
+          set +x
+          ./autogov predicate source-review \
+            --repo "${{ github.repository }}" \
+            --commit-sha "${{ github.sha }}" \
+            --ref "${{ github.ref }}" \
+            --type image \
+            --subject-name "${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}" \
+            --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}" \
+            --output source-review.json
+          cat source-review.json
+      - name: Attest Source Review
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        id: attest-source-review
+        with:
+          subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
+          subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
+          predicate-type: 'https://autogov.dev/attestation/source-review/v0.1'
+          predicate-path: source-review.json
+          push-to-registry: true
+      - name: Rename Source Review Bundle
+        run: |
+          mkdir ${{ env.ATTESTATIONS_FOLDER }}
+          mv ${{ steps.attest-source-review.outputs.bundle-path }} ${{ env.ATTESTATIONS_FOLDER }}/attest-source-review-attestation.jsonl
+      - name: Upload Source Review Sigstore Bundle
+        id: upload-source-review
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: image-source-review-attestation-high-perms
+          path: ${{ env.ATTESTATIONS_FOLDER }}/attest-source-review-attestation.jsonl
           if-no-files-found: error

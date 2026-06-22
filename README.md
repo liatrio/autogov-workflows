@@ -810,6 +810,7 @@ Error: No such object
    - `https://autogov.dev/attestation/metadata/v1`: Metadata attestation
    - `https://cyclonedx.org/bom`: SBOM attestation
    - `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
+   - `https://autogov.dev/attestation/source-review/v0.1`: Source-review (PR-approval) attestation
 
 For more detailed information about ORAS commands and capabilities, refer to the [ORAS documentation](https://oras.land/docs/commands/oras_discover/).
 
@@ -1392,6 +1393,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
 - `image-digest` (string): The image digest of the image that was built.
 - `vsa-artifact-id` (string): The artifact ID of the uploaded VSA.
 
@@ -1401,6 +1403,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
 - `blob-artifact-id` (string): The artifact-id of the blob artifact(s).
 - `vsa-artifact-id` (string): The artifact ID of the uploaded VSA.
 
@@ -1420,6 +1423,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
@@ -1428,6 +1432,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
 - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
 - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
