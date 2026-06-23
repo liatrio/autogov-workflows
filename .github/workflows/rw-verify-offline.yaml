@@ -44,7 +44,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.20.0
+        default: v0.29.2
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
