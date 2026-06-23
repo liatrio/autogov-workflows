@@ -968,7 +968,7 @@ Expected top-level inputs that help describe what entity built the artifact, wha
 
 #### A Note About SLSA's Build Level Requirements for Recording/Attesting to Workflow Inputs
 
-We use the [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
+We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
 
 [The SLSA Provenance Model](https://slsa.dev/spec/v1.0/provenance#model)
 > externalParameters: the external interface to the build. In SLSA, these values are untrusted; they MUST be included in the provenance and MUST be verified downstream.
@@ -1129,13 +1129,13 @@ By only supporting events like push to specific branches or tags, we can ensure 
 
 #### Build Provenance GitHub Action
 
-- [Attest Build Provenance Action](https://github.com/actions/attest-build-provenance)
+- [Attest Action](https://github.com/actions/attest)
 
-We use the [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format.
+We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. Given a subject and no predicate, it auto-generates a SLSA build provenance predicate, binding the named artifact and its digest using the in-toto format. (`actions/attest-build-provenance` is now a wrapper around `actions/attest`.)
 
 #### Attest SBOM Action
 
-- [Attest SBOM Action](https://github.com/actions/attest-sbom)
+- [Attest Action](https://github.com/actions/attest)
 
 We use the [anchore/sbom-action](https://github.com/anchore/sbom-action) GitHub Action to create a software bill of materials (SBOM) using Syft. This action scans your artifacts and generates an SBOM in various formats, which can be uploaded as workflow artifacts or release assets.
 
@@ -1201,10 +1201,6 @@ It is good practice to wrap the actual call to each respective reusable workflow
 Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, and `rw-<permissions_path>-release.yaml`:
 
 ```yaml
-actions/attest-build-provenance/predicate@*,
-actions/attest-build-provenance@*,
-actions/attest-sbom/predicate@*,
-actions/attest-sbom@*,
 actions/attest@*,
 actions/checkout@*,
 actions/github-script@*,
@@ -1212,7 +1208,6 @@ actions/download-artifact@*,
 actions/upload-artifact@*,
 anchore/scan-action@*,
 anchore/sbom-action@*,
-anchore/scan-action@*,
 cycjimmy/semantic-release-action@*,
 docker/build-push-action@*,
 docker/login-action@*,
@@ -1276,7 +1271,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (required, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1287,7 +1282,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob.yaml.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1298,7 +1293,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
@@ -1313,7 +1308,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use for predicate generation.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use for predicate generation.
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
@@ -1322,7 +1317,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
@@ -1331,7 +1326,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
 
 #### `.github/workflows/rw-verify.yaml`
 
@@ -1343,7 +1338,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml for images, or rw-attest-blob.yaml for blob(s).
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.23.0'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use (input name retained for backwards compatibility).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1360,7 +1355,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use (input name retained for backwards compatibility).
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
@@ -1371,7 +1366,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `branch` (optional, string, default: 'main'): Branch to cut the release from.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml).
 - `dry-run` (optional, boolean, default: false): Run in dry-run mode (no commits, tags, or releases created).
-- `autogov-version` (optional, string, default: 'v0.20.0'): The autogov release version to download and use.
+- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov release version to download and use.
 - `vsa-artifact-id` (optional, string, default: ''): The artifact ID of the VSA to upload as a release asset.
 - `blob-artifact-id` (optional, string, default: ''): Artifact ID of the blob to download and publish as a release asset.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
@@ -1695,7 +1690,7 @@ The `autogov` tool integrates policy evaluation directly into the verification p
 ### Common Issues
 
 1. **Permission Denied**:
-   Ensure that your PAT and respective workflows have the necessary [access](#access sections).
+   Ensure that your PAT and respective workflows have the necessary [access](#access).
 
 2. **Workflow Fails to Trigger**:
    Check that you are using one of the supported event types: `create`, `release`, `push`, or `workflow_dispatch`.

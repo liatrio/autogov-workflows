@@ -138,7 +138,7 @@ flowchart TD
 
     ```yaml
     - name: Attest Example Data
-        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         id: attest-example-data
     ```
 
@@ -147,7 +147,7 @@ flowchart TD
 Example of Attesting Image:
     ```yaml
     - name: Attest Example Data
-        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         id: attest-image-data
         subject-name: ${{ format('{0}/{1}', inputs.registry, github.repository) }}
         subject-digest: ${{ needs.build-<perms>.outputs.image-digest }}
@@ -159,7 +159,7 @@ Example of Attesting Image:
 Example of Attesting Blob:
     ```yaml
     - name: Attest Example Data
-        uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d # v1.4.1
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         id: attest-blob-data
         subject-path: ${{ inputs.subject-path }}
         predicate-type: '<PREDICATE URI>' # example: 'https://autogov.dev/attestation/metadata/v1'
