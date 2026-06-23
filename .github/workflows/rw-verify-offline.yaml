@@ -7,22 +7,21 @@ on:
         type: string
         description: The artifact-id of the build artifacts.
         required: true
-        default: ${{ github.event.needs.build-low-perms.outputs.blob-artifact-id }}
       attest-build-attestation-artifact-id:
         description: The artifact-id of the build provenance attestation artifact.
-        default: ${{ github.event.needs.attest-build-low-perms.outputs.attest-build-attestation-artifact-id }}
+        required: false
         type: string
       attest-metadata-attestation-artifact-id:
         description: The artifact-id of the custom metadata attestation artifact.
-        default: ${{ github.event.needs.attest-metadata-low-perms.outputs.build-artifact-id }}
+        required: false
         type: string
       attest-sbom-attestation-artifact-id:
         description: The artifact-id of the SBOM attestation artifact.
-        default: ${{ github.event.needs.attest-sbom-low-perms.outputs.build-artifact-id }}
+        required: false
         type: string
       attest-dependency-scan-attestation-artifact-id:
         description: The artifact-id of the dependency scan attestation artifact.
-        default: ${{ github.event.needs.attest-dependency-scan-low-perms.outputs.build-artifact-id }}
+        required: false
         type: string
       cert-identity:
         type: string
