@@ -1,15 +1,7 @@
 name: Build Entrypoint Caller Workflow
 
 on:
-  workflow_dispatch:
   push:
-    branches: ['**']
-    paths-ignore:
-      - README.md
-      - CONTRIBUTING.md
-      - renovate.json
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     paths-ignore:
       - README.md
@@ -17,68 +9,21 @@ on:
       - renovate.json
 
 concurrency:
-  # serialize per-ref so back-to-back pushes don't race the release-cut
-  # fast-forward update of main; never cancel a main run mid-publish
-  # (cw-build pins an autogov without idempotent-resume), but cancel
-  # superseded pr/branch builds to save ci.
+  # serialize main pushes so back-to-back releases don't race the cut;
+  # never cancel a run mid-publish (rw-release isn't idempotent-resume)
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 permissions: {}
 
 jobs:
-  build-image:
-    if: github.event_name != 'pull_request'
+  # release-only; the workflow files are attested by attest-workflows.yaml
+  release:
     permissions:
-      id-token: write
-      attestations: write
-      packages: write
       contents: write
+      id-token: write
       actions: read
-      artifact-metadata: write
-      # required so the source-review attestation job (nested in rw-attest-image)
-      # can read this repo's PR reviews — a reusable job cannot request a scope the
-      # caller did not grant.
-      pull-requests: read
-    uses: ./.github/workflows/rw-build-image.yaml
+    uses: ./.github/workflows/rw-release.yaml
     secrets: inherit
     with:
-      subject-name: ${{ github.repository }}
-      registry: ghcr.io
-      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
-      vuln-threshold-critical: '-1'
-      vuln-threshold-high: '-1'
-      vuln-threshold-medium: '-1'
-      vuln-threshold-low: '-1'
-
-  # build-blob:
-  #   if: github.event_name != 'pull_request'
-  #   permissions:
-  #     id-token: write
-  #     attestations: write
-  #     packages: write
-  #     contents: write
-  #     actions: read
-  #     pull-requests: read
-  #   uses: ./.github/workflows/rw-build-blob.yaml
-  #   secrets: inherit
-  #   with:
-  #     subject-path: |
-  #       i_am_blob
-  #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
-
-  # build-blob-offline:
-  #   if: github.event_name != 'pull_request'
-  #   permissions:
-  #     id-token: write
-  #     attestations: write
-  #     contents: write
-  #     actions: read
-  #   uses: ./.github/workflows/rw-build-blob-offline.yaml
-  #   secrets: inherit
-  #   with:
-  #     subject-path: |
-  #       i_am_blob
-  #       i_am_another_blob
-  #     cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
+      mutations-config: .autogov-release.yaml
