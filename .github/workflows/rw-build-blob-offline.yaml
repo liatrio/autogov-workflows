@@ -26,6 +26,32 @@ on:
         required: false
         type: string
         default: v0.29.8
+      octo-sts-read-scope:
+        description: >
+          octo-sts scope for the release job's autogov CLI download. Leave empty
+          to use github.token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-read-identity:
+        description: octo-sts read identity for the release job (used only when octo-sts-read-scope is set).
+        required: false
+        type: string
+        default: ''
+      octo-sts-release-scope:
+        description: >
+          octo-sts scope for the release write path (cut commit/tag and asset
+          upload). Defaults to liatrio. External orgs with a protected main must
+          override this with their own scope whose octo-sts app is on the branch
+          ruleset bypass list.
+        required: false
+        type: string
+        default: liatrio
+      octo-sts-release-identity:
+        description: octo-sts write identity for the release cut and asset upload.
+        required: false
+        type: string
+        default: release-ops
       release-blob:
         description: Whether or not to run the release-blob job.
         required: false
@@ -133,3 +159,7 @@ jobs:
       mutations-config: ${{ inputs.mutations-config }}
       vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      octo-sts-read-scope: ${{ inputs.octo-sts-read-scope }}
+      octo-sts-read-identity: ${{ inputs.octo-sts-read-identity }}
+      octo-sts-release-scope: ${{ inputs.octo-sts-release-scope }}
+      octo-sts-release-identity: ${{ inputs.octo-sts-release-identity }}

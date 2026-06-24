@@ -1270,7 +1270,14 @@ permissions:
 
 More information about `octo-sts` can be found [here](https://github.com/octo-sts/app) and info about the `octo-sts/action` can be found [here](https://github.com/octo-sts/action).
 
-> **Bring your own auth**: `rw-verify.yaml` is consumer-configurable — set `octo-sts-scope` / `octo-sts-identity` (and, for cross-repo reads, `autogov-repo` / `policy-repo` / `cert-identities-repo`) to your own org and identities; leave `octo-sts-scope` empty to use `github.token` (the default, suitable for public repos). The `scope: liatrio` / `identity: autogov-infra` / `identity: release-ops` values shown in the other octo-sts examples are still liatrio-org-specific and hardcoded inside `rw-attest-*` / `rw-release` (parameterizing those the same way is a tracked follow-up). External orgs must install their own octo-sts app and create equivalent trust policies.
+> **Bring your own auth**: `rw-verify.yaml` is consumer-configurable — set `octo-sts-scope` / `octo-sts-identity` (and, for cross-repo reads, `autogov-repo` / `policy-repo` / `cert-identities-repo`) to your own org and identities; leave `octo-sts-scope` empty to use `github.token` (the default, suitable for public repos). The `scope: liatrio` / `identity: autogov-infra` values shown in the other octo-sts examples are still liatrio-org-specific and hardcoded inside `rw-attest-*` (parameterizing those the same way is a tracked follow-up). External orgs must install their own octo-sts app and create equivalent trust policies.
+>
+> **Releases (`rw-release.yaml`)**: the binary download (read) and the release cut + asset upload (write) use separate octo-sts pairs.
+>
+> - Read: `octo-sts-read-scope` / `octo-sts-read-identity` (both default empty → `github.token`, suitable for public repos).
+> - Write: `octo-sts-release-scope` / `octo-sts-release-identity` default to `liatrio` / `release-ops` so liatrio's release is unchanged. External orgs override these with their own scope and identity.
+>
+> If your release branch (e.g. `main`) is protected by a branch ruleset, the write actor MUST be on that ruleset's bypass list — `github.token` cannot bypass a branch ruleset, only an actor on the bypass list can. So external orgs with a protected main must (1) install their own octo-sts GitHub App, (2) add that App to the ruleset's bypass list, and (3) set `octo-sts-release-scope` / `octo-sts-release-identity` to a trust policy that issues `contents: write` for that App on the release branch. These same four inputs are threaded through `rw-build-image.yaml` / `rw-build-blob.yaml` / `rw-build-blob-offline.yaml` to the nested `rw-release` call.
 
 ### Inputs
 
@@ -1290,6 +1297,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
 - `autogov-version` (optional, string, default: 'v0.29.8'): The autogov version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
+- `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
+- `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
@@ -1301,6 +1310,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob.yaml.
 - `autogov-version` (optional, string, default: 'v0.29.8'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
+- `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
+- `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
@@ -1313,6 +1324,8 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `autogov-version` (optional, string, default: 'v0.29.8'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
+- `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
+- `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
@@ -1392,6 +1405,11 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `vsa-artifact-id` (optional, string, default: ''): The artifact ID of the VSA to upload as a release asset.
 - `blob-artifact-id` (optional, string, default: ''): Artifact ID of the blob to download and publish as a release asset.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
+- `github-token` (optional, string, default: ''): GitHub token for the binary download when `octo-sts-read-scope` is empty. Leave empty to use `github.token` (suitable for public repos).
+- `octo-sts-read-scope` (optional, string, default: ''): octo-sts scope for the autogov CLI download (read). When empty, `github.token` is used (suitable for public repos).
+- `octo-sts-read-identity` (optional, string, default: ''): octo-sts read identity. Required when `octo-sts-read-scope` is set.
+- `octo-sts-release-scope` (optional, string, default: 'liatrio'): octo-sts scope for the write path (release cut commit/tag and asset upload). External orgs with a protected main override this with their own scope whose octo-sts app is on the branch ruleset bypass list.
+- `octo-sts-release-identity` (optional, string, default: 'release-ops'): octo-sts write identity for the release cut and asset upload.
 
 ### Outputs
 
