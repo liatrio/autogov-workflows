@@ -1270,7 +1270,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (required, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1281,7 +1281,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob.yaml.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1292,7 +1292,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
@@ -1307,7 +1307,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use for predicate generation.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use for predicate generation.
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
@@ -1316,7 +1316,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use.
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
@@ -1325,7 +1325,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use.
 
 #### `.github/workflows/rw-verify.yaml`
 
@@ -1337,7 +1337,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml for images, or rw-attest-blob.yaml for blob(s).
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use (input name retained for backwards compatibility).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
@@ -1354,7 +1354,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov version to use (input name retained for backwards compatibility).
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
@@ -1365,7 +1365,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `branch` (optional, string, default: 'main'): Branch to cut the release from.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml).
 - `dry-run` (optional, boolean, default: false): Run in dry-run mode (no commits, tags, or releases created).
-- `autogov-version` (optional, string, default: 'v0.29.2'): The autogov release version to download and use.
+- `autogov-version` (optional, string, default: 'v0.29.5'): The autogov release version to download and use.
 - `vsa-artifact-id` (optional, string, default: ''): The artifact ID of the VSA to upload as a release asset.
 - `blob-artifact-id` (optional, string, default: ''): Artifact ID of the blob to download and publish as a release asset.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
