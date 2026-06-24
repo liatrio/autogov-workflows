@@ -38,7 +38,7 @@ on:
         description: The autogov version to use for predicate generation.
         required: false
         type: string
-        default: v0.29.7
+        default: v0.29.8
     outputs:
       image-digest:
         description: The image digest of the image that was built from the build-image job.

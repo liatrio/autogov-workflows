@@ -24,7 +24,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.29.7
+        default: v0.29.8
       release-image:
         description: Whether or not to run the release-image job.
         required: false
