@@ -1640,7 +1640,7 @@ Each mutation has a `path`, a `type`, and a `field`; `${version}` expands to the
 - `regexReplace` — replace a regex match (`field` is the pattern, `replace` is the replacement template).
 - `exec` — run a command (`field` is the command).
 
-The example in this repo ([.autogov-release.yaml](./.autogov-release.yaml)) bumps the Dockerfile `VERSION` and regenerates `cert-identities.json`:
+A mutations file can combine types — for example, a `regexReplace` version bump and an `exec` regeneration:
 
 ```yaml
 mutations:
