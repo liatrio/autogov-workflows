@@ -269,9 +269,10 @@ jobs:
     - [`workflow_dispatch`] / [enables the ability to trigger workflow manually](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch).
 
 5. **Check Results**:
-   Review the results and logs to ensure everything is working as expected.
-
-![Results Summary](./assets/results_summary.png)
+   Review the workflow logs and the uploaded **Verification Summary Attestation
+   (VSA)** artifact. A passing run produces
+   `verification-summary-attestation-PASSED.json`; a failing policy evaluation
+   produces `verification-summary-attestation-FAILED.json` and fails the job.
 
 ## Why Sign/Attest?
 
