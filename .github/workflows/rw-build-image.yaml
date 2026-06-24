@@ -25,6 +25,23 @@ on:
         required: false
         type: string
         default: v0.29.8
+      octo-sts-scope:
+        description: >
+          octo-sts scope for the private-repo autogov CLI download. Leave empty
+          to use github-token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-identity:
+        description: octo-sts identity (used only when octo-sts-scope is set).
+        required: false
+        type: string
+        default: ''
+      autogov-repo:
+        description: Repository to download the autogov CLI release from.
+        required: false
+        type: string
+        default: liatrio/autogov
       release-image:
         description: Whether or not to run the release-image job.
         required: false
@@ -92,6 +109,9 @@ jobs:
       subject-name: ${{ github.repository }}
       registry: ${{ inputs.registry }}
       autogov-version: ${{ inputs.autogov-version }}
+      octo-sts-scope: ${{ inputs.octo-sts-scope }}
+      octo-sts-identity: ${{ inputs.octo-sts-identity }}
+      autogov-repo: ${{ inputs.autogov-repo }}
 
   verify-image:
     permissions:
