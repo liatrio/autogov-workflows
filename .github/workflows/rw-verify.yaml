@@ -50,7 +50,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.29.5
+        default: v0.29.8
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -76,6 +76,33 @@ on:
         required: false
         type: string
         default: '0'
+      octo-sts-scope:
+        description: >
+          octo-sts scope for private-repo cross-repo reads (autogov CLI, policy bundle,
+          cert-identities). Leave empty to use github-token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-identity:
+        description: octo-sts identity (used only when octo-sts-scope is set).
+        required: false
+        type: string
+        default: ''
+      autogov-repo:
+        description: Repository to download the autogov CLI release from.
+        required: false
+        type: string
+        default: liatrio/autogov
+      policy-repo:
+        description: Repository hosting the OPA/Rego policy bundle (owner/name).
+        required: false
+        type: string
+        default: liatrio/autogov-policy-library
+      cert-identities-repo:
+        description: Repository hosting cert-identities.json (the signer allowlist).
+        required: false
+        type: string
+        default: liatrio/autogov-workflows
     outputs:
       vsa-artifact-id:
         description: The artifact ID of the uploaded VSA
@@ -88,7 +115,6 @@ env:
   ATTESTATIONS_FOLDER: ./attestations
   ARTIFACTS_FOLDER: ./artifacts
   VSA_FOLDER: ./vsa
-  POLICY_REPO_NAME: autogov-policy-library
 
 jobs:
   verify-high-perms:
@@ -141,32 +167,25 @@ jobs:
           find ../${{ env.ARTIFACTS_FOLDER }} -type f -exec gh attestation download {} --repo ${{ github.repository }} \;
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
+        if: ${{ inputs.octo-sts-scope != '' }}
         with:
-          scope: liatrio
-          identity: autogov-infra
+          scope: ${{ inputs.octo-sts-scope }}
+          identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
+            --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
-          gh api repos/liatrio/autogov-workflows/contents/cert-identities.json \
+          gh api repos/${{ inputs.cert-identities-repo }}/contents/cert-identities.json \
             --jq '.content' | base64 -d > cert-identities.json
-      - name: Download Policy Bundle and Schemas
-        env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
-        run: |
-          gh release download \
-            --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
-            --pattern "schemas.tar.gz" \
-            --pattern "bundle.tar.gz"
       - name: Generate Vulnerability Threshold Config
         run: |
           cat > vulnerability-thresholds.json << 'EOF'
@@ -183,7 +202,7 @@ jobs:
           cat vulnerability-thresholds.json
       - name: Verification and VSA Generation for Image Attestation(s)
         env:
-          GH_TOKEN: ${{ inputs.github-token || github.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         id: verify-image
         if: ${{ inputs.build-type == 'image' }}
         run: |
@@ -194,10 +213,10 @@ jobs:
             --repo "${{ github.repository }}" \
             --cert-identity "${{ inputs.cert-identity }}" \
             --source-ref "${{ github.ref }}" \
-            --policy-bundle-path "bundle.tar.gz" \
-            --policy-schemas-path "schemas.tar.gz" \
+            --policy-bundle-path "ghrel://${{ inputs.policy-repo }}?asset=bundle.tar.gz" \
+            --policy-schemas-path "ghrel://${{ inputs.policy-repo }}?asset=schemas.tar.gz" \
             --policy-data-path "vulnerability-thresholds.json" \
-            --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
+            --policy-uri "https://github.com/${{ inputs.policy-repo }}" \
             --generate-vsa \
             --vsa-output "$VSA_FILE" \
             ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
@@ -214,6 +233,8 @@ jobs:
       - name: Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         if: ${{ inputs.build-type == 'blob' }}
+        env:
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
@@ -230,10 +251,10 @@ jobs:
               --repo "${{ github.repository }}" \
               --cert-identity "${{ inputs.cert-identity }}" \
               --source-ref "${{ github.ref }}" \
-              --policy-bundle-path "bundle.tar.gz" \
-              --policy-schemas-path "schemas.tar.gz" \
+              --policy-bundle-path "ghrel://${{ inputs.policy-repo }}?asset=bundle.tar.gz" \
+              --policy-schemas-path "ghrel://${{ inputs.policy-repo }}?asset=schemas.tar.gz" \
               --policy-data-path "vulnerability-thresholds.json" \
-              --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
+              --policy-uri "https://github.com/${{ inputs.policy-repo }}" \
               --generate-vsa \
               --vsa-output "$VSA_FILE" \
               ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}

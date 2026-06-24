@@ -22,7 +22,7 @@ on:
         description: 'The autogov release version to download and use.'
         required: false
         type: string
-        default: v0.29.5
+        default: v0.29.8
       vsa-artifact-id:
         description: 'The artifact ID of the VSA to upload as a release asset.'
         required: false
