@@ -173,7 +173,7 @@ jobs:
           identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token || inputs.github-token || github.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
             --repo ${{ inputs.autogov-repo }} \
@@ -182,7 +182,7 @@ jobs:
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token || inputs.github-token || github.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh api repos/${{ inputs.cert-identities-repo }}/contents/cert-identities.json \
             --jq '.content' | base64 -d > cert-identities.json
@@ -202,7 +202,7 @@ jobs:
           cat vulnerability-thresholds.json
       - name: Verification and VSA Generation for Image Attestation(s)
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token || inputs.github-token || github.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         id: verify-image
         if: ${{ inputs.build-type == 'image' }}
         run: |
@@ -234,7 +234,7 @@ jobs:
         id: verify-blob
         if: ${{ inputs.build-type == 'blob' }}
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token || inputs.github-token || github.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
