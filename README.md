@@ -274,6 +274,24 @@ jobs:
    `verification-summary-attestation-PASSED.json`; a failing policy evaluation
    produces `verification-summary-attestation-FAILED.json` and fails the job.
 
+## Attesting the Workflow Files
+
+This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. The [`attest-workflows.yaml`](./.github/workflows/attest-workflows.yaml) workflow attests them — and the repo's composite action definitions (which consumers vendor into their own repos rather than consume from here) — with SLSA build-provenance, on every push to `main` that touches `.github/workflows/rw-*.yaml` or `.github/actions/**`, signed with the repository's own identity.
+
+Consumers can verify the publisher identity of a reusable workflow they reference:
+
+```bash
+gh attestation verify .github/workflows/rw-attest-image.yaml --repo liatrio/autogov-workflows
+```
+
+What this buys you:
+
+- **Publisher identity** — cryptographic proof that the file was produced by this repository's CI under the GitHub Actions OIDC identity, not by an unknown source.
+- **Consumer policy enforcement** — the attestation can be a gate in a consumer's own supply-chain policy (e.g. require a valid `liatrio/autogov-workflows` provenance before adopting a workflow).
+- **Defense in depth** — a second, independent signal alongside pinning.
+
+What this does **not** buy you: it does not add file integrity beyond what the commit-SHA pin already provides. When you reference a reusable workflow with `uses: liatrio/autogov-workflows/.github/workflows/...@<sha>`, GitHub already content-addresses the exact file at that commit, so the pin is the integrity guarantee. The attestation is about *who* published the file and *how*, not about detecting changes the SHA pin would already catch. It is also not revoked if a file is later deleted or renamed — it proves a file was published at a commit, not that it still exists on `main`.
+
 ## Why Sign/Attest?
 
 In today's digital landscape, ensuring the integrity and security of software development processes is crucial. GitHub's official Action(s) for creating signed SLSA (Supply Chain Levels for Software Artifacts) attestations, along with its [CLI tool for verifying artifacts](https://cli.github.com/manual/gh_attestation), provides a robust foundation for securing the distribution of built artifacts.
