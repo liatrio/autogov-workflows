@@ -270,9 +270,8 @@ jobs:
 
 5. **Check Results**:
    Review the workflow logs and the uploaded **Verification Summary Attestation
-   (VSA)** artifact. A passing run produces
-   `verification-summary-attestation-PASSED.json`; a failing policy evaluation
-   produces `verification-summary-attestation-FAILED.json` and fails the job.
+   (VSA)** artifact. A passing run produces `vsa-PASSED.json`; a failing policy
+   evaluation produces `vsa-FAILED.json` and fails the job.
 
 ## Why Sign/Attest?
 
