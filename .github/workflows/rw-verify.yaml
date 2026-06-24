@@ -50,7 +50,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.29.5
+        default: v0.29.7
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
