@@ -1,0 +1,76 @@
+# OpenSSF Scorecard supply-chain security analysis.
+# NOTE: Scorecard's API queries (ListCommits, branch-protection, etc.) and
+# publish_results require a PUBLIC repo. On a private/internal repo the default
+# GITHUB_TOKEN cannot satisfy them ("Resource not accessible by integration"),
+# so the analysis is gated to run only once the repo is public. Scoped to
+# push/schedule/branch_protection_rule (not pull_request) so it never blocks PRs.
+name: Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '20 7 * * 2' # weekly, Tuesday 07:20 UTC
+  branch_protection_rule:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # Gate the analysis to public repos only. The schedule event payload lacks
+  # repo visibility, so query the API rather than reading github.event.repository
+  # — this keeps the gate correct across push, schedule, and branch_protection_rule.
+  check-visibility:
+    name: Check repository visibility
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      public: ${{ steps.visibility.outputs.public }}
+    steps:
+      - id: visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          visibility="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.visibility')"
+          echo "Repository visibility: ${visibility}"
+          if [ "${visibility}" = "public" ]; then
+            echo "public=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Scorecard skipped: repository is '${visibility}', not public." >> "${GITHUB_STEP_SUMMARY}"
+            echo "public=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+  analysis:
+    name: Scorecard analysis
+    needs: check-visibility
+    if: needs.check-visibility.outputs.public == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload SARIF to code scanning
+      id-token: write # publish results to OpenSSF
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          sarif_file: results.sarif
