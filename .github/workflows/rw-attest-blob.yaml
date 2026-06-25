@@ -42,6 +42,23 @@ on:
         required: false
         type: string
         default: v0.29.8
+      octo-sts-scope:
+        description: >
+          octo-sts scope for the private-repo autogov CLI download. Leave empty
+          to use github-token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-identity:
+        description: octo-sts identity (used only when octo-sts-scope is set).
+        required: false
+        type: string
+        default: ''
+      autogov-repo:
+        description: Repository to download the autogov CLI release from.
+        required: false
+        type: string
+        default: liatrio/autogov
     outputs:
       blob-artifact-id:
         description: The artifact-id of the blob artifact(s).
@@ -176,15 +193,16 @@ jobs:
           merge-multiple: true
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
+        if: ${{ inputs.octo-sts-scope != '' }}
         with:
-          scope: liatrio
-          identity: autogov-infra
+          scope: ${{ inputs.octo-sts-scope }}
+          identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
+            --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
       - name: Generate Metadata Attestation
@@ -312,15 +330,16 @@ jobs:
           fail-build: false
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
+        if: ${{ inputs.octo-sts-scope != '' }}
         with:
-          scope: liatrio
-          identity: autogov-infra
+          scope: ${{ inputs.octo-sts-scope }}
+          identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
+            --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
       - name: Generate Dependency Scan Attestation
@@ -386,15 +405,16 @@ jobs:
           merge-multiple: true
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
+        if: ${{ inputs.octo-sts-scope != '' }}
         with:
-          scope: liatrio
-          identity: autogov-infra
+          scope: ${{ inputs.octo-sts-scope }}
+          identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
+            --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
       - name: Generate Source Review Attestation

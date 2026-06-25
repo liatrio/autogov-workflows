@@ -1,4 +1,4 @@
-name: Build Entrypoint Caller Workflow
+name: Release Caller Workflow
 
 on:
   push:

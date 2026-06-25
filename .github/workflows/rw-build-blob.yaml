@@ -47,6 +47,23 @@ on:
         required: false
         type: string
         default: release-ops
+      octo-sts-scope:
+        description: >
+          octo-sts scope for the private-repo autogov CLI download. Leave empty
+          to use github-token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-identity:
+        description: octo-sts identity (used only when octo-sts-scope is set).
+        required: false
+        type: string
+        default: ''
+      autogov-repo:
+        description: Repository to download the autogov CLI release from.
+        required: false
+        type: string
+        default: liatrio/autogov
       release-blob:
         description: Whether or not to run the release-blob job.
         required: false
@@ -112,6 +129,9 @@ jobs:
     with:
       subject-path: ${{ inputs.subject-path }}
       autogov-version: ${{ inputs.autogov-version }}
+      octo-sts-scope: ${{ inputs.octo-sts-scope }}
+      octo-sts-identity: ${{ inputs.octo-sts-identity }}
+      autogov-repo: ${{ inputs.autogov-repo }}
 
   verify-blob:
     permissions:
@@ -129,6 +149,9 @@ jobs:
       blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
       cert-identity: ${{ inputs.cert-identity }}
       autogov-version: ${{ inputs.autogov-version }}
+      octo-sts-scope: ${{ inputs.octo-sts-scope }}
+      octo-sts-identity: ${{ inputs.octo-sts-identity }}
+      autogov-repo: ${{ inputs.autogov-repo }}
       vuln-threshold-critical: ${{ inputs.vuln-threshold-critical }}
       vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
       vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}

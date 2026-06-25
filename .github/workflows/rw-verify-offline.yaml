@@ -64,6 +64,23 @@ on:
         required: false
         type: string
         default: '0'
+      octo-sts-scope:
+        description: >
+          octo-sts scope for the private-repo autogov CLI and policy-bundle
+          downloads. Leave empty to use github-token — correct for public repos.
+        required: false
+        type: string
+        default: ''
+      octo-sts-identity:
+        description: octo-sts identity (used only when octo-sts-scope is set).
+        required: false
+        type: string
+        default: ''
+      autogov-repo:
+        description: Repository to download the autogov CLI release from.
+        required: false
+        type: string
+        default: liatrio/autogov
 
     outputs:
       vsa-artifact-id:
@@ -109,20 +126,21 @@ jobs:
           merge-multiple: true
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts
+        if: ${{ inputs.octo-sts-scope != '' }}
         with:
-          scope: liatrio
-          identity: autogov-infra
+          scope: ${{ inputs.octo-sts-scope }}
+          identity: ${{ inputs.octo-sts-identity }}
       - name: Install autogov
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
+            --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
       - name: Download Policy Schemas
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           gh release download \
             --repo ${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }} \
@@ -152,7 +170,7 @@ jobs:
       - name: Offline Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         env:
-          GH_TOKEN: ${{ steps.octo-sts.outputs.token }}
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
@@ -178,22 +196,22 @@ jobs:
 
             if [ -f "$VSA_FILE" ]; then
               RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
-              echo "result-status=$RESULT_STATUS" >> $GITHUB_OUTPUT
+              echo "result-status=$RESULT_STATUS" >> "$GITHUB_OUTPUT"
 
               VSA_FILE_WITH_STATUS="${{ env.VSA_FOLDER }}/verification-summary-attestation-$RESULT_STATUS.json"
               mv "$VSA_FILE" "$VSA_FILE_WITH_STATUS"
             else
-              echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "result-status=UNKNOWN" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "result-status=UNKNOWN" >> $GITHUB_OUTPUT
+            echo "result-status=UNKNOWN" >> "$GITHUB_OUTPUT"
           fi
       - name: Display VSA Summary
         run: |
           VSA_FILE=$(find ${{ env.VSA_FOLDER }} -name "verification-summary-attestation*.json*" | head -1)
           if [ -f "$VSA_FILE" ]; then
-            echo "### Verification Summary Attestation (VSA) Results" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Verification Summary Attestation (VSA) Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
 
             VERIFICATION_RESULT=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
             case "$VERIFICATION_RESULT" in
@@ -203,33 +221,33 @@ jobs:
             esac
 
             if [ "$RESULT_STATUS" = "PASSED" ]; then
-              echo "#### Result: ✅ PASSED" >> $GITHUB_STEP_SUMMARY
+              echo "#### Result: ✅ PASSED" >> "$GITHUB_STEP_SUMMARY"
             elif [ "$RESULT_STATUS" = "FAILED" ]; then
-              echo "#### Result: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+              echo "#### Result: ❌ FAILED" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "#### Result: ⚠ UNKNOWN" >> $GITHUB_STEP_SUMMARY
+              echo "#### Result: ⚠ UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
             fi
 
-            echo "- Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            echo "- Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
-            echo "- Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "- Verifier: $(jq -r '.predicate.verifier.id // "N/A"' "$VSA_FILE")" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Time Verified: $(jq -r '.predicate.timeVerified // "N/A"' "$VSA_FILE")" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Policy URI: $(jq -r '.predicate.policy.uri // "N/A"' "$VSA_FILE")" >> "$GITHUB_STEP_SUMMARY"
 
             if [ "$RESULT_STATUS" = "FAILED" ]; then
               VIOLATION_COUNT=$(jq -r '.metadata."autogov.policy.evaluation".violations | length // 0' "$VSA_FILE")
               if [ "$VIOLATION_COUNT" -gt 0 ]; then
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "#### 🚨 Policy Violations ($VIOLATION_COUNT)" >> $GITHUB_STEP_SUMMARY
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "| Policy | Message |" >> $GITHUB_STEP_SUMMARY
-                echo "|--------|---------|" >> $GITHUB_STEP_SUMMARY
-                jq -r '.metadata."autogov.policy.evaluation".violations[] | "| \(.policy) | \(.message) |"' "$VSA_FILE" >> $GITHUB_STEP_SUMMARY
+                echo "" >> "$GITHUB_STEP_SUMMARY"
+                echo "#### 🚨 Policy Violations ($VIOLATION_COUNT)" >> "$GITHUB_STEP_SUMMARY"
+                echo "" >> "$GITHUB_STEP_SUMMARY"
+                echo "| Policy | Message |" >> "$GITHUB_STEP_SUMMARY"
+                echo "|--------|---------|" >> "$GITHUB_STEP_SUMMARY"
+                jq -r '.metadata."autogov.policy.evaluation".violations[] | "| \(.policy) | \(.message) |"' "$VSA_FILE" >> "$GITHUB_STEP_SUMMARY"
               fi
             fi
 
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### VSA File: $(basename "$VSA_FILE")" >> $GITHUB_STEP_SUMMARY
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "#### VSA File: $(basename "$VSA_FILE")" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "❌ No VSA file found" >> $GITHUB_STEP_SUMMARY
+            echo "❌ No VSA file found" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Attest to VSA for Blob
         id: attest-vsa-blob
@@ -246,7 +264,7 @@ jobs:
           BUNDLE_DIR=$(dirname "${{ steps.attest-vsa-blob.outputs.bundle-path }}")
           VSA_PATH="$BUNDLE_DIR/vsa-${{ steps.verify-blob.outputs.result-status }}.json"
           mv "${{ steps.attest-vsa-blob.outputs.bundle-path }}" "$VSA_PATH"
-          echo "vsa-bundle-path=$VSA_PATH" >> $GITHUB_OUTPUT
+          echo "vsa-bundle-path=$VSA_PATH" >> "$GITHUB_OUTPUT"
       - name: Upload Signed VSA Bundle Artifact
         id: upload-vsa-artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
