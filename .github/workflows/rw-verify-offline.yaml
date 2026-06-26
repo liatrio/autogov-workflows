@@ -43,7 +43,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v0.31.0
+        default: v0.32.6
       allow-failed-vsa:
         description: When false (default), a FAILED policy result fails this job AFTER the FAILED VSA has been attested and uploaded, so the record is preserved but the release is blocked. Set true to keep the advisory (non-gating) behavior.
         required: false
