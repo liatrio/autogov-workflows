@@ -69,6 +69,14 @@ on:
         required: false
         type: string
         default: '0'
+      policy-data-overlay:
+        description: >
+          Optional JSON merged over the generated vuln thresholds to enable
+          per-repo gates such as source_review_config / bypass_config /
+          code_scan_thresholds. Empty (default) disables the overlay.
+        required: false
+        type: string
+        default: ''
       octo-sts-scope:
         description: >
           octo-sts scope for the private-repo autogov CLI and policy-bundle
@@ -86,6 +94,16 @@ on:
         required: false
         type: string
         default: liatrio/autogov
+      use-cert-identity-list:
+        description: Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
+        required: false
+        type: boolean
+        default: ${{ github.repository != 'liatrio/autogov-workflows' }}
+      cert-identities-repo:
+        description: Repository hosting cert-identities.json (the signer allowlist).
+        required: false
+        type: string
+        default: liatrio/autogov-workflows
 
     outputs:
       vsa-artifact-id:
@@ -138,9 +156,11 @@ jobs:
       - name: Install autogov
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+          AUTOGOV_REPO: ${{ inputs.autogov-repo }}
         run: |
-          gh release download ${{ inputs.autogov-version }} \
-            --repo ${{ inputs.autogov-repo }} \
+          gh release download "$AUTOGOV_VERSION" \
+            --repo "$AUTOGOV_REPO" \
             --pattern "autogov"
           chmod +x autogov
       - name: Download Policy Schemas
@@ -158,24 +178,81 @@ jobs:
           artifact-ids: ${{ inputs.blob-artifact-id }}
           path: ${{ env.ARTIFACTS_FOLDER }}
           merge-multiple: true
-      - name: Generate Vulnerability Threshold Config
+      - name: Download cert-identities file
+        if: ${{ inputs.use-cert-identity-list }}
+        env:
+          GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          CERT_IDENTITIES_REPO: ${{ inputs.cert-identities-repo }}
+          GH_REPO: ${{ github.repository }}
+          JOB_WF_SHA: ${{ github.job_workflow_sha }}
         run: |
-          cat > vulnerability-thresholds.json << 'EOF'
-          {
-            "vuln_thresholds": {
-              "critical": ${{ inputs.vuln-threshold-critical }},
-              "high": ${{ inputs.vuln-threshold-high }},
-              "medium": ${{ inputs.vuln-threshold-medium }},
-              "low": ${{ inputs.vuln-threshold-low }}
-            }
-          }
-          EOF
-          echo "Generated vulnerability threshold config:"
-          cat vulnerability-thresholds.json
+          # Pin the allowlist fetch to the running reusable-workflow SHA when the
+          # allowlist lives in this same repo (TOCTOU), else fall back to the
+          # default branch. Inputs reach the shell via env, never template splicing.
+          ref_qs=""
+          if [ "$CERT_IDENTITIES_REPO" = "$GH_REPO" ] && [ -n "$JOB_WF_SHA" ]; then
+            ref_qs="?ref=$JOB_WF_SHA"
+            echo "cert-identities.json pinned to job_workflow_sha $JOB_WF_SHA"
+          else
+            echo "cert-identities.json fetched from $CERT_IDENTITIES_REPO default branch (unpinned: cross-repo or empty job_workflow_sha)"
+          fi
+          gh api "repos/$CERT_IDENTITIES_REPO/contents/cert-identities.json$ref_qs" \
+            --jq '.content' | base64 -d > cert-identities.json
+      - name: Validate Vulnerability Thresholds
+        env:
+          VULN_CRITICAL: ${{ inputs.vuln-threshold-critical }}
+          VULN_HIGH: ${{ inputs.vuln-threshold-high }}
+          VULN_MEDIUM: ${{ inputs.vuln-threshold-medium }}
+          VULN_LOW: ${{ inputs.vuln-threshold-low }}
+        run: |
+          for pair in \
+            "vuln-threshold-critical=$VULN_CRITICAL" \
+            "vuln-threshold-high=$VULN_HIGH" \
+            "vuln-threshold-medium=$VULN_MEDIUM" \
+            "vuln-threshold-low=$VULN_LOW"; do
+            name="${pair%%=*}"
+            val="${pair#*=}"
+            if ! [[ "$val" =~ ^(-1|[0-9]+)$ ]]; then
+              echo "error: $name must be -1 or a non-negative integer, got '$val'"
+              exit 1
+            fi
+          done
+      - name: Generate Vulnerability Threshold Config
+        # Build the threshold JSON with jq --argjson from env-passed values so a
+        # caller input is never spliced into this run: body as script text. An
+        # optional policy-data-overlay enables per-repo gates.
+        env:
+          VULN_CRITICAL: ${{ inputs.vuln-threshold-critical }}
+          VULN_HIGH: ${{ inputs.vuln-threshold-high }}
+          VULN_MEDIUM: ${{ inputs.vuln-threshold-medium }}
+          VULN_LOW: ${{ inputs.vuln-threshold-low }}
+          OVERLAY: ${{ inputs.policy-data-overlay }}
+        run: |
+          jq -n \
+            --argjson c "$VULN_CRITICAL" \
+            --argjson h "$VULN_HIGH" \
+            --argjson m "$VULN_MEDIUM" \
+            --argjson l "$VULN_LOW" \
+            '{vuln_thresholds: {critical: $c, high: $h, medium: $m, low: $l}}' > vuln.json
+          if [ -n "$OVERLAY" ]; then
+            echo "$OVERLAY" | jq -e 'type == "object"' > /dev/null || { echo "error: policy-data-overlay must be a JSON object"; exit 1; }
+            # the overlay enables ADDITIONAL gate keys (source_review_config /
+            # bypass_config / code_scan_thresholds); it must not override the
+            # vuln thresholds, which come only from the validated inputs above.
+            if echo "$OVERLAY" | jq -e 'has("vuln_thresholds")' > /dev/null; then
+              echo "error: policy-data-overlay must not set vuln_thresholds; use the validated vuln-threshold-* inputs"; exit 1
+            fi
+            jq -s '.[0] * .[1]' vuln.json <(echo "$OVERLAY") > policy-data.json
+          else
+            cp vuln.json policy-data.json
+          fi
+          echo "Generated policy data:"
+          cat policy-data.json
       - name: Offline Verification and VSA Generation for Blob Attestation(s)
         id: verify-blob
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          CERT_IDENTITY: ${{ inputs.cert-identity }}
         run: |
           set +x
           VSA_FILE="${{ env.VSA_FOLDER }}/verification-summary-attestation.json"
@@ -190,14 +267,15 @@ jobs:
             ./autogov offline \
               --blob-path "${{ env.ARTIFACTS_FOLDER }}" \
               --attestations "${{ env.ATTESTATIONS_FOLDER }}" \
-              --cert-identity "${{ inputs.cert-identity }}" \
+              --cert-identity "$CERT_IDENTITY" \
               --source-ref "${{ github.ref }}" \
               --policy-bundle-path "bundle.tar.gz" \
               --policy-schemas-path "schemas.tar.gz" \
-              --policy-data-path "vulnerability-thresholds.json" \
+              --policy-data-path "policy-data.json" \
               --policy-uri "https://github.com/${{ github.repository_owner }}/${{ env.POLICY_REPO_NAME }}" \
               --generate-vsa \
-              --vsa-output "$VSA_FILE"
+              --vsa-output "$VSA_FILE" \
+              ${{ inputs.use-cert-identity-list && '--cert-identity-list cert-identities.json' || '' }}
 
             if [ -f "$VSA_FILE" ]; then
               RESULT_STATUS=$(jq -r '.predicate.verificationResult // "UNKNOWN"' "$VSA_FILE")
