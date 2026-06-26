@@ -56,6 +56,14 @@ if [ -z "$TAG_DATE" ]; then
   echo "ERROR: Could not resolve commit date for $COMMIT_SHA. Aborting." >&2
   exit 1
 fi
+# fail closed on a future committer date. %cs is forgeable (GIT_COMMITTER_DATE),
+# and a far-future tag date would set expires = tag_date + 1y far out too, so the
+# expiry sweep that revokes a stale/rotated signer SAN never fires. lexical ISO
+# (YYYY-MM-DD) compare is valid in bash.
+if [ "$TAG_DATE" \> "$TODAY" ]; then
+  echo "ERROR: commit date $TAG_DATE for $COMMIT_SHA is in the future (after $TODAY). Aborting." >&2
+  exit 1
+fi
 echo "Using tag date: $TAG_DATE (committer date of $COMMIT_SHA)"
 
 # expiry = tag date + 1 year - support macos/ubuntu formats. %cs yields strict-ISO
