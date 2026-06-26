@@ -10,9 +10,14 @@ env:
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
   GH_TOKEN: ${{ github.token }}
 
+permissions: {}
+
 jobs:
   alert:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout + git log/rev-parse
+      actions: read # gh run view (read the failed run's jobs/steps)
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
       - name: Checkout code
