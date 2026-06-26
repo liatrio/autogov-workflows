@@ -230,12 +230,12 @@ jobs:
         run: |
           TAG="${{ steps.release-cut.outputs.tag }}"
           if [ -f "cert-identities.json" ]; then
-            gh release upload "${TAG}" cert-identities.json --repo ${{ github.repository }}
+            gh release upload "${TAG}" cert-identities.json --repo ${{ github.repository }} --clobber
           fi
           if [ -d "./vsa" ] && [ "$(ls -A ./vsa 2>/dev/null)" ]; then
-            gh release upload "${TAG}" ./vsa/* --repo ${{ github.repository }}
+            gh release upload "${TAG}" ./vsa/* --repo ${{ github.repository }} --clobber
           fi
           if [ -d "./release-assets" ] && [ "$(ls -A ./release-assets 2>/dev/null)" ]; then
-            gh release upload "${TAG}" ./release-assets/* --repo ${{ github.repository }}
+            gh release upload "${TAG}" ./release-assets/* --repo ${{ github.repository }} --clobber
           fi
 
