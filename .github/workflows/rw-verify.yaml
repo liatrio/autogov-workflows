@@ -56,6 +56,11 @@ on:
         required: false
         type: boolean
         default: ${{ github.repository != 'liatrio/autogov-workflows' }}
+      allow-failed-vsa:
+        description: When false (default), a FAILED policy result fails this job AFTER the FAILED VSA has been attested and uploaded, so the record is preserved but the release is blocked. Set true to keep the advisory (non-gating) behavior.
+        required: false
+        type: boolean
+        default: false
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -355,3 +360,8 @@ jobs:
           name: verification-summary-attestation-high-perms
           path: ${{ steps.rename-vsa-bundle.outputs.vsa-bundle-path }}
           if-no-files-found: error
+      - name: Enforce Policy Gate
+        if: ${{ !inputs.allow-failed-vsa && (steps.verify-image.outputs.result-status == 'FAILED' || steps.verify-blob.outputs.result-status == 'FAILED') }}
+        run: |
+          echo "::error::policy evaluation FAILED — failing the job (allow-failed-vsa=false). the FAILED VSA was attested and uploaded above."
+          exit 1
