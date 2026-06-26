@@ -45,13 +45,35 @@ fi
 echo "Using commit SHA: $COMMIT_SHA for version $VERSION"
 TODAY=$(date +%Y-%m-%d)
 
-# get expiration date (1 year from now) - support macos/ubuntu formats
-if date -d "+1 year" +%Y-%m-%d &>/dev/null; then
+# tag date: committer date of the resolved commit, strict-ISO YYYY-MM-DD. base
+# the entry's added/expires on this (NOT the script run date), so re-running or
+# backfilling multiple tags in one pass staggers expiry per real release cadence
+# instead of pinning every entry to one run-date cliff. %cs is the committer date
+# (not the author date, and not the annotated-tag tagger date, which can drift on
+# re-point). resolves for whichever COMMIT_SHA is in play (git-resolved or env).
+TAG_DATE=$(git log -1 --format=%cs "$COMMIT_SHA")
+if [ -z "$TAG_DATE" ]; then
+  echo "ERROR: Could not resolve commit date for $COMMIT_SHA. Aborting." >&2
+  exit 1
+fi
+# fail closed on a future committer date. %cs is forgeable (GIT_COMMITTER_DATE),
+# and a far-future tag date would set expires = tag_date + 1y far out too, so the
+# expiry sweep that revokes a stale/rotated signer SAN never fires. lexical ISO
+# (YYYY-MM-DD) compare is valid in bash.
+if [ "$TAG_DATE" \> "$TODAY" ]; then
+  echo "ERROR: commit date $TAG_DATE for $COMMIT_SHA is in the future (after $TODAY). Aborting." >&2
+  exit 1
+fi
+echo "Using tag date: $TAG_DATE (committer date of $COMMIT_SHA)"
+
+# expiry = tag date + 1 year - support macos/ubuntu formats. %cs yields strict-ISO
+# YYYY-MM-DD, which feeds the macos "date -j -f %Y-%m-%d" parser directly.
+if date -d "$TAG_DATE +1 year" +%Y-%m-%d &>/dev/null; then
   # ubuntu/linux format
-  EXPIRY_DATE=$(date -d "+1 year" +%Y-%m-%d)
+  EXPIRY_DATE=$(date -d "$TAG_DATE +1 year" +%Y-%m-%d)
 else
   # macos format
-  EXPIRY_DATE=$(date -v+1y +%Y-%m-%d)
+  EXPIRY_DATE=$(date -j -f "%Y-%m-%d" -v+1y "$TAG_DATE" +%Y-%m-%d)
 fi
 
 # collect all workflow paths for this version
@@ -97,7 +119,7 @@ if [ -z "$VERSION_EXISTS" ]; then
   # add new entry for this version
   jq --arg version "$VERSION" \
     --arg sha "$COMMIT_SHA" \
-    --arg added "$TODAY" \
+    --arg added "$TAG_DATE" \
     --arg expires "$EXPIRY_DATE" \
     --argjson identities "$IDENTITIES_JSON" \
     '.identities = [{
@@ -114,7 +136,7 @@ else
   # update existing entry regardless of current status — re-releases must overwrite stale SHAs
   jq --arg version "$VERSION" \
     --arg sha "$COMMIT_SHA" \
-    --arg added "$TODAY" \
+    --arg added "$TAG_DATE" \
     --arg expires "$EXPIRY_DATE" \
     --argjson identities "$IDENTITIES_JSON" \
     '.identities = (.identities | map(if .version == $version then {
