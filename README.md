@@ -1383,6 +1383,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
 
 #### `.github/workflows/rw-verify-offline.yaml`
 
@@ -1395,10 +1396,13 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use (input name retained for backwards compatibility).
+- `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
+- `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
 - `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
 
 #### `.github/workflows/rw-release.yaml`
 
