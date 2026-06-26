@@ -69,6 +69,11 @@ on:
         required: false
         type: boolean
         default: true
+      allow-failed-vsa:
+        description: When false (default), a FAILED policy result fails the verify job (after the FAILED VSA is attested and uploaded) and the release job is skipped. Set true to keep the advisory (non-gating) behavior.
+        required: false
+        type: boolean
+        default: false
       vuln-threshold-critical:
         description: 'Maximum critical vulnerabilities allowed (0=none, -1=unlimited)'
         required: false
@@ -152,6 +157,7 @@ jobs:
       octo-sts-scope: ${{ inputs.octo-sts-scope }}
       octo-sts-identity: ${{ inputs.octo-sts-identity }}
       autogov-repo: ${{ inputs.autogov-repo }}
+      allow-failed-vsa: ${{ inputs.allow-failed-vsa }}
       vuln-threshold-critical: ${{ inputs.vuln-threshold-critical }}
       vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
       vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}

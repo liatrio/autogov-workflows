@@ -270,8 +270,12 @@ jobs:
 
 5. **Check Results**:
    Review the workflow logs and the uploaded **Verification Summary Attestation
-   (VSA)** artifact. A passing run produces `vsa-PASSED.json`; a failing policy
-   evaluation produces `vsa-FAILED.json` and fails the job.
+   (VSA)** artifact. A passing run produces `vsa-PASSED.json`. A failing policy
+   evaluation produces `vsa-FAILED.json`; the FAILED VSA is still attested and
+   uploaded (the record is preserved), and the job then fails and the release is
+   skipped — unless `allow-failed-vsa: true` is set, which keeps the run advisory.
+   The gate is default-deny: it ships only on an explicit `PASSED` result, so any
+   non-PASSED outcome (FAILED, or a missing/unknown VSA) also blocks the release.
 
 ## Attesting the Workflow Files
 
