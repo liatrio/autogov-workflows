@@ -278,7 +278,14 @@ jobs:
           path: ${{ steps.rename-vsa-bundle.outputs.vsa-bundle-path }}
           if-no-files-found: error
       - name: Enforce Policy Gate
-        if: ${{ !inputs.allow-failed-vsa && steps.verify-blob.outputs.result-status == 'FAILED' }}
+        # default-deny: block unless the verify step reported exactly PASSED.
+        # anything else (FAILED, UNKNOWN, empty, or a drifted CLI string) blocks
+        # the release. this workflow is blob-only, so no build-type scoping is
+        # needed. the gate depends on the autogov CLI emitting verificationResult
+        # exactly PASSED on a clean policy result; it does not rely on
+        # --fail-on-policy-error (the FAILED VSA must be attested + uploaded above
+        # before the gate fires).
+        if: ${{ !inputs.allow-failed-vsa && steps.verify-blob.outputs.result-status != 'PASSED' }}
         run: |
-          echo "::error::policy evaluation FAILED — failing the job (allow-failed-vsa=false). the FAILED VSA was attested and uploaded above."
+          echo "::error::policy result was not PASSED — failing the job (allow-failed-vsa=false). the VSA was attested and uploaded above."
           exit 1
