@@ -1,0 +1,54 @@
+# Lint GitHub Actions workflows and composite actions with actionlint.
+# Produces a stable `lint` check context that a branch ruleset can require on PRs.
+# actionlint also runs shellcheck on every `run:` block (shellcheck is preinstalled
+# on ubuntu-latest); SHELLCHECK_OPTS limits it to error/warning so meaningful issues
+# still gate while low-value info/style nags don't.
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  # a lint check is safe to cancel on rapid pushes — it's not a release
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  lint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # pinned actionlint release + linux_amd64 tarball sha256.
+      # checksum obtained from the official actionlint_${VERSION}_checksums.txt asset.
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install actionlint (pinned + checksum-verified)
+        run: |
+          set -euo pipefail
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${tarball}"
+          curl --fail --location --silent --show-error --retry 3 -o "${tarball}" "${url}"
+          echo "${ACTIONLINT_SHA256}  ${tarball}" | sha256sum --check --strict -
+          tar -xzf "${tarball}" actionlint
+          install -m 0755 actionlint /usr/local/bin/actionlint
+          actionlint --version
+      - name: Run actionlint
+        env:
+          # keep error/warning shellcheck findings; drop info/style nags
+          SHELLCHECK_OPTS: --severity=warning
+        run: |
+          set -euo pipefail
+          # github.job_workflow_sha is a valid GitHub context property that actionlint's
+          # static schema does not yet recognize — ignore that one false positive.
+          actionlint -color -ignore 'property "job_workflow_sha" is not defined'
