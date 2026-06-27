@@ -281,7 +281,7 @@ jobs:
 
 This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. Its own `cw-build.yaml` dogfoods the pipeline: it runs `rw-build-blob-offline` over the real product — the `rw-*.yaml` reusables — to attest them (SLSA build-provenance, SBOM, metadata, dependency-scan) and verify them offline into a VSA, then cuts the release attaching that evidence. Signed with the repository's own identity.
 
-> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), and the `vsa-PASSED.json` proving those attestations verified against policy — the same evidence shape consumer releases built through `rw-build-image` / `rw-build-blob` attach for their artifact.
+> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), `vsa-PASSED.json` proving those attestations verified against policy, and `autogov-workflows.intoto.jsonl` — the single build-provenance statement for OpenSSF Scorecard's release-provenance detection. The `rw-*.yaml` reusables themselves are **not** attached as release assets (they're consumed via `uses: ...@<ref>` and attested by digest in the bundle); `rw-build-blob`/`rw-build-blob-offline` expose `release-blob-asset` (default `true`) to control that, and consumer releases built through `rw-build-image` / `rw-build-blob` attach the same evidence shape for their own artifact.
 
 Consumers can verify the publisher identity of a reusable workflow they reference:
 
