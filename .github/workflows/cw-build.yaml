@@ -26,56 +26,32 @@ concurrency:
 permissions: {}
 
 jobs:
-  # attest + verify the real product — the rw-* reusable workflows — producing
-  # a signed attestation bundle and a VSA.
-  # release-blob:false because the release is cut by the job below so it can
-  # carry the cert-identities.json mutation; vuln gating is disabled because
-  # the subjects are yaml (the dependency scan is an honest no-op).
-  build-blob:
-    # must grant the UNION of every rw-build-blob nested job's permissions —
-    # github validates nested-job permissions at parse time even for the
-    # release-blob job that release-blob:false skips at runtime. so contents:write
-    # (release-blob) + packages:write (verify-blob) are required here; each nested
-    # job still self-limits to what it declares (attest/verify use contents:read).
+  # dogfood the pipeline over the real product (the rw-* reusable workflows):
+  # attest them (build-provenance, sbom, metadata, dependency-scan), verify them
+  # OFFLINE into a VSA against this run's own bundle, and — on main — cut the
+  # release attaching the bundle + VSA + the cert-identities.json mutation.
+  # the offline verify reads this run's bundle (one signer), so cert-identity
+  # matches deterministically on push/pr/dispatch alike; vuln gating is disabled
+  # because the subjects are yaml (the dependency scan is an honest no-op). the
+  # release cut self-gates to push+main inside rw-release, so prs/dispatch only
+  # attest + verify.
+  build-blob-offline:
     permissions:
       id-token: write
       attestations: write
       contents: write
-      packages: write
       actions: read
       artifact-metadata: write
-      # source-review reads this repo's PR reviews + ruleset continuity for the
-      # built commit (administration:read is minted best-effort by rw-attest-blob).
-      pull-requests: read
-    uses: ./.github/workflows/rw-build-blob.yaml
+    uses: ./.github/workflows/rw-build-blob-offline.yaml
     secrets: inherit
     with:
       # single dir so upload-artifact's least-common-ancestor is .github/workflows
       # and the files land FLAT at the artifact root — autogov's blob-path expansion
-      # does not recurse into subdirs. this attests the rw-* reusables, the product
-      # consumers actually consume.
+      # does not recurse into subdirs.
       subject-path: .github/workflows/rw-*.y*ml
-      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
-      release-blob: false
+      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
+      mutations-config: .autogov-release.yaml
       vuln-threshold-critical: '-1'
       vuln-threshold-high: '-1'
       vuln-threshold-medium: '-1'
       vuln-threshold-low: '-1'
-
-  # cut the semver release on main: semantic-release version bump + the
-  # cert-identities.json regen (.autogov-release.yaml), attaching this run's
-  # verified attestation bundle + VSA (the bundle is assembled from the same
-  # run's attestation artifacts). gated to push+main so prs/dispatch only
-  # attest + verify.
-  release:
-    needs: build-blob
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      id-token: write
-      actions: read
-    uses: ./.github/workflows/rw-release.yaml
-    secrets: inherit
-    with:
-      mutations-config: .autogov-release.yaml
-      vsa-artifact-id: ${{ needs.build-blob.outputs.vsa-artifact-id }}

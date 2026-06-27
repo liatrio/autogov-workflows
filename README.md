@@ -279,7 +279,7 @@ jobs:
 
 ## Attesting the Workflow Files
 
-This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. Its own `cw-build.yaml` dogfoods the pipeline: it runs `rw-build-blob` over the real product — the `rw-*.yaml` reusables — to attest them (SLSA build-provenance, metadata, source-review) and verify them into a VSA, then cuts the release attaching that evidence. Signed with the repository's own identity.
+This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. Its own `cw-build.yaml` dogfoods the pipeline: it runs `rw-build-blob-offline` over the real product — the `rw-*.yaml` reusables — to attest them (SLSA build-provenance, SBOM, metadata, dependency-scan) and verify them offline into a VSA, then cuts the release attaching that evidence. Signed with the repository's own identity.
 
 > **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), and the `vsa-PASSED.json` proving those attestations verified against policy — the same evidence shape consumer releases built through `rw-build-image` / `rw-build-blob` attach for their artifact.
 
