@@ -281,6 +281,8 @@ jobs:
 
 This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. The [`attest-workflows.yaml`](./.github/workflows/attest-workflows.yaml) workflow attests them — and the repo's composite action definitions (which consumers vendor into their own repos rather than consume from here) — with SLSA build-provenance, on every push to `main` that touches `.github/workflows/rw-*.yaml` or `.github/actions/**`, signed with the repository's own identity.
 
+> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist) and — when a release run produced attestation bundles — the full `autogov.attestations.intoto.jsonl`. Its `cw-build.yaml` self-release is release-only (it builds no shippable artifact in the release run), so it does not attach a per-artifact VSA; the workflow files themselves are attested separately by `attest-workflows.yaml`. Consumer releases built through `rw-build-image` / `rw-build-blob` do attach their artifact's VSA (`vsa-PASSED.json`) plus the full attestation bundle.
+
 Consumers can verify the publisher identity of a reusable workflow they reference:
 
 ```bash
