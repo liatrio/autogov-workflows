@@ -32,10 +32,16 @@ jobs:
   # carry the cert-identities.json mutation; vuln gating is disabled because
   # the subjects are yaml (the dependency scan is an honest no-op).
   build-blob:
+    # must grant the UNION of every rw-build-blob nested job's permissions —
+    # github validates nested-job permissions at parse time even for the
+    # release-blob job that release-blob:false skips at runtime. so contents:write
+    # (release-blob) + packages:write (verify-blob) are required here; each nested
+    # job still self-limits to what it declares (attest/verify use contents:read).
     permissions:
       id-token: write
       attestations: write
-      contents: read
+      contents: write
+      packages: write
       actions: read
       artifact-metadata: write
       # source-review reads this repo's PR reviews + ruleset continuity for the
