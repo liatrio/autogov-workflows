@@ -114,6 +114,9 @@ jobs:
         with:
           subject-name: ${{ inputs.subject-name }}
           registry: ${{ inputs.registry }}
+          github-token: ${{ inputs.github-token || github.token }}
+          autogov-version: ${{ inputs.autogov-version }}
+          autogov-repo: ${{ inputs.autogov-repo }}
 
   attest-build-high-perms:
     runs-on: ${{ inputs.workflow-runner-label }}

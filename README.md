@@ -41,6 +41,14 @@ inputs:
       The GitHub token set throughout the reusable workflow including the composite (build) action.
     required: false
     default: ''
+  autogov-version:
+    description: autogov version to download for computing the image's release-version tag (autogov release plan). When empty, the version tag is skipped.
+    required: false
+    default: ''
+  autogov-repo:
+    description: Repository to download the autogov CLI from.
+    required: false
+    default: liatrio/autogov
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
@@ -56,14 +64,19 @@ runs:
       id: sanitize
       shell: bash
       run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-    - name: Get Next Semantic Release Tag
-      id: semantic-release
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
-      with:
-        dry: true
-        allow-initial-development-versions: true
-        github-token: ${{ inputs.github-token || github.token }}
+    - name: Compute next release version for the image tag
+      id: next-version
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && inputs.autogov-version != ''
+      shell: bash
+      continue-on-error: true # the version tag is a convenience; never fail the build on it
+      env:
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
+      run: |
+        gh release download "${{ inputs.autogov-version }}" --repo "${{ inputs.autogov-repo }}" --pattern autogov --clobber
+        chmod +x ./autogov
+        next="$(./autogov release plan -o json | jq -r '.next_version // empty')"
+        echo "version=${next#v}" >> "$GITHUB_OUTPUT"
+        rm -f ./autogov
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
@@ -73,7 +86,7 @@ runs:
           type=ref,event=branch
           type=sha
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-          type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+          type=raw,value=${{ steps.next-version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.next-version.outputs.version != '' }}
     - name: Set up QEMU
       uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
     - name: Set up Docker Buildx
@@ -1227,18 +1240,16 @@ Below are all of the GitHub Actions and Workflows that are permitted access in t
 ```yaml
 actions/attest@*,
 actions/checkout@*,
-actions/github-script@*,
 actions/download-artifact@*,
 actions/upload-artifact@*,
-anchore/scan-action@*,
 anchore/sbom-action@*,
+anchore/scan-action@*,
 docker/build-push-action@*,
 docker/login-action@*,
 docker/metadata-action@*,
 docker/setup-buildx-action@*,
 docker/setup-qemu-action@*,
-github/dependabot-action@*,
-go-semantic-release/action@*,
+octo-sts/action@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-blob.yaml@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-image.yaml@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@*,
