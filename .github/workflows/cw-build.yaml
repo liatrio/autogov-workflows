@@ -26,8 +26,8 @@ concurrency:
 permissions: {}
 
 jobs:
-  # attest + verify the real product — the rw-* reusable workflows and the
-  # composite actions — producing a signed attestation bundle and a VSA.
+  # attest + verify the real product — the rw-* reusable workflows — producing
+  # a signed attestation bundle and a VSA.
   # release-blob:false because the release is cut by the job below so it can
   # carry the cert-identities.json mutation; vuln gating is disabled because
   # the subjects are yaml (the dependency scan is an honest no-op).
@@ -50,9 +50,11 @@ jobs:
     uses: ./.github/workflows/rw-build-blob.yaml
     secrets: inherit
     with:
-      subject-path: |
-        .github/workflows/rw-*.y*ml
-        .github/actions/**/action.y*ml
+      # single dir so upload-artifact's least-common-ancestor is .github/workflows
+      # and the files land FLAT at the artifact root — autogov's blob-path expansion
+      # does not recurse into subdirs. this attests the rw-* reusables, the product
+      # consumers actually consume.
+      subject-path: .github/workflows/rw-*.y*ml
       cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
       release-blob: false
       vuln-threshold-critical: '-1'
