@@ -51,6 +51,10 @@ jobs:
       subject-path: .github/workflows/rw-*.y*ml
       cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
       mutations-config: .autogov-release.yaml
+      # the subject IS the rw-*.yaml source already in the repo (consumed via uses:
+      # @<ref>, not downloaded) — don't republish it as release assets. the bundle +
+      # VSA (+ the scorecard provenance .intoto.jsonl) still ship.
+      release-blob-asset: false
       vuln-threshold-critical: '-1'
       vuln-threshold-high: '-1'
       vuln-threshold-medium: '-1'
