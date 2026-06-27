@@ -1,7 +1,15 @@
-name: Release Caller Workflow
+name: Build Caller Workflow
 
 on:
+  workflow_dispatch:
   push:
+    branches: [main]
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - renovate.json
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     paths-ignore:
       - README.md
@@ -9,21 +17,41 @@ on:
       - renovate.json
 
 concurrency:
-  # serialize main pushes so back-to-back releases don't race the cut;
-  # never cancel a run mid-publish (rw-release isn't idempotent-resume)
+  # serialize main pushes so back-to-back releases don't race the cut; never
+  # cancel a main run mid-publish (rw-release isn't idempotent-resume), but
+  # cancel superseded pr/branch builds to save ci.
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions: {}
 
 jobs:
-  # release-only; the workflow files are attested by attest-workflows.yaml
-  release:
+  # dogfood the pipeline over the real product (the rw-* reusable workflows):
+  # attest them (build-provenance, sbom, metadata, dependency-scan), verify them
+  # OFFLINE into a VSA against this run's own bundle, and — on main — cut the
+  # release attaching the bundle + VSA + the cert-identities.json mutation.
+  # the offline verify reads this run's bundle (one signer), so cert-identity
+  # matches deterministically on push/pr/dispatch alike; vuln gating is disabled
+  # because the subjects are yaml (the dependency scan is an honest no-op). the
+  # release cut self-gates to push+main inside rw-release, so prs/dispatch only
+  # attest + verify.
+  build-blob-offline:
     permissions:
-      contents: write
       id-token: write
+      attestations: write
+      contents: write
       actions: read
-    uses: ./.github/workflows/rw-release.yaml
+      artifact-metadata: write
+    uses: ./.github/workflows/rw-build-blob-offline.yaml
     secrets: inherit
     with:
+      # single dir so upload-artifact's least-common-ancestor is .github/workflows
+      # and the files land FLAT at the artifact root — autogov's blob-path expansion
+      # does not recurse into subdirs.
+      subject-path: .github/workflows/rw-*.y*ml
+      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${{ github.ref }}
       mutations-config: .autogov-release.yaml
+      vuln-threshold-critical: '-1'
+      vuln-threshold-high: '-1'
+      vuln-threshold-medium: '-1'
+      vuln-threshold-low: '-1'
