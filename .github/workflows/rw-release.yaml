@@ -223,6 +223,42 @@ jobs:
           path: ./release-assets
           merge-multiple: true
 
+      - name: Download attestation bundles
+        # pull this run's verified attestation bundles so the release can ship the
+        # full bundle for offline verify-from-release. a `pattern` download does not
+        # fail on zero matches, so a build with no attestations just yields an empty
+        # dir (assemble step skips); a REAL download failure must surface here rather
+        # than silently shipping a truncated evidence bundle, so do NOT swallow it.
+        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          pattern: '*-attestation-*-perms'
+          path: ./attestation-bundles
+      - name: Assemble full attestation bundle asset
+        # concatenate every verified attestation bundle (build-provenance + sbom +
+        # vuln/dep-scan + metadata + source-review) into one line-delimited file an
+        # offline verifier re-evaluates against policy (autogov offline --attestations).
+        # the *.jsonl filter naturally excludes the VSA artifact (a .json) the pattern
+        # also matches. skip silently if none are present (e.g. a build with no attests).
+        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
+        run: |
+          out="autogov.attestations.intoto.jsonl"
+          rm -f "$out"
+          count=0
+          if [ -d ./attestation-bundles ]; then
+            while IFS= read -r f; do
+              cat "$f" >> "$out"
+              [ -n "$(tail -c1 "$f")" ] && echo >> "$out"
+              count=$((count + 1))
+            done < <(find ./attestation-bundles -type f -name '*.jsonl' | sort)
+          fi
+          if [ "$count" -gt 0 ]; then
+            echo "assembled $count attestation bundles into $out"
+          else
+            echo "::notice::no attestation bundles found; skipping full-bundle asset"
+            rm -f "$out"
+          fi
       - name: Upload release assets
         if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
         env:
@@ -231,6 +267,9 @@ jobs:
           TAG="${{ steps.release-cut.outputs.tag }}"
           if [ -f "cert-identities.json" ]; then
             gh release upload "${TAG}" cert-identities.json --repo ${{ github.repository }} --clobber
+          fi
+          if [ -f "autogov.attestations.intoto.jsonl" ]; then
+            gh release upload "${TAG}" autogov.attestations.intoto.jsonl --repo ${{ github.repository }} --clobber
           fi
           if [ -d "./vsa" ] && [ "$(ls -A ./vsa 2>/dev/null)" ]; then
             gh release upload "${TAG}" ./vsa/* --repo ${{ github.repository }} --clobber
