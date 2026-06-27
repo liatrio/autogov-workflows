@@ -19,6 +19,14 @@ inputs:
       The GitHub token set throughout the reusable workflow including the composite (build) action.
     required: false
     default: ''
+  autogov-version:
+    description: autogov version to download for computing the image's release-version tag (autogov release plan). When empty, the latest autogov release is used.
+    required: false
+    default: ''
+  autogov-repo:
+    description: Repository to download the autogov CLI from.
+    required: false
+    default: liatrio/autogov
 outputs:
   image-digest:
     description: The image digest of the image that was built from the build-image job.
@@ -34,14 +42,25 @@ runs:
       id: sanitize
       shell: bash
       run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-    - name: Get Next Semantic Release Tag # premptively tags pushed/registry image w/ release tag
-      id: semantic-release
+    - name: Compute next release version for the image tag # preemptive semver tag via the autogov CLI
+      id: next-version
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
-      with:
-        dry: true
-        allow-initial-development-versions: true
-        github-token: ${{ inputs.github-token || github.token }}
+      shell: bash
+      continue-on-error: true # the version tag is a convenience; never fail the build on it
+      env:
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
+      run: |
+        # download the requested autogov version, or the latest release when unset,
+        # so direct callers still get the version tag without threading autogov-version.
+        if [ -n "${{ inputs.autogov-version }}" ]; then
+          gh release download "${{ inputs.autogov-version }}" --repo "${{ inputs.autogov-repo }}" --pattern autogov --clobber
+        else
+          gh release download --repo "${{ inputs.autogov-repo }}" --pattern autogov --clobber
+        fi
+        chmod +x ./autogov
+        next="$(./autogov release plan -o json | jq -r '.next_version // empty')"
+        echo "version=${next#v}" >> "$GITHUB_OUTPUT"
+        rm -f ./autogov
     - name: Image Metadata
       id: meta
       uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
@@ -51,7 +70,7 @@ runs:
           type=ref,event=branch
           type=sha
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-          type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+          type=raw,value=${{ steps.next-version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.next-version.outputs.version != '' }}
     - name: Set up QEMU
       uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
     - name: Set up Docker Buildx

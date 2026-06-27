@@ -24,95 +24,9 @@
 2. **Create Your Local Composite Actions**:
    For example create `.github/actions/build-image/action.yaml` for images or `.github/actions/build-blob/action.yaml` for blobs:
 
-**`build-image`Composite Action**
+**`build-image` Composite Action** — see [`.github/actions/build-image/action.yaml`](./.github/actions/build-image/action.yaml). The reference action builds + pushes an OCI image and computes a preemptive semver tag via `autogov release plan`; copy it into your repo and adjust the `Build and push` step for your image.
 
-```yaml
-inputs:
-  subject-name:
-    description: The name for the image.
-    required: true
-    default: ${{ github.repository }}
-    description: >
-      Primarily for demo purposes and specific only to the build-image composite action so that it is unnecessary to manually change it when wanting to switch between online and offline verification.
-    default: "false"
-    required: false
-  github-token:
-    description: >
-      The GitHub token set throughout the reusable workflow including the composite (build) action.
-    required: false
-    default: ''
-outputs:
-  image-digest:
-    description: The image digest of the image that was built from the build-image job.
-    value: ${{ steps.build-image.outputs.digest }}
-  subject-name-sanitized:
-    description: The sanitized (lowercase) subject name for OCI compliance.
-    value: ${{ steps.sanitize.outputs.name }}
-
-runs:
-  using: composite
-  steps:
-    - name: Sanitize subject name for OCI compliance
-      id: sanitize
-      shell: bash
-      run: echo "name=$(echo '${{ inputs.subject-name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-    - name: Get Next Semantic Release Tag
-      id: semantic-release
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: go-semantic-release/action@48d83acd958dae62e73701aad20a5b5844a3bf45 # v1.23.0
-      with:
-        dry: true
-        allow-initial-development-versions: true
-        github-token: ${{ inputs.github-token || github.token }}
-    - name: Image Metadata
-      id: meta
-      uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
-      with:
-        images: ${{ inputs.subject-name }}
-        tags: |
-          type=ref,event=branch
-          type=sha
-          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-          type=raw,value=${{ steps.semantic-release.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ inputs.github-token || github.token }}
-    - name: Build and push Docker image
-      uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
-      id: build-image
-      with:
-        context: .
-        file: Dockerfile
-        push: true
-        platforms: linux/amd64,linux/arm64
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        outputs: type=oci,dest=/tmp/image.tar
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-```
-
-**`build-blob`Composite Action**
-
-```yaml
-runs:
-  using: composite
-  steps:
-    - name: Build Blob
-      shell: bash
-      run: |
-        echo "i am a blob being created at $(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
-        ${{ github.workflow_ref }} in the repo of ${{ github.repository }} by the action known as ${{ github.action }}." > i_am_blob &&
-        echo "i am another blob being created at $(date +'%Y-%m-%d %H:%M:%S') by ${{ github.triggering_actor }} by rw of
-        ${{ github.workflow_ref }} in the repo of ${{ github.repository }}" > i_am_another_blob
-```
+**`build-blob` Composite Action** — see [`.github/actions/build-blob/action.yaml`](./.github/actions/build-blob/action.yaml). The reference action emits placeholder blobs; replace its build step so it produces your real artifact(s) at the path(s) you pass as `subject-path`.
 
 Other examples like an npm package:
 
@@ -281,7 +195,7 @@ jobs:
 
 This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. Its own `cw-build.yaml` dogfoods the pipeline: it runs `rw-build-blob-offline` over the real product — the `rw-*.yaml` reusables — to attest them (SLSA build-provenance, SBOM, metadata, dependency-scan) and verify them offline into a VSA, then cuts the release attaching that evidence. Signed with the repository's own identity.
 
-> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), and the `vsa-PASSED.json` proving those attestations verified against policy — the same evidence shape consumer releases built through `rw-build-image` / `rw-build-blob` attach for their artifact.
+> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), `vsa-PASSED.json` proving those attestations verified against policy, and `autogov-workflows.intoto.jsonl` — the single build-provenance statement for OpenSSF Scorecard's release-provenance detection. The `rw-*.yaml` reusables themselves are **not** attached as release assets (they're consumed via `uses: ...@<ref>` and attested by digest in the bundle); `rw-build-blob`/`rw-build-blob-offline` expose `release-blob-asset` (default `true`) to control that, and consumer releases built through `rw-build-image` / `rw-build-blob` attach the same evidence shape for their own artifact.
 
 Consumers can verify the publisher identity of a reusable workflow they reference:
 
@@ -1227,18 +1141,16 @@ Below are all of the GitHub Actions and Workflows that are permitted access in t
 ```yaml
 actions/attest@*,
 actions/checkout@*,
-actions/github-script@*,
 actions/download-artifact@*,
 actions/upload-artifact@*,
-anchore/scan-action@*,
 anchore/sbom-action@*,
+anchore/scan-action@*,
 docker/build-push-action@*,
 docker/login-action@*,
 docker/metadata-action@*,
 docker/setup-buildx-action@*,
 docker/setup-qemu-action@*,
-github/dependabot-action@*,
-go-semantic-release/action@*,
+octo-sts/action@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-blob.yaml@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-image.yaml@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@*,
