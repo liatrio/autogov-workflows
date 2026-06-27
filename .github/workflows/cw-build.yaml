@@ -1,7 +1,15 @@
-name: Release Caller Workflow
+name: Build Caller Workflow
 
 on:
+  workflow_dispatch:
   push:
+    branches: [main]
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - renovate.json
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     paths-ignore:
       - README.md
@@ -9,16 +17,51 @@ on:
       - renovate.json
 
 concurrency:
-  # serialize main pushes so back-to-back releases don't race the cut;
-  # never cancel a run mid-publish (rw-release isn't idempotent-resume)
+  # serialize main pushes so back-to-back releases don't race the cut; never
+  # cancel a main run mid-publish (rw-release isn't idempotent-resume), but
+  # cancel superseded pr/branch builds to save ci.
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions: {}
 
 jobs:
-  # release-only; the workflow files are attested by attest-workflows.yaml
+  # attest + verify the real product — the rw-* reusable workflows and the
+  # composite actions — producing a signed attestation bundle and a VSA.
+  # release-blob:false because the release is cut by the job below so it can
+  # carry the cert-identities.json mutation; vuln gating is disabled because
+  # the subjects are yaml (the dependency scan is an honest no-op).
+  build-blob:
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+      actions: read
+      artifact-metadata: write
+      # source-review reads this repo's PR reviews + ruleset continuity for the
+      # built commit (administration:read is minted best-effort by rw-attest-blob).
+      pull-requests: read
+    uses: ./.github/workflows/rw-build-blob.yaml
+    secrets: inherit
+    with:
+      subject-path: |
+        .github/workflows/rw-*.y*ml
+        .github/actions/**/action.y*ml
+      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@${{ github.ref }}
+      release-blob: false
+      vuln-threshold-critical: '-1'
+      vuln-threshold-high: '-1'
+      vuln-threshold-medium: '-1'
+      vuln-threshold-low: '-1'
+
+  # cut the semver release on main: semantic-release version bump + the
+  # cert-identities.json regen (.autogov-release.yaml), attaching this run's
+  # verified attestation bundle + VSA (the bundle is assembled from the same
+  # run's attestation artifacts). gated to push+main so prs/dispatch only
+  # attest + verify.
   release:
+    needs: build-blob
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       id-token: write
@@ -27,3 +70,4 @@ jobs:
     secrets: inherit
     with:
       mutations-config: .autogov-release.yaml
+      vsa-artifact-id: ${{ needs.build-blob.outputs.vsa-artifact-id }}
