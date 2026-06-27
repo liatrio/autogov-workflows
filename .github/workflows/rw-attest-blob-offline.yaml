@@ -41,7 +41,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.32.6
+        default: v0.38.0
       octo-sts-scope:
         description: >
           octo-sts scope for the private-repo autogov CLI download. Leave empty

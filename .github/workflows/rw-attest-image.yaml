@@ -38,7 +38,7 @@ on:
         description: The autogov version to use for predicate generation.
         required: false
         type: string
-        default: v0.32.6
+        default: v0.38.0
       octo-sts-scope:
         description: >
           octo-sts scope for the private-repo autogov CLI download. Leave empty
@@ -371,9 +371,11 @@ jobs:
       actions: read
       contents: read
       # pull-requests:read lets autogov read this repo's PR reviews for the built
-      # commit. Branch-protection thresholds would additionally need
-      # Administration:read (which github.token lacks) — they are best-effort, so
-      # the gate bars on its own min_approvals, not on the discovered required count.
+      # commit. administration:read (ruleset bypass-actors + version history — the
+      # SLSA Source L3 continuity proof) can't be granted to github.token; it is
+      # minted best-effort below via the source-review-controls octo-sts identity.
+      # when that's unavailable the gate stays honestly dormant (bars on its own
+      # min_approvals, not the discovered required count).
       pull-requests: read
       id-token: write
       attestations: write
@@ -408,12 +410,27 @@ jobs:
             --repo ${{ inputs.autogov-repo }} \
             --pattern "autogov"
           chmod +x autogov
+      # best-effort: mint a token carrying administration:read via the
+      # source-review-controls trust policy (pinned to rw-attest-blob/image), scoped
+      # to this repo, so autogov can read the ruleset bypass-actors + version history
+      # that prove SLSA Source L3 continuity. continue-on-error keeps attest working
+      # when octo-sts is unavailable (repo not in the policy, app not installed) — the
+      # predicate then falls back to github.token and the gate stays honestly dormant.
+      - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
+        id: source-review-sts
+        continue-on-error: true
+        with:
+          # bare-org scope: source-review-controls is an org-level trust policy
+          # (liatrio/.github), reached via the org owner, not owner/repo.
+          scope: ${{ github.repository_owner }}
+          identity: source-review-controls
       - name: Generate Source Review Attestation
         env:
-          # token for the GitHub PR-reviews API on the source repo (pull-requests +
-          # contents read, declared above). NOT the octo-sts token, which is scoped
-          # for the cross-repo binary download.
-          GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
+          # prefer the source-review-controls token (administration:read → ruleset
+          # bypass-actors + version-history continuity, plus pull-requests + contents
+          # read). falls back to github.token when octo-sts is unavailable, leaving
+          # the gate honestly dormant.
+          GITHUB_TOKEN: ${{ steps.source-review-sts.outputs.token || inputs.github-token || github.token }}
         run: |
           set +x
           ./autogov predicate source-review \
@@ -431,7 +448,7 @@ jobs:
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
-          predicate-type: 'https://autogov.dev/attestation/source-review/v0.1'
+          predicate-type: 'https://autogov.dev/attestation/source-review/v0.2'
           predicate-path: source-review.json
           push-to-registry: true
       - name: Rename Source Review Bundle

@@ -834,7 +834,7 @@ Error: No such object
    - `https://autogov.dev/attestation/metadata/v1`: Metadata attestation
    - `https://cyclonedx.org/bom`: SBOM attestation
    - `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
-   - `https://autogov.dev/attestation/source-review/v0.1`: Source-review (PR-approval) attestation
+   - `https://autogov.dev/attestation/source-review/v0.2`: Source-review (PR-approval + continuity) attestation
 
 For more detailed information about ORAS commands and capabilities, refer to the [ORAS documentation](https://oras.land/docs/commands/oras_discover/).
 
