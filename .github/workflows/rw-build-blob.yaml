@@ -69,6 +69,16 @@ on:
         required: false
         type: boolean
         default: true
+      release-blob-asset:
+        description: >
+          Whether to attach the built blob(s) themselves as release assets.
+          Default true (consumers ship their artifact, e.g. bundle.tar.gz). Set
+          false to skip the blob asset when the subject is source already in the
+          repo (e.g. attesting workflow files) — the release still ships the full
+          attestation bundle + VSA.
+        required: false
+        type: boolean
+        default: true
       allow-failed-vsa:
         description: When false (default), a FAILED policy result fails the verify job (after the FAILED VSA is attested and uploaded) and the release job is skipped. Set true to keep the advisory (non-gating) behavior.
         required: false
@@ -175,7 +185,9 @@ jobs:
     with:
       autogov-version: ${{ inputs.autogov-version }}
       vsa-artifact-id: ${{ needs.verify-blob.outputs.vsa-artifact-id }}
-      blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
+      # skip the blob asset when release-blob-asset is false (empty id -> rw-release
+      # does not download/attach the blob) — the bundle + VSA still ship.
+      blob-artifact-id: ${{ inputs.release-blob-asset && needs.attest-blob.outputs.blob-artifact-id || '' }}
       octo-sts-read-scope: ${{ inputs.octo-sts-read-scope }}
       octo-sts-read-identity: ${{ inputs.octo-sts-read-identity }}
       octo-sts-release-scope: ${{ inputs.octo-sts-release-scope }}

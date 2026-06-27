@@ -207,6 +207,19 @@ jobs:
             echo "::notice::no attestation bundles found; skipping full-bundle asset"
             rm -f "$out"
           fi
+      - name: Stage build-provenance as a single .intoto.jsonl (OpenSSF Scorecard)
+        # Scorecard detects release provenance from a single *.intoto.jsonl asset
+        # (the build-provenance statement), distinct from the full offline bundle
+        # above. named <repo>.intoto.jsonl; skips gracefully if none is present.
+        if: ${{ inputs.dry-run == false }}
+        run: |
+          prov="$(find "$RUNNER_TEMP/attestation-bundles" -type f -path '*build-provenance*' -name '*.jsonl' 2>/dev/null | head -1)"
+          if [ -n "$prov" ] && [ -s "$prov" ]; then
+            cp "$prov" "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"
+            echo "staged scorecard provenance asset: ${GITHUB_REPOSITORY##*/}.intoto.jsonl"
+          else
+            echo "::notice::no build-provenance bundle found; skipping scorecard .intoto.jsonl asset"
+          fi
 
       - name: Run release cut
         id: release-cut
@@ -246,6 +259,7 @@ jobs:
           done
           add_asset "cert-identities.json"
           add_asset "$RUNNER_TEMP/autogov.attestations.intoto.jsonl"
+          add_asset "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"
 
           echo "=== Running: autogov release cut ${ARGS[*]} -o json ==="
           OUTPUT=$(autogov release cut "${ARGS[@]}" -o json)
