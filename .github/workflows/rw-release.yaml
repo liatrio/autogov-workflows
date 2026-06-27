@@ -143,6 +143,71 @@ jobs:
           echo ""
           autogov release plan --repo .
 
+      # stage every release asset BEFORE the cut so a single `release cut --asset
+      # ... --publish` uploads them while the release is still a draft, then flips
+      # it to published — under GitHub immutable releases assets cannot be added or
+      # clobbered after publish, so post-publish uploads would hard-fail.
+      # stage UNDER $RUNNER_TEMP (off the worktree): `release cut --repo .` runs a
+      # clean-worktree check in its default (auto) mode, so downloading these into
+      # the checked-out tree would dirty it and fail the cut (autogov's own release
+      # stages to $RUNNER_TEMP for the same reason). cert-identities.json stays at the
+      # repo root because it is a tracked/committed file (does not dirty the tree).
+      - name: Download VSA artifact
+        if: ${{ inputs.vsa-artifact-id != '' && inputs.dry-run == false }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          artifact-ids: ${{ inputs.vsa-artifact-id }}
+          path: ${{ runner.temp }}/vsa
+          merge-multiple: true
+
+      - name: Download blob artifact
+        if: ${{ inputs.blob-artifact-id != '' && inputs.dry-run == false }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          artifact-ids: ${{ inputs.blob-artifact-id }}
+          path: ${{ runner.temp }}/release-assets
+          merge-multiple: true
+
+      - name: Download attestation bundles
+        # pull this run's verified attestation bundles so the release can ship the
+        # full bundle for offline verify-from-release. a `pattern` download does not
+        # fail on zero matches, so a build with no attestations just yields an empty
+        # dir (assemble step skips); a REAL download failure must surface here rather
+        # than silently shipping a truncated evidence bundle, so do NOT swallow it.
+        if: ${{ inputs.dry-run == false }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          github-token: ${{ github.token }}
+          pattern: '*-attestation-*-perms'
+          path: ${{ runner.temp }}/attestation-bundles
+      - name: Assemble full attestation bundle asset
+        # concatenate every verified attestation bundle (build-provenance + sbom +
+        # vuln/dep-scan + metadata + source-review) into one line-delimited file an
+        # offline verifier re-evaluates against policy (autogov offline --attestations).
+        # the *.jsonl filter naturally excludes the VSA artifact (a .json) the pattern
+        # also matches. skip silently if none are present (e.g. a build with no attests).
+        # written under $RUNNER_TEMP (off the worktree) so the cut's clean-tree check holds.
+        if: ${{ inputs.dry-run == false }}
+        run: |
+          out="$RUNNER_TEMP/autogov.attestations.intoto.jsonl"
+          rm -f "$out"
+          count=0
+          if [ -d "$RUNNER_TEMP/attestation-bundles" ]; then
+            while IFS= read -r f; do
+              cat "$f" >> "$out"
+              [ -n "$(tail -c1 "$f")" ] && echo >> "$out"
+              count=$((count + 1))
+            done < <(find "$RUNNER_TEMP/attestation-bundles" -type f -name '*.jsonl' | sort)
+          fi
+          if [ "$count" -gt 0 ]; then
+            echo "assembled $count attestation bundles into $out"
+          else
+            echo "::notice::no attestation bundles found; skipping full-bundle asset"
+            rm -f "$out"
+          fi
+
       - name: Run release cut
         id: release-cut
         env:
@@ -161,6 +226,27 @@ jobs:
             ARGS+=(--publish)
           fi
 
+          # append one --asset per staged file that actually exists + is non-empty
+          # (the cut validates each path up front, so only pass present files): the
+          # VSA file(s) + blob/release-assets staged under $RUNNER_TEMP, the assembled
+          # full attestation bundle (also under $RUNNER_TEMP), and the committed signer
+          # allowlist at the repo root. globs are expanded to concrete file paths.
+          add_asset() {
+            if [ -f "$1" ] && [ -s "$1" ]; then
+              ARGS+=(--asset "$1")
+              echo "staging asset: $1"
+            fi
+          }
+          for d in "$RUNNER_TEMP/vsa" "$RUNNER_TEMP/release-assets"; do
+            if [ -d "$d" ]; then
+              while IFS= read -r f; do
+                add_asset "$f"
+              done < <(find "$d" -maxdepth 1 -type f | sort)
+            fi
+          done
+          add_asset "cert-identities.json"
+          add_asset "$RUNNER_TEMP/autogov.attestations.intoto.jsonl"
+
           echo "=== Running: autogov release cut ${ARGS[*]} -o json ==="
           OUTPUT=$(autogov release cut "${ARGS[@]}" -o json)
           echo "$OUTPUT"
@@ -177,11 +263,13 @@ jobs:
           VERSION=$(echo "$OUTPUT" | jq -r '.version // empty')
           TAG=$(echo "$OUTPUT" | jq -r '.tag_name // empty')
           COMMIT_SHA=$(echo "$OUTPUT" | jq -r '.commit_sha // empty')
+          RELEASE_ID=$(echo "$OUTPUT" | jq -r '.release_id // empty')
 
           {
             echo "version=${VERSION}"
             echo "tag=${TAG}"
             echo "commit-sha=${COMMIT_SHA}"
+            echo "release-id=${RELEASE_ID}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify commit signature
@@ -204,77 +292,4 @@ jobs:
             exit 1
           fi
           echo "::notice::Release commit is verified ✅"
-
-      - name: Download VSA artifact
-        if: ${{ inputs.vsa-artifact-id != '' && steps.release-cut.outputs.tag != '' }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          github-token: ${{ github.token }}
-          artifact-ids: ${{ inputs.vsa-artifact-id }}
-          path: ./vsa
-          merge-multiple: true
-
-      - name: Download blob artifact
-        if: ${{ inputs.blob-artifact-id != '' && steps.release-cut.outputs.tag != '' }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          github-token: ${{ github.token }}
-          artifact-ids: ${{ inputs.blob-artifact-id }}
-          path: ./release-assets
-          merge-multiple: true
-
-      - name: Download attestation bundles
-        # pull this run's verified attestation bundles so the release can ship the
-        # full bundle for offline verify-from-release. a `pattern` download does not
-        # fail on zero matches, so a build with no attestations just yields an empty
-        # dir (assemble step skips); a REAL download failure must surface here rather
-        # than silently shipping a truncated evidence bundle, so do NOT swallow it.
-        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          github-token: ${{ github.token }}
-          pattern: '*-attestation-*-perms'
-          path: ./attestation-bundles
-      - name: Assemble full attestation bundle asset
-        # concatenate every verified attestation bundle (build-provenance + sbom +
-        # vuln/dep-scan + metadata + source-review) into one line-delimited file an
-        # offline verifier re-evaluates against policy (autogov offline --attestations).
-        # the *.jsonl filter naturally excludes the VSA artifact (a .json) the pattern
-        # also matches. skip silently if none are present (e.g. a build with no attests).
-        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
-        run: |
-          out="autogov.attestations.intoto.jsonl"
-          rm -f "$out"
-          count=0
-          if [ -d ./attestation-bundles ]; then
-            while IFS= read -r f; do
-              cat "$f" >> "$out"
-              [ -n "$(tail -c1 "$f")" ] && echo >> "$out"
-              count=$((count + 1))
-            done < <(find ./attestation-bundles -type f -name '*.jsonl' | sort)
-          fi
-          if [ "$count" -gt 0 ]; then
-            echo "assembled $count attestation bundles into $out"
-          else
-            echo "::notice::no attestation bundles found; skipping full-bundle asset"
-            rm -f "$out"
-          fi
-      - name: Upload release assets
-        if: ${{ inputs.dry-run == false && steps.release-cut.outputs.tag != '' }}
-        env:
-          GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
-        run: |
-          TAG="${{ steps.release-cut.outputs.tag }}"
-          if [ -f "cert-identities.json" ]; then
-            gh release upload "${TAG}" cert-identities.json --repo ${{ github.repository }} --clobber
-          fi
-          if [ -f "autogov.attestations.intoto.jsonl" ]; then
-            gh release upload "${TAG}" autogov.attestations.intoto.jsonl --repo ${{ github.repository }} --clobber
-          fi
-          if [ -d "./vsa" ] && [ "$(ls -A ./vsa 2>/dev/null)" ]; then
-            gh release upload "${TAG}" ./vsa/* --repo ${{ github.repository }} --clobber
-          fi
-          if [ -d "./release-assets" ] && [ "$(ls -A ./release-assets 2>/dev/null)" ]; then
-            gh release upload "${TAG}" ./release-assets/* --repo ${{ github.repository }} --clobber
-          fi
 
