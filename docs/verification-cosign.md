@@ -68,7 +68,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@refs/heads/main" \
   manifest.json
 ```
 
@@ -97,7 +97,7 @@ cosign verify-blob-attestation \
   --use-signed-timestamps \
   --insecure-ignore-sct \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@refs/heads/main" \
   manifest.json
 ```
 
@@ -111,6 +111,6 @@ cosign verify-blob-attestation \
   --insecure-ignore-sct \
   --new-bundle-format \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@refs/heads/main" \
   <path_to_blob>
 ```

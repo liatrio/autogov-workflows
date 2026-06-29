@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/liatrio/autogov-workflows?sort=semver)](https://github.com/liatrio/autogov-workflows/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself, powered by [Sigstore](https://www.sigstore.dev/) (Rekor/Fulcio/Cosign). Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
+You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself, powered by [Sigstore](https://www.sigstore.dev/) (Rekor/Fulcio/Cosign). Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
 
 These workflows are part of the [autogov](https://github.com/liatrio/autogov) ecosystem. For the project overview and the CLI that powers them, start with the flagship repo: [github.com/liatrio/autogov](https://github.com/liatrio/autogov).
 
@@ -191,7 +191,7 @@ cosign verify-blob-attestation \
   --insecure-ignore-sct \
   --new-bundle-format \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@${github.ref}" \
+  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@refs/heads/main" \
   <path_to_blob>
 ```
 
@@ -349,7 +349,7 @@ It is also necessary to [allow access to workflows from other internal/private r
 
 #### Repository Access
 
-> access is handled through Chainguard's Octo-STS (the recommended option) / an alternative is creating a [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) that has read permissions for the repository and [add the appropriate secret and environment variable(s)]([in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)).
+> access is handled through Chainguard's Octo-STS (the recommended option) / an alternative is creating a [fine grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) that has read permissions for the repository and [add the appropriate secret and environment variable(s) in the Secrets and Variables section for Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
 
 Basic read access can be provided using an `autogov-infra.sts.yaml` trust policy at the org level (under your org's `.github` repository), for example:
 
@@ -482,6 +482,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
 - **(vuln-threshold block)**
 - `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
 
 #### `.github/workflows/rw-verify-offline.yaml`
 
@@ -498,6 +499,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - **(vuln-threshold block)**
 - `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
 
 #### `.github/workflows/rw-release.yaml`
 
