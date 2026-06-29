@@ -1,5 +1,10 @@
 # Reusable Workflows using GitHub Artifact Attestations
 
+[![lint](https://github.com/liatrio/autogov-workflows/actions/workflows/lint.yml/badge.svg)](https://github.com/liatrio/autogov-workflows/actions/workflows/lint.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/liatrio/autogov-workflows/badge)](https://scorecard.dev/viewer/?uri=github.com/liatrio/autogov-workflows)
+[![Release](https://img.shields.io/github/v/release/liatrio/autogov-workflows?sort=semver)](https://github.com/liatrio/autogov-workflows/releases)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself, powered by [Sigstore](https://www.sigstore.dev/) (Rekor/Fulcio/Cosign). Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
 
 These workflows are part of the [autogov](https://github.com/liatrio/autogov) ecosystem. For the project overview and the CLI that powers them, start with the flagship repo: [github.com/liatrio/autogov](https://github.com/liatrio/autogov).
