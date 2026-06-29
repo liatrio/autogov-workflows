@@ -927,7 +927,7 @@ There is also [further discussion in slsa-github-generator#3618](https://github.
   - Variables (e.g. user inputted environment vars / `env.*`)
   - GitHub event(s)
 
-The maintainers of the [SLSA Framework](https://github.com/slsa-framework) just recently included workflow inputers in the [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator):
+The maintainers of the [SLSA Framework](https://github.com/slsa-framework) just recently included workflow inputs in the [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator):
 
 - [feat: Record vars in SLSA generators](https://github.com/slsa-framework/slsa-github-generator/commit/40c607fde64a75eaaa47a6e41e674011d96060f1)
 
