@@ -4,7 +4,7 @@ How autogov-workflows records and attests to user workflow inputs to stay compli
 
 Part of the [autogov-workflows](../README.md) docs.
 
-We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
+We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambiguous and specifically states the following:
 
 [The SLSA Provenance Model](https://slsa.dev/spec/v1.0/provenance#model)
 > externalParameters: the external interface to the build. In SLSA, these values are untrusted; they MUST be included in the provenance and MUST be verified downstream.
@@ -31,7 +31,7 @@ Currently, only the following is provided from GitHub's Build Provenance Attesta
 - `internalParameters`: These are specific to the GitHub-hosted runner environment, such as `event_name`, `repository_id`, `repository_owner_id`, and `runner_environment`. They provide information about the context in which the build was run, but they are typically not explicitly set by a user. Instead, they are collected automatically from the GitHub Actions runtime.
 - `resolvedDependencies`: This lists dependencies used during the build, including a `gitCommit` digest that points to a specific version of the source code. This ensures reproducibility by tying the build to an exact version of the source.
 
-- `gh attestation verify oci://<subject_name>@<image_digest> --rep <repo> --cert-identity "<signer_workflow>@<github_ref>" --format json --jq '.[].verificationResult.statement.predicate.buildDefinition'`:
+- `gh attestation verify oci://<subject_name>@<image_digest> --repo <repo> --cert-identity "<signer_workflow>@<github_ref>" --format json --jq '.[].verificationResult.statement.predicate.buildDefinition'`:
 
 ```json
 {
@@ -64,7 +64,7 @@ Currently, only the following is provided from GitHub's Build Provenance Attesta
 
 While the slsa-github-generator ["...can record the inputs in a trustworthy way", "..the GitHub artifact attestations currently cannot."](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2106479658) Essentially, GitHub would need to provide workflow inputs in the build provenance attestation using something like `buildDefinition.externalParameters.workflow.inputs` instead of just `path`, `ref`, and `repository`.
 
-To be compliant across all SLSA Build Levels, we satisfy this gap in GitHub's artifact attestations offering ourselves by including workflow inputs, as well as other environment variable values, in our [generic metadata predicate/attestation](../README.md#cosign-generic-predicate) (discussed further below under the [tools section](../README.md#github-artifact-attestation-actions-and-other-tools-used)) that we attest to using the `actions/attest` action.
+To be compliant across all SLSA Build Levels, we satisfy this gap in GitHub's artifact attestations offering ourselves by including workflow inputs, as well as other environment variable values, in our [generic metadata predicate/attestation](../README.md#tools-used) (discussed further below under the [tools section](../README.md#tools-used)) that we attest to using the `actions/attest` action.
 
 An example of our metadata predicate:
 

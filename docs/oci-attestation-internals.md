@@ -235,7 +235,7 @@ But, if you try to pull an unsupported OCI artifact via Docker you'll get:
 
 ```bash
 ❯ docker pull ghcr.io/your-org/your-repo:sha256-<attestation_digest>
-sha256-<attestation_digest>: Pulling from <repo>>
+sha256-<attestation_digest>: Pulling from <repo>
 unsupported media type application/vnd.oci.empty.v1+json
 ```
 

@@ -23,18 +23,6 @@
       ],
       "depNameTemplate": "liatrio/autogov",
       "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^\\.github/workflows/lint\\.yml$/"
-      ],
-      "matchStrings": [
-        "ACTIONLINT_VERSION:\\s*(?<currentValue>\\d+\\.\\d+\\.\\d+)"
-      ],
-      "depNameTemplate": "rhysd/actionlint",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ],
   "packageRules": [
