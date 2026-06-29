@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/liatrio/autogov-workflows/security/advisories/new
+    about: Please report security vulnerabilities privately, not as public issues.
+  - name: autogov project (overview & CLI)
+    url: https://github.com/liatrio/autogov
+    about: For questions about the wider autogov project, start at the flagship repo.
