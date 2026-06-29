@@ -1,5 +1,9 @@
 # Reusable Workflows using GitHub Artifact Attestations
 
+You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself. Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
+
+These workflows are part of the [autogov](https://github.com/liatrio/autogov) ecosystem. For the project overview and the CLI that powers them, start with the flagship repo: [github.com/liatrio/autogov](https://github.com/liatrio/autogov).
+
 - [Quick Start Guide](#quick-start-guide)
 - [Paving the Path](#paving-the-path)
 - [Achieving SLSA Build Levels Using Reusable Workflows](#achieving-slsa-build-levels-using-reusable-workflows)
