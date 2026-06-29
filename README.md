@@ -920,7 +920,7 @@ We use the [actions/attest](https://github.com/actions/attest) GitHub Action to 
 
  One of the main reasons to attest to workflow inputs on GitHub's platform is to avoid [script injection attacks](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-for-github-actions#example-of-a-script-injection-attack), that is, a maintainer could ["obfuscate the code used to build their artifact by using a malicious (non-recorded) input"](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105322454).
 
-There is also further discussion [here](https://github.com/slsa-framework/slsa-github-generator/issues/3618) where the maintainers of SLSA's slsa-github-generator state that workflow inputs must be included during the attestation generation stage:
+There is also [further discussion in slsa-github-generator#3618](https://github.com/slsa-framework/slsa-github-generator/issues/3618) where the maintainers of SLSA's slsa-github-generator state that workflow inputs must be included during the attestation generation stage:
 
 - There is a [need to record inputs](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105994775) from the repository workflow including:
   - Workflow input(s)
@@ -1138,7 +1138,7 @@ It is good practice to wrap the actual call to each respective reusable workflow
 
 #### Workflow Access
 
-[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only alllow the "entrypoint" reusable workflows that call other reusable workflows.
+[Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only allow the "entrypoint" reusable workflows that call other reusable workflows.
 
 Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, and `rw-<permissions_path>-release.yaml`:
 
@@ -1190,7 +1190,7 @@ permissions:
   packages: write
 ```
 
-More information about `octo-sts` can be found [here](https://github.com/octo-sts/app) and info about the `octo-sts/action` can be found [here](https://github.com/octo-sts/action).
+More information about `octo-sts` can be found in the [octo-sts app](https://github.com/octo-sts/app) and the [octo-sts/action](https://github.com/octo-sts/action).
 
 > **Bring your own auth**: `rw-verify.yaml` is consumer-configurable — set `octo-sts-scope` / `octo-sts-identity` (and, for cross-repo reads, `autogov-repo` / `policy-repo` / `cert-identities-repo`) to your own org and identities; leave `octo-sts-scope` empty to use `github.token` (the default, suitable for public repos). The `scope: liatrio` / `identity: autogov-infra` values shown in the other octo-sts examples are still liatrio-org-specific and hardcoded inside `rw-attest-*` (parameterizing those the same way is a tracked follow-up). External orgs must install their own octo-sts app and create equivalent trust policies.
 >
@@ -1217,7 +1217,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `subject-name` (required, string): Subject name as it should appear in the attestation.
 - `registry` (required, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
@@ -1230,7 +1230,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob.yaml.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
@@ -1243,7 +1243,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
@@ -1260,7 +1260,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use for predicate generation.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use for predicate generation.
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
@@ -1269,7 +1269,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use.
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
@@ -1278,7 +1278,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use.
 
 #### `.github/workflows/rw-verify.yaml`
 
@@ -1290,7 +1290,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml for images, or rw-attest-blob.yaml for blob(s).
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use (input name retained for backwards compatibility).
 - `octo-sts-scope` (optional, string, default: ''): octo-sts scope for cross-repo reads (autogov binary, policy bundle, cert-identities). When empty, `github.token` is used (suitable for public repos); when set, the octo-sts token is used and is required (verification fails closed if the exchange fails).
 - `octo-sts-identity` (optional, string, default: ''): octo-sts identity. Required when `octo-sts-scope` is set.
 - `autogov-repo` (optional, string, default: 'liatrio/autogov'): Repository to download the autogov CLI release from.
@@ -1313,7 +1313,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use (input name retained for backwards compatibility).
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
@@ -1327,7 +1327,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 - `branch` (optional, string, default: 'main'): Branch to cut the release from.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml).
 - `dry-run` (optional, boolean, default: false): Run in dry-run mode (no commits, tags, or releases created).
-- `autogov-version` (optional, string, default: 'v0.32.6'): The autogov release version to download and use.
+- `autogov-version` (optional, string, default: 'v0.38.0'): The autogov release version to download and use.
 - `vsa-artifact-id` (optional, string, default: ''): The artifact ID of the VSA to upload as a release asset.
 - `blob-artifact-id` (optional, string, default: ''): Artifact ID of the blob to download and publish as a release asset.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
@@ -1424,7 +1424,7 @@ More information about `octo-sts` can be found [here](https://github.com/octo-st
 
 #### `rw-build-image.yaml`
 
-```yaml:.github/workflows/rw-build-image.yaml
+```yaml
 attest-image: #image
   permissions:
     id-token: write
@@ -1441,7 +1441,7 @@ attest-image: #image
 
 #### `rw-build-blob.yaml`
 
-```yaml:.github/workflows/rw-build-blob.yaml
+```yaml
 attest-image: #blob
   permissions:
     id-token: write
@@ -1458,7 +1458,7 @@ attest-image: #blob
 
 #### `rw-build-blob-offline.yaml`
 
-```yaml:.github/workflows/rw-build-blob-offline.yaml
+```yaml
 attest-image: #blob
   permissions:
     id-token: write
@@ -1476,7 +1476,7 @@ attest-image: #blob
 
 #### `rw-attest-image.yaml`
 
-```yaml:.github/workflows/rw-attest-image.yaml
+```yaml
 attest-image: #image
   permissions:
     id-token: write
@@ -1491,7 +1491,7 @@ attest-image: #image
 
 #### `rw-attest-blob.yaml`
 
-```yaml:.github/workflows/rw-attest-blob.yaml
+```yaml
 attest-blob: #blob
   permissions:
     id-token: write
@@ -1506,7 +1506,7 @@ attest-blob: #blob
 
 #### `rw-attest-blob-offline.yaml`
 
-```yaml:.github/workflows/rw-attest-blob-offline.yaml
+```yaml
   attest-blob: #blob
     permissions:
       id-token: write
@@ -1521,7 +1521,7 @@ attest-blob: #blob
 
 ### Verify Workflow
 
-```yaml:.github/workflows/rw-verify.yaml
+```yaml
 verify-<build-type>:
   permissions:
     id-token: write
@@ -1538,7 +1538,7 @@ verify-<build-type>:
     cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
 ```
 
-```yaml:.github/workflows/rw-verify-offline.yaml
+```yaml
 verify-<build-type>:
   permissions:
     id-token: write
@@ -1558,7 +1558,7 @@ verify-<build-type>:
 
 ### Release Workflow
 
-```yaml:.github/workflows/rw-release.yaml
+```yaml
 release-<build-type>:
   permissions:
     contents: write
