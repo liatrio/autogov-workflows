@@ -1,23 +1,31 @@
 # Reusable Workflows using GitHub Artifact Attestations
 
-You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself. Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
+You cannot trust a build artifact unless you can prove who built it and how. These reusable [GitHub Actions](https://docs.github.com/actions) workflows build your artifacts (OCI images or blobs), attest them — generating [SLSA](https://slsa.dev/spec/v1.2/about) build [provenance](https://slsa.dev/provenance/v1) (signed, verifiable metadata about how an artifact was built), an [SBOM](https://www.cisa.gov/sbom) (software bill of materials), and a vulnerability scan — and then verify those attestations against [OPA/Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) policy to emit a pass/fail Verification Summary Attestation (VSA) that gates releases. Each step is driven by the [autogov](https://github.com/liatrio/autogov) CLI, so you get the same supply-chain checks in CI without wiring the tooling together yourself, powered by [Sigstore](https://www.sigstore.dev/) (Rekor/Fulcio/Cosign). Drop the workflows into your repo and call them from your own CI for a paved path to a hardened, policy-gated release pipeline.
 
 These workflows are part of the [autogov](https://github.com/liatrio/autogov) ecosystem. For the project overview and the CLI that powers them, start with the flagship repo: [github.com/liatrio/autogov](https://github.com/liatrio/autogov).
 
 - [Quick Start Guide](#quick-start-guide)
+- [Attesting the Workflow Files](#attesting-the-workflow-files)
 - [Paving the Path](#paving-the-path)
 - [Achieving SLSA Build Levels Using Reusable Workflows](#achieving-slsa-build-levels-using-reusable-workflows)
+  - [Verification / cert-identity](#verification--cert-identity)
+  - [Certificate Identities](#certificate-identities)
+  - [Verification Using Cosign](#verification-using-cosign)
+  - [Verification Using ORAS](#verification-using-oras)
   - [L3: Isolation of Build from Attest](#l3-isolation-of-build-from-attest)
   - [L2: Ensure a Trusted Build Environment](#l2-ensure-a-trusted-build-environment)
   - [L1: Documented Build Parameters](#l1-documented-build-parameters)
+  - [Workflow Inputs and SLSA](#workflow-inputs-and-slsa)
+  - [Why No Pull Request?](#why-no-pull-request)
 - [Usage](#usage)
-  - [GitHub Artifact Attestation Actions and Other Tools Used](#github-artifact-attestation-actions-and-other-tools-used)
-  - [Configure Access](#access)
+  - [Tools Used](#tools-used)
+  - [Limiting Inputs by Wrapping](#limiting-inputs-by-wrapping-reusable-workflow-calls)
+  - [Access](#access)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Example Workflow Snippets](#example-workflow-snippets)
 - [Troubleshooting](#troubleshooting)
-- [Additional Resources/Documentation](#additional-resourcesdocumentation)
+- [Additional Resources](#additional-resources)
 
 ## Quick Start Guide
 
@@ -25,109 +33,15 @@ These workflows are part of the [autogov](https://github.com/liatrio/autogov) ec
    Ensure you have the necessary permissions and tokens configured in your remote caller repository described in the [access section](#access) below.
    - **Permissions**: Ensure you have the [necessary permissions to run the workflows](#workflow-access).
    - **Tokens**: Set up the [required tokens](#repository-access) for policy bundle access.
+
 2. **Create Your Local Composite Actions**:
-   For example create `.github/actions/build-image/action.yaml` for images or `.github/actions/build-blob/action.yaml` for blobs:
-
-**`build-image` Composite Action** — see [`.github/actions/build-image/action.yaml`](./.github/actions/build-image/action.yaml). The reference action builds + pushes an OCI image and computes a preemptive semver tag via `autogov release plan`; copy it into your repo and adjust the `Build and push` step for your image.
-
-**`build-blob` Composite Action** — see [`.github/actions/build-blob/action.yaml`](./.github/actions/build-blob/action.yaml). The reference action emits placeholder blobs; replace its build step so it produces your real artifact(s) at the path(s) you pass as `subject-path`.
-
-Other examples like an npm package:
-
-OCI:
-
-```yaml
-inputs:
-...
-  node-version:
-    description: The Node.js version to use
-    required: false
-    default: '20'
-  registry-url:
-    description: The npm registry URL
-    required: false
-    default: 'https://npm.pkg.github.com'
-...
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node-version }}
-        registry-url: ${{ inputs.registry-url }}
-        scope: '@${{ github.repository_owner }}'
-    - name: Install dependencies
-      shell: bash
-      run: npm ci
-    - name: Build package
-      shell: bash
-      run: npm run build
-...
-```
-
-Blob:
-
-```yaml
-    - name: Setup Node.js
-      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-      with:
-        node-version: ${{ inputs.node-version }}
-        registry-url: ${{ inputs.registry-url }}
-        scope: '@${{ github.repository_owner }}'
-    - name: Install dependencies
-      shell: bash
-      run: npm ci
-    - name: Build package
-      shell: bash
-      run: npm run build
-    - name: Pack npm package
-      shell: bash
-      run: npm pack
-```
-
-^ Ensure the value of `subject-path` is the output (e.g. or glob pattern) of the `npm`/`yarn pack` command (e.g. `liatrio-simple-greeter-1.0.0.tgz`).
-
-Examples of the associated `tsconfig.json` / `package.json` files respectively:
-
-```json
-{
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "declaration": true,
-    "outDir": "./dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.test.ts"
-  ]
-}
-```
-
-```json
-{
-    "name": "@liatrio/simple-greeter",
-    "version": "1.0.0",
-    "lockfileVersion": 3,
-    "requires": true,
-    "packages": {
-...
-    }
-}
-```
+   The reusable workflows execute a locally-defined composite action to build your artifact. Copy one of the reference actions into your repo and adjust its build step:
+   - **`build-image`** — see [`.github/actions/build-image/action.yaml`](./.github/actions/build-image/action.yaml). Builds + pushes an OCI image and computes a preemptive semver tag via `autogov release plan`; adjust the `Build and push` step for your image.
+   - **`build-blob`** — see [`.github/actions/build-blob/action.yaml`](./.github/actions/build-blob/action.yaml). Emits placeholder blobs; replace its build step so it produces your real artifact(s) at the path(s) you pass as `subject-path` (for an npm package, that's the `npm`/`yarn pack` output, e.g. `liatrio-simple-greeter-1.0.0.tgz`).
 
 3. **Create Your Caller Workflows / Configure Inputs**:
 
-Pick one of the following four jobs (e.g. job definitions) depending on desired build type and permissions:
-
-**`cw-build.yaml`**:
-
-### Calling Reusable Workflow
+   Pick one of the following jobs depending on the desired build type and permissions (`cw-build.yaml`):
 
 ```yaml
 name: Build Entrypoint Caller Workflow
@@ -188,12 +102,14 @@ jobs:
 
 5. **Check Results**:
    Review the workflow logs and the uploaded **Verification Summary Attestation
-   (VSA)** artifact. A passing run produces `vsa-PASSED.json`. A failing policy
-   evaluation produces `vsa-FAILED.json`; the FAILED VSA is still attested and
-   uploaded (the record is preserved), and the job then fails and the release is
-   skipped — unless `allow-failed-vsa: true` is set, which keeps the run advisory.
-   The gate is default-deny: it ships only on an explicit `PASSED` result, so any
-   non-PASSED outcome (FAILED, or a missing/unknown VSA) also blocks the release.
+   (VSA)** artifact. The `autogov` CLI performs signature verification, OPA/Rego
+   policy evaluation, and VSA generation in a single step. A passing run produces
+   `vsa-PASSED.json`. A failing policy evaluation produces `vsa-FAILED.json`; the
+   FAILED VSA is still attested and uploaded (the record is preserved), and the job
+   then fails and the release is skipped — unless `allow-failed-vsa: true` is set,
+   which keeps the run advisory. The gate is default-deny: it ships only on an
+   explicit `PASSED` result, so any non-PASSED outcome (FAILED, or a missing/unknown
+   VSA) also blocks the release.
 
 ## Attesting the Workflow Files
 
@@ -207,111 +123,27 @@ Consumers can verify the publisher identity of a reusable workflow they referenc
 gh attestation verify .github/workflows/rw-attest-image.yaml --repo liatrio/autogov-workflows
 ```
 
-What this buys you:
+This gives **publisher identity** (cryptographic proof the file was produced by this repository's CI under the GitHub Actions OIDC identity), a signal for **consumer policy enforcement**, and **defense in depth** alongside pinning. It does **not** add file integrity beyond the commit-SHA pin — `uses: ...@<sha>` already content-addresses the exact file, so the pin is the integrity guarantee; the attestation is about *who* published the file and *how*, and is not revoked if the file is later deleted or renamed.
 
-- **Publisher identity** — cryptographic proof that the file was produced by this repository's CI under the GitHub Actions OIDC identity, not by an unknown source.
-- **Consumer policy enforcement** — the attestation can be a gate in a consumer's own supply-chain policy (e.g. require a valid `liatrio/autogov-workflows` provenance before adopting a workflow).
-- **Defense in depth** — a second, independent signal alongside pinning.
+## Paving the Path
 
-What this does **not** buy you: it does not add file integrity beyond what the commit-SHA pin already provides. When you reference a reusable workflow with `uses: liatrio/autogov-workflows/.github/workflows/...@<sha>`, GitHub already content-addresses the exact file at that commit, so the pin is the integrity guarantee. The attestation is about *who* published the file and *how*, not about detecting changes the SHA pin would already catch. It is also not revoked if a file is later deleted or renamed — it proves a file was published at a commit, not that it still exists on `main`.
-
-## Why Sign/Attest?
-
-In today's digital landscape, ensuring the integrity and security of software development processes is crucial. GitHub's official Action(s) for creating signed SLSA (Supply Chain Levels for Software Artifacts) attestations, along with its [CLI tool for verifying artifacts](https://cli.github.com/manual/gh_attestation), provides a robust foundation for securing the distribution of built artifacts.
-
-SLSA is a security framework designed to prevent tampering, improve integrity, and secure packages and infrastructure. It provides a checklist of standards and controls to enhance software supply chain security. For more details, visit the [SLSA website](https://slsa.dev/).
-
-To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3), which mitigates risks such as:
-
-- Running builds on self-hosted runners
-- Unapproved code changes
-- Exposed credentials associated with attestation signing material
-- [Hard-to-follow build steps](https://slsa.dev/spec/v1.0/provenance#BuildDefinition)
-
-GitHub recommends using [reusable workflows](https://github.com/slsa-framework/github-actions-buildtypes/tree/main/workflow/v1).
-
-This README outlines how our services can help your organization implement a Reusable Workflow to meet SLSA Build Level 3 requirements, ensuring a secure and compliant Software Development Life Cycle (SDLC).
-
-By implementing this reusable workflow, your organization can achieve SLSA Build Level 3 compliance, ensuring a secure and verifiable software development process. Our team is ready to assist you in integrating these automated governance technologies into your SDLC, enhancing the security and integrity of your software artifacts.
-
-### GitHub Artifact Attestations
-
-GitHub Artifact Attestations is a feature that enables developers to generate cryptographically signed attestations that verify the provenance of software artifacts created during CI/CD pipelines. These attestations are based on the Open Container Initiative (OCI) format and follow the SLSA (Supply Chain Levels for Software Artifacts) framework, but can also work against blob or files. Attestations provide verifiable metadata about how, when, and by whom an artifact was built, ensuring integrity and preventing tampering.
-
-By using any of GitHub's attest Actions, developers can automate the creation of attestations directly in their pipelines. These attestations are signed and associated with build artifacts, which can then be stored in OCI-compliant registries. The signatures can be verified using GitHub's own tools or [external tools like Sigstore's `cosign`](https://blog.sigstore.dev/cosign-verify-bundles/), ensuring that any unauthorized changes or modifications to the artifact can be detected.
-
-This offering is now generally available, as announced in June 2024, with public repositories using Sigstore's public instance for signing, while private repositories are backed by GitHub's private Sigstore instance. This ensures that all repositories can integrate artifact attestations into their workflows while maintaining the same level of cryptographic security.
-
-For more information, visit the [GitHub documentation on artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
-
-### The SLSA Build Track
-
-There are a variety of necessary checkboxes ✅ required to achieve different SLSA Build Levels on the SLSA [build track](https://slsa.dev/spec/v1.0/levels#build-track), which sets expectations for achieving each Build Level without assumptions.
-
-For build provenance attestation, "the lowest level only requires the provenance to exist, while higher levels provide increasing protection against tampering of the build, the provenance, or the artifact." It is specifically through the verification process that it is confirmed that they were "built as expected," preventing a variety of [supply chain threats](https://slsa.dev/spec/v1.0/threats).
-
-## Sigstore
-
-Sigstore is an open-source project that aims to improve the security of the software supply chain by providing a set of tools for signing, verifying, and storing software artifacts. It includes several key components:
-
-- **Rekor**: A transparency log that records signed metadata, providing an immutable and publicly auditable record of software artifacts and their provenance. This helps ensure that the artifacts have not been tampered with and can be traced back to their source. For more details, visit the [Rekor GitHub repository](https://github.com/sigstore/rekor).
-- **Fulcio**: A certificate authority that issues short-lived certificates based on OpenID Connect (OIDC) identities. This allows for "keyless" signing, where the private key is ephemeral and never leaves the memory of the signing process. For more details, visit the [Fulcio GitHub repository](https://github.com/sigstore/fulcio).
-- **Cosign**: A tool for signing and verifying container images and other artifacts. It integrates with Fulcio and Rekor to provide a seamless signing and verification experience. For more details, visit the [Cosign GitHub repository](https://github.com/sigstore/cosign).
-
-GitHub's artifact attestation feature leverages Sigstore using GitHub's own private Sigstore instance (e.g. private repositories use their private instance and public repositories utilize Sigstore's public good instance) to create a verifiable link between software artifacts and their source code and build instructions. By using GitHub Actions, developers can easily generate and verify signed attestations, ensuring the integrity and security of their software supply chain.
-
-For more details, you can refer to the [GitHub blog post](https://github.blog/news-insights/product-news/introducing-artifact-attestations-now-in-public-beta/) and the [Sigstore blog](https://blog.sigstore.dev/cosign-verify-bundles/). Additionally, the [Cosign GitHub repository](https://github.com/sigstore/cosign) provides comprehensive documentation and examples.
-
-### Paving the Path
-
-To achieve SLSA Build Level 3, we recommend using GitHub-native tools and reusable workflows. Our approach is inspired by the slsa-framework's implementations, specifically [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#build-your-own-builder-byob-framework) and [slsa-verifier](https://github.com/slsa-framework/slsa-verifier), and provides a model for securing your software development process.
+To achieve SLSA Build Level 3, we recommend using GitHub-native tools and reusable workflows. Our approach is inspired by the slsa-framework's implementations, specifically [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#build-your-own-builder-byob-framework) and [slsa-verifier](https://github.com/slsa-framework/slsa-verifier).
 
 ["The only way to interact with a reusable workflow is through the input parameters it exposes to the calling workflow."](https://github.com/slsa-framework/slsa-github-generator/blob/3d34abbe34b268bb6c02651df2117370e8cee1bd/SPECIFICATIONS.md#interference-between-jobs)
 
-```shell
-                    ┌──────────────────────┐         ┌───────────────────────────────┐
-                    │                      │         │                               │
-                    │  Source Repository   │         │       Trusted Builder         │
-                    │  -----------------   │         │     (Reusable Workflow)       │
-                    │                      │         │     -------------------       │
-                    │                      │         │                               │
-                    │ .caller-workflow.yaml│         │                               │
-                    │                      ├─────────┼─────────────┐                 │
-                    │                      │         │             │                 │
-                    │                      │         │   ┌─────────▼────────────┐    │
-                    │   User Workflow      │         │   │     Build            │    │
-                    │                      │         │   └──────────────────────┘    │
-                    └──────────────────────┘         │             │                 │
-                                                     │   ┌─────────▼────────────┐    │
-                                                     │   │  Generate Provenance │    │
-                                                     │   └─────────┬────────────┘    │
-                                                     │             │                 │
-                                                     └─────────────┼─────────────────┘
-                                                                   │
-                                                                   │
-                                                     ┌─────────────▼─────────────────┐
-                                                     │                               │
-                                                     │   Binary    Signed Provenance │
-                                                     │                               │
-                                                     │                               │
-                                                     │         Artifacts             │
-                                                     │         ---------             │
-                                                     └───────────────────────────────┘
-```
+The source repository contains the caller workflow, which interacts with the trusted builder (reusable workflow) to build the artifacts and generate signed provenance; the artifacts and their signed provenance are then securely stored and can be verified to ensure their integrity.
 
-This diagram illustrates the process of using a reusable workflow to achieve SLSA Build Level 3. The source repository contains the caller workflow, which interacts with the trusted builder (reusable workflow) to build the artifacts and generate signed provenance. The artifacts and their signed provenance are then securely stored and can be verified to ensure their integrity.
+GitHub Artifact Attestations ([docs](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds)) generate cryptographically signed, in-toto-format attestations of artifact provenance, backed by Sigstore (public repos use the public-good instance, private repos use GitHub's private instance). For the SLSA build-track levels and what each requires, see the [SLSA build track](https://slsa.dev/spec/v1.0/levels#build-track).
 
 ## Achieving SLSA Build Levels Using Reusable Workflows
 
-### Verification
+### Verification / cert-identity
 
-Often the focus is put upon the "signing" of an artifact to attest to its integrity, but the source of value lies within [verifying artifacts](https://slsa.dev/spec/v1.0/verifying-artifacts). GitHub offers the ability to download and verify attestations using the [GitHub Attestation Command](https://cli.github.com/manual/gh_attestation).
+Often the focus is put upon the "signing" of an artifact, but the source of value lies within [verifying artifacts](https://slsa.dev/spec/v1.0/verifying-artifacts). The [`gh attestation verify`](https://cli.github.com/manual/gh_attestation) command requires the path to a local or [OCI](https://opencontainers.org/) artifact plus an expected `--owner` or `--repo`. By default, the CLI does **not** check the `--signer-workflow` (a.k.a. `--cert-identity`) or the source ref — a missing `--cert-identity` flag is a real fail-open, since the artifact could have been built from a non-approved branch or by a non-approved workflow.
 
-The `gh attestation verify` command requires the path to a local or [OCI](https://opencontainers.org/) artifact as well as an expected source `--owner` or `--repo`. By default, the CLI does not check the `--signer-workflow` or its equivalent: `--cert-identity`.
+For autogov, supplying `--cert-identity` (the signer workflow) is **mandatory but on by default** in our reusable workflows: every verify job passes it, ensuring both the source repository and signer workflow originate from approved branches/tags (e.g. commit SHA) so the artifact is proven to meet SLSA Level 3 requirements — as long as whoever verifies remembers to include the flag.
 
-Considering many organizations and/or developers run builds and workflows from non-official branches, we impose additional requirements for the verifier to ensure that both the source repository and signer workflow are from approved branches or tags (e.g. commit hash). Verifying the signing workflow's branch ensures that the artifact was built to meet SLSA Level 3 requirements.
-
-**Note**: Currently, gh-cli does not support verification via the source branch directly. To address this, we use a combination of the `--jq` option and `grep` to perform this check.
+gh-cli does not support verifying the source ref directly, so we combine `--jq` with `grep` on `sourceRepositoryRef`:
 
 ```yaml
 - name: Verify Image Attestation(s)
@@ -326,35 +158,11 @@ Considering many organizations and/or developers run builds and workflows from n
         --format json \
         --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
       | grep "^${{ github.ref }}$"
-      ...
-- name: Verify Blob Attestation(s)
-  env:
-      ARTIFACTS_FOLDER: ./artifacts
-  run: |
-      set +x
-      find ${{ env.ARTIFACTS_FOLDER }} -type f | while read -r ARTIFACT; do
-        gh attestation verify \
-          $ARTIFACT \
-          --deny-self-hosted-runners \
-          --repo ${{ github.repository }} \
-          --cert-identity "${{ inputs.cert-identity }}" \
-          --format json \
-          --jq '.[].verificationResult.signature.certificate.sourceRepositoryRef' \
-        | grep "^${{ github.ref }}$"
-      ...
 ```
 
-Again, verifying via the Reusable Workflow's GitHub reference (e.g. commit SHA, branch, tag etc) helps to thwart source repositories and/or signer workflows from being used that are not using approved branches, tags, or commit SHAs:
+The `cert-identity` input documents the requirement: if verifying an image the workflow name should be `rw-attest-image.yaml`; if verifying blob(s), `rw-attest-blob.yaml` (or `rw-attest-blob-offline.yaml` for the offline path).
 
-```yaml
-cert-identity:
-    description: >
-        The certificate identity of the signer workflow, or builder, used in the verify job to ensure artifacts and attestations can be verified against the source repository and correct workflow using the gh-cli (e.g. --cert-identity flag). If verifying an image, the workflow name should be rw-attest-image.yaml, if verifying blob(s), the workflow name should be rw-attest-blob.yaml.
-```
-
-Our approach guarantees that both the source repository and the signer workflow originate from approved branches or tags, providing confidence that the artifact was built to meet SLSA Level 3 requirements as long as whomever is verifying is diligent and remembers to include the `cert-identity` (e.g. also known as `signer-workflow`) flag via the gh-cli.
-
-#### Certificate Identities
+### Certificate Identities
 
 This repository maintains a `cert-identities.json` file that serves as the source of truth for valid certificate identities used by [autogov](https://github.com/liatrio/autogov). The file uses a flattened format with a single `identities` array, where each entry has a `status` field indicating whether it is:
 
@@ -362,128 +170,13 @@ This repository maintains a `cert-identities.json` file that serves as the sourc
 - **approved**: All approved workflow identities (includes previous valid versions)
 - **revoked**: Identities that have been explicitly revoked and should not be used
 
-##### How Certificate Identities Work
+Each identity consists of a version (e.g. `0.5.1`), a commit SHA, a `status`, an array of workflow identity URLs (including the tag's commit SHA), an addition date and optional expiration date, and revocation details if revoked.
 
-Certificate identities provide a way to verify that a workflow being called is an approved version. Each identity consists of:
-
-- A version (e.g., "0.5.1")
-- A commit SHA
-- A status ("latest", "approved", or "revoked")
-- An array of workflow identities (URLs to workflow files including the tag's commit SHA)
-- Addition date and optional expiration date
-- Revocation details (date and reason) if status is "revoked"
-
-##### Certificate Identity Update Process
-
-When a new release is tagged (e.g., v0.5.1):
-
-1. The release creates a tag pointing to a specific commit
-2. The tag's commit SHA is recorded in the certificate identity entries
-3. An automated workflow updates `cert-identities.json` in a separate commit to main
-4. The original tag remains pointing to its initial commit (intentionally)
-
-When consuming these workflows, you should reference them using their full identity URL with commit SHA rather than using branch references, to ensure immutability and security:
+When a new release is tagged, the release creates a tag pointing to a specific commit, and that tag's commit SHA is recorded in the identity entries. An automated workflow then updates `cert-identities.json` in a **separate** commit to `main` — the original tag remains pointing to its initial commit (intentionally). When consuming these workflows, reference them by their full identity URL with commit SHA rather than a branch ref, for immutability and security.
 
 ### Verification Using Cosign
 
-It is also possible to use Sigstore's own [cosign](https://github.com/sigstore/cosign) to [verify bundles](https://blog.sigstore.dev/cosign-verify-bundles/) though this is [currently not documented](https://github.com/actions/attest-build-provenance/issues/162) and only through `cosign verify-blob-attestation` which requires other tools (regctl or Docker) to verify images in order to grab the necessary OCI artifacts.
-
-*To be further agnostic, the below steps will not use the `gh attestation` command.*
-
-#### Verification Prerequisites
-
-1. Install cosign:
-
-```shell
-# Using Homebrew
-brew install cosign
-
-# Or download directly from GitHub releases
-# Visit: https://github.com/sigstore/cosign/releases
-```
-
-2. Create a trusted root file:
-
-```shell
-# Create the trusted root file for GitHub's Fulcio instance
-gh attestation trusted-root | jq '.|select(.certificateAuthorities[0].uri=="fulcio.githubapp.com")' > github-trusted-root.json
-```
-
-3. Ensure you are authenticated with ghcr.io via Docker using a PAT with the package read permission:
-
-```shell
-# Login using PAT as the password
-docker login ghcr.io
-```
-
-##### Image Verification Prerequisites
-
-Before verifying image/OCI attestations, you'll need:
-
-Install regctl (if using the regctl method):
-
-```shell
-# Using Homebrew
-brew install regclient
-
-# Or download directly from GitHub releases
-# Visit: https://github.com/regclient/regclient/releases
-```
-
-###### Verifying Images Using regctl
-
-```shell
-# Get the manifest
-regctl manifest get --format raw-body ghcr.io/liatrio/autogov-workflows@<image_digest> > manifest.json
-
-# Calculate digest
-DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
-
-# Get the attestation bundle
-regctl artifact get ghcr.io/liatrio/autogov-workflows:${DIGEST} > bundle.json
-
-# Verify the attestation
-cosign verify-blob-attestation \
-  --bundle bundle.json \
-  --trusted-root github-trusted-root.json \
-  --new-bundle-format \
-  --use-signed-timestamps \
-  --insecure-ignore-sct \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
-  manifest.json
-```
-
-###### Verifying Images Using Docker
-
-If you don't have regctl installed, you can use standard Docker commands:
-
-```shell
-# Get the manifest
-docker manifest inspect ghcr.io/liatrio/autogov-workflows@<image_digest> > manifest.json
-
-# Calculate digest
-DIGEST="sha256-$(sha256sum manifest.json | awk '{ print $1 }')"
-
-# Pull and extract the attestation bundle
-docker pull ghcr.io/liatrio/autogov-workflows:${DIGEST}
-docker save ghcr.io/liatrio/autogov-workflows:${DIGEST} -o bundle.tar
-tar -xf bundle.tar
-cat manifest.json | jq '.[0].Config' | xargs cat > bundle.json
-
-# Verify the attestation
-cosign verify-blob-attestation \
-  --bundle bundle.json \
-  --trusted-root github-trusted-root.json \
-  --new-bundle-format \
-  --use-signed-timestamps \
-  --insecure-ignore-sct \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --certificate-identity="https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${github.ref}" \
-  manifest.json
-```
-
-##### Verifying Blob Attestations
+You can also verify bundles with Sigstore's [cosign](https://github.com/sigstore/cosign) via `cosign verify-blob-attestation` (note: verifying images this way requires extra tooling such as regctl or Docker to fetch the OCI artifacts).
 
 ```shell
 cosign verify-blob-attestation \
@@ -497,301 +190,38 @@ cosign verify-blob-attestation \
   <path_to_blob>
 ```
 
+See [docs/verification-cosign.md](./docs/verification-cosign.md) for prerequisites (cosign install, trusted-root generation, ghcr.io login) and the regctl/Docker image-verification paths.
+
 ### Verification Using ORAS
 
-In addition to using Cosign and the GitHub CLI, you can use ORAS (OCI Registry As Storage) commands to inspect and verify artifact attestations. This is particularly useful for understanding the relationship between image digests and their associated attestation layers.
-
-#### Understanding OCI Layers and Attestations
-
-When working with container images and their attestations in an OCI registry, you might notice additional digests that don't seem to correspond to an actual image. These are typically artifact manifests containing attestations. Here's how to inspect them:
-
-1. First, install ORAS:
-
-```bash
-# Using Homebrew
-brew install oras-cli
-
-# Or download from GitHub releases
-# Visit: https://github.com/oras-project/oras/releases
-```
-
-2. Use ORAS to discover referrers (attestations) of an image:
+You can use ORAS (OCI Registry As Storage) to inspect and verify artifact attestations — useful for understanding the relationship between image digests and their associated attestation layers. Discover the referrers (attestations) of an image:
 
 ```bash
 oras discover ghcr.io/your-org/your-repo@<image_digest>
 ```
 
-#### OCI v1.1 and the Referrers API
+GitHub stores attestations **with** the container image in the OCI registry as additional manifests in the OCI index (not separately in GitHub's API); each attestation manifest carries the annotation `"vnd.docker.reference.type": "attestation-manifest"`.
 
-The [OCI Image and Distribution Specs v1.1](https://opencontainers.org/posts/blog/2024-03-13-image-and-distribution-1-1) introduced significant improvements for artifact management, including the **Referrers API** which provides a standardized way to discover artifacts associated with container images.
+In the attestation manifests you'll see different `artifactType` values for the different attestations:
 
-**Key Features:**
+- `application/vnd.dev.sigstore.bundle.v0.3+json`: Sigstore bundle format
+- `https://slsa.dev/provenance/v1`: SLSA provenance attestation
+- `https://autogov.dev/attestation/metadata/v1`: Metadata attestation
+- `https://cyclonedx.org/bom`: SBOM attestation
+- `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
+- `https://autogov.dev/attestation/source-review/v0.2`: Source-review (PR-approval + continuity) attestation
 
-- **Subject Field**: Manifests can now include a `subject` field to define associations with other manifests (used for signatures, attestations, and metadata)
-- **Referrers API**: New endpoint `GET /v2/<name>/referrers/<digest>` returns an OCI Index listing all manifests that reference a specific digest
-- **Artifact Type**: Enhanced `artifactType` field enables better artifact classification without requiring dedicated `config.mediaType` values
-
-**Example Referrers API Response:**
-
-```bash
-GET /v2/<name>/referrers/sha256:21edd7d11800e94bae9f4...
-```
-
-```json
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.index.v1+json",
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:9e6569b15e5ed981334003eb8...",
-      "size": 724,
-      "annotations": {
-        "org.opencontainers.image.created": "2024-03-02T15:16:17Z",
-        "org.opencontainers.image.description": "Example artifact for image sha256:21ed..."
-      },
-      "artifactType": "application/example"
-    }
-  ]
-}
-```
-
-The Referrers API allows tooling to select desired artifacts from the OCI Index using `artifactType` and `annotation` values, similar to how runtimes use platform information to select images from multi-platform indexes.
-
-#### GitHub Attestation Storage Method
-
-GitHub stores attestations **with** the container image in the OCI registry as additional manifests in the OCI index, not separately in GitHub's API. Each attestation manifest has the annotation `"vnd.docker.reference.type": "attestation-manifest"`.
-
-#### Example: Discovering GitHub Attestations
-
-```bash
-# Discover attestations attached to an image
-❯ oras discover ghcr.io/liatrio/autogov-workflows:latest --artifact-type application/vnd.in-toto+json
-ghcr.io/liatrio/autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e
-
-# Fetch the OCI index manifest to see all components
-❯ oras manifest fetch ghcr.io/liatrio/autogov-workflows@sha256:8c99eaaec2af1b96833bf7b7294cc8c418647a9c8cbc50610220d21224e11f7e | jq .
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.index.v1+json",
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
-      "size": 1436,
-      "platform": {
-        "architecture": "amd64",
-        "os": "linux"
-      }
-    },
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a",
-      "size": 566,
-      "annotations": {
-        "vnd.docker.reference.digest": "sha256:b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0",
-        "vnd.docker.reference.type": "attestation-manifest"
-      },
-      "platform": {
-        "architecture": "unknown",
-        "os": "unknown"
-      }
-    }
-  ]
-}
-
-# Fetch the specific attestation manifest
-❯ oras manifest fetch ghcr.io/liatrio/autogov-workflows@sha256:769cad7f0ad8f17c00c286310435817967a8042c0041fcf424bd9e275222338a | jq .
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.manifest.v1+json",
-  "config": {
-    "mediaType": "application/vnd.oci.image.config.v1+json",
-    "digest": "sha256:859ef09df31ef1ccf832323fb95f17c14b2fdbaa092056c95768c78f1c0aa05e",
-    "size": 167
-  },
-  "layers": [
-    {
-      "mediaType": "application/vnd.in-toto+json",
-      "digest": "sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef",
-      "size": 1876,
-      "annotations": {
-        "in-toto.io/predicate-type": "https://slsa.dev/provenance/v0.2"
-      }
-    }
-  ]
-}
-
-# Retrieve the actual attestation content
-❯ oras blob fetch ghcr.io/liatrio/autogov-workflows@sha256:eaeadb461c5f7f9157bde556387872d8cf1748eb53038c6464c45cbd43eb44ef --output attestation.json
-❯ cat attestation.json | jq .
-{
-  "_type": "https://in-toto.io/Statement/v0.1",
-  "predicateType": "https://slsa.dev/provenance/v0.2",
-  "subject": [
-    {
-      "name": "pkg:docker/ghcr.io/liatrio/autogov-workflows@latest?platform=linux%2Famd64",
-      "digest": {
-        "sha256": "b4a5d4413b447e480ea21e7b5d268b1e3aa35915fbbc04e81b3d1a1f66e7e8d0"
-      }
-    }
-  ],
-  "predicate": {
-    "builder": {
-      "id": "https://github.com/liatrio/autogov-workflows/actions/runs/17273134791/attempts/1"
-    },
-    "buildType": "https://mobyproject.org/buildkit@v1",
-    "metadata": {
-      "https://mobyproject.org/buildkit@v1#metadata": {
-        "vcs": {
-          "revision": "0ba88277d047a99f4929d3e1ae33279e161489a1",
-          "source": "https://github.com/liatrio/autogov-workflows"
-        }
-      }
-    }
-  }
-}
-```
-
-For example, examining attestations for our policy library image:
-
-```bash
-❯ oras manifest fetch ghcr.io/liatrio/autogov-policy-library:sha256-d3e372efc3aa38f81c1d7c30b1cb9d77195c6f6456cced7a3b36f333ee220492 | jq -r
-{
-  "mediaType": "application/vnd.oci.image.index.v1+json",
-  "schemaVersion": 2,
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "digest": "sha256:ec4898a09dd73d59882d82c3b02cd78e9ce471ccf3f28472563c9b250d1964e9",
-      "size": 814,
-      "artifactType": "application/vnd.dev.sigstore.bundle.v0.3+json",
-      "annotations": {
-        "org.opencontainers.image.created": "2025-01-24T20:47:58.951Z",
-        "dev.sigstore.bundle.content": "dsse-envelope",
-        "dev.sigstore.bundle.predicateType": "https://slsa.dev/provenance/v1"
-      }
-    },
-    // ... other attestation layers ...
-  ]
-}
-```
-
-Example of Sigstore Bundle Attestation / `application/vnd.dev.sigstore.bundle.v0.3+json`:
-
-```json
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.manifest.v1+json",
-  "artifactType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
-  "config": {
-    "mediaType": "application/vnd.oci.empty.v1+json",
-    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-    "size": 2
-  },
-  "layers": [
-    {
-      "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
-      "digest": "sha256:4bd9df17d3cfa8632690f6251b7dc6d2f7cebd60313c49bea4092b9489e2d4a4",
-      "size": 4967
-    }
-  ],
-  "subject": {
-    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-    "digest": "sha256:010511b82573da0735bbbc09ab0b1b9e9218732306d96b81beb694cfe431a499",
-    "size": 523
-  }
-}
-```
-
-- `artifactType` defines the Sigstore bundle's media type, useful for registry compatibility.
-- The `config` section uses an empty configuration (`application/vnd.oci.empty.v1+json`) since the bundle doesn't need specific configuration data.
-- The `layers` array holds the Sigstore bundle content, with its size and hash.
-`subject` points to the associated artifact or image that the Sigstore bundle attests to, linking it with its own media type and digest.
-
-#### Important Notes About Attestation Layers
-
-1. **Image Manifests**: You can use a variety of tools to inspect the actual image manifest such as Docker:
-
-```bash
-❯ docker manifest inspect ghcr.io/your-org/your-repo:sha256-<attestation_digest>
-{
-   "schemaVersion": 2,
-   "mediaType": "application/vnd.oci.image.index.v1+json",
-   "manifests": [
-      {
-...
-      }
-   ]
-}
-```
-
-But, if you try to pull an unsupported OCI artifact via Docker you'll get:
-
-```bash
-❯ docker pull ghcr.io/your-org/your-repo:sha256-<attestation_digest>
-sha256-<attestation_digest>: Pulling from <repo>>
-unsupported media type application/vnd.oci.empty.v1+json
-```
-
-2. **Attestation Manifests**: The additional digests you see in the registry that don't correspond to actual images are artifact manifests containing attestations. While these won't be visible through standard Docker commands, they can be inspected using ORAS:
-
-```bash
-# This will fail as it's an attestation manifest, not an image
-❯ docker inspect ghcr.io/your-org/your-repo:sha256-<attestation_digest>
-[]
-Error: No such object
-
-# Use ORAS instead to discover attestation relationships
-❯ oras discover ghcr.io/your-org/your-repo:sha256-<attestation_digest>
-```
-
-3. **Layer Types**: In the manifest, you'll notice different `artifactType` values corresponding to different attestations:
-   - `application/vnd.dev.sigstore.bundle.v0.3+json`: Sigstore bundle format
-   - `https://slsa.dev/provenance/v1`: SLSA provenance attestation
-   - `https://autogov.dev/attestation/metadata/v1`: Metadata attestation
-   - `https://cyclonedx.org/bom`: SBOM attestation
-   - `https://in-toto.io/attestation/vulns/v0.2`: Vulnerabilities attestation
-   - `https://autogov.dev/attestation/source-review/v0.2`: Source-review (PR-approval + continuity) attestation
-
-For more detailed information about ORAS commands and capabilities, refer to the [ORAS documentation](https://oras.land/docs/commands/oras_discover/).
+See [docs/oci-attestation-internals.md](./docs/oci-attestation-internals.md) for the OCI v1.1 Referrers API, full `oras manifest fetch` / `oras blob fetch` walkthroughs, the Sigstore bundle manifest shape, and Docker/regctl inspection notes.
 
 ### L3: Isolation of Build from Attest
 
-To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), we ensure that builds and their artifacts are isolated from one another, as well as ensuring artifacts are securely uploaded and downloaded, preventing other jobs from inadvertently or maliciously altering them.
-
-Using GitHub Actions, this simply requires the separation of the signing process into its own job. Additionally, it's important to ensure the jobs are executed on GitHub's hardened runners, "intentionally" avoiding any "self-hosted" runners. Next, to accommodate different build styles, we can enhance the reusable workflow by abstracting build commands into a [Composite Action](https://docs.github.com/en/actions/sharing-automations/creating-actions/about-custom-actions#composite-actions) located at a well-defined place in your repository.
-
-The reusable workflow will execute the repository's locally available composite action to build either an image or blob (or both), followed by attesting the artifacts in a separate attesting job.
+To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), builds and their artifacts must be isolated from one another so that other jobs cannot inadvertently or maliciously alter them. With GitHub Actions this means separating the signing process into its own job, running on GitHub's hardened runners (avoiding self-hosted runners), and abstracting build commands into a [Composite Action](https://docs.github.com/en/actions/sharing-automations/creating-actions/about-custom-actions#composite-actions) at a well-defined path. The reusable workflow runs the repository's local composite action to build an image or blob, then attests the artifacts in a separate attesting job.
 
 ![Job Isolation](./assets/isolated_attest_jobs.png)
 
-This diagram illustrates the isolation of the build and attestation processes. By separating these processes into distinct jobs and ensuring they run on GitHub's hardened runners, we can prevent inadvertent or malicious alterations to the artifacts.
+To isolate job artifacts, the build job uploads the artifact(s) — or, for images, passes the image as a tarball between jobs — to the downstream attest/sign job. The [actions/upload-artifact](https://github.com/actions/upload-artifact) and [actions/download-artifact](https://github.com/actions/download-artifact) actions support immutable uploads/downloads via artifact IDs (the `artifact-ids` parameter), so the attest job is guaranteed to operate on the exact artifact, not one another job may have overwritten with the same name. The bundle and trusted-root are likewise passed as artifacts to enable [offline verification](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline) without extra permissions.
 
-#### Isolation of Job Artifacts
-
-To further isolate between jobs, the build job uploads the artifact(s) (or in the case of building an image, pushes the image to a container registry) to the downstream attest/sign job to download. Jobs in the calling workflow, outside of our reusable workflow, could unintentionally overwrite the artifact by uploading one with the same name. This risks the attest/sign job attesting to the wrong artifact.
-
-The [actions/upload-artifact](https://github.com/actions/upload-artifact) enables immutable uploads using artifact IDs, and [actions/download-artifact](https://github.com/actions/download-artifact) now supports downloading artifacts by their artifact ID using the `artifact-ids` parameter. This provides secure artifact handling by ensuring specific artifacts are downloaded based on their unique identifiers.
-
-Both uploads and downloads via the official GitHub Actions are designed to be immutable with artifact IDs:
-
-```yaml
-- name: Download Artifact(s)
-  uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-  with:
-    github-token: ${{ inputs.github-token || github.token }}
-    artifact-ids: ${{ env.ARTIFACT_ID }}
-    path: ${{ env.ARTIFACTS_FOLDER }}
-```
-
-##### Reducing Permissions Further
-
-Our reusable workflow(s) require a number of permissions especially with image builds since all image attestations rely on a container registry (e.g. GitHub Container Registry, Docker Hub, etc) to either "receive" a push or "transmit" attestations associated with a particular image-digest (e.g. subject-digest). To remedy this we rely on image artifacts, as we do with blob builds, to [pass data between jobs](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/storing-and-sharing-data-from-a-workflow#passing-data-between-jobs-in-a-workflow). Doing this we are able to lower permissions and [handle the image as a tar file](https://docs.docker.com/build/ci/github-actions/share-image-jobs) passing it to downstream job(s).
-
-Also, to avoid additional permissions for online verification the bundle and trusted-root are simply passed as artifacts to [verify attestations without an internet connection](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline).
-
-The following permissions are used when using the offline blob workflow (`rw-build-blob-offline.yaml`):
+Passing artifacts between jobs also lets us **lower permissions**. The offline blob workflow (`rw-build-blob-offline.yaml`) needs no registry access:
 
 ```yaml
 attest:
@@ -806,7 +236,7 @@ verify:
     contents: read
 ```
 
-Otherwise the following permissions are using (e.g. container registry access etc):
+Otherwise (e.g. container-registry access for image builds) the following permissions are used:
 
 ```yaml
 attest:
@@ -824,35 +254,11 @@ verify:
     contents: write
 ```
 
-###### Using Lower Permissions: Image Digest Differences
-
-The digest of an exported image tarball will always differ from the digest of the pushed image in the registry.
-
-This happens because:
-
-- Compression Differences: The image tarball generated by docker save is uncompressed, while the images pushed to registries are typically compressed (e.g., with gzip). The compression changes the contents and results in different digests.
-- Layer Digests: Docker calculates the digest of each layer independently, and any difference in how layers are packaged or compressed (as with a tarball vs. pushed layers) will result in different final digests.
-- Metadata: There can be slight differences in the metadata, such as timestamps and other details, that are included in the image manifest when pushing to a registry versus what's exported in the tarball.
-
-So, while you can work towards making the image as reproducible as possible, the differences in how Docker handles the compression and layers when saving versus pushing mean that the digests will almost always be different. An additional step could be to compare the individual layer digests instead of the overall image digest, as they will likely match across both the tarball and the pushed image.
+Note: the digest of an exported image tarball (`docker save`, uncompressed) will always differ from the digest of the pushed (compressed) registry image due to compression, per-layer digesting, and manifest metadata differences. To compare, match the individual layer digests rather than the overall image digest.
 
 ### L2: Ensure a Trusted Build Environment
 
-To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform), builds must "run on a hosted platform that generates and signs the provenance," otherwise known as a "trusted build platform."
-
-#### Checking for Self-hosted Runners
-
-Self-hosted runners [can be maliciously modified](https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security) by their host, but GitHub can provide safe GitHub-hosted runners to help protect the integrity of the build.
-
-The `rw-<permissions_path>-attest-<build-type>.yaml` runs the respective repository's composite action (e.g. `./github/actions build-<blob_or_image>`) with a runner-label that you may supply as input. However, if a user has a [self-hosted runner labeled "ubuntu-latest"](https://github.com/slsa-framework/slsa-github-generator/issues/1868#issuecomment-1979426130) or GitHub-hosted default runner labels, then GitHub Actions may still queue the job on their self-hosted runners.
-
-#### Verifying GitHub-Hosted Runners
-
-We employ a variety of methods to check if the build, signing, and verifying steps are not occurring on a self-hosted runner, but there is also the `--deny-self-hosted-runners` option that can be used in conjunction with the `gh attestation verify` command mentioned above.
-
-Below, we rely on the [runner's context](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#runner-context), which contains a variety of data about the runner executing the current job. Specifically, we check `runner.environment` which, as per GitHub, represents "the environment of the runner executing the job. Possible values are: `github-hosted` for GitHub-hosted runners provided by GitHub, and `self-hosted` for self-hosted runners configured by the repository owner."
-
-Using the following check, a user can be sure that their pipeline is executing on a `github-hosted` runner:
+To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform), builds must run on a hosted platform that generates and signs the provenance. Self-hosted runners [can be maliciously modified](https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security) by their host. Because a self-hosted runner can be labeled `ubuntu-latest`, the label alone is not enough — so we check the [runner context's](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#runner-context) `runner.environment`, which is `github-hosted` for GitHub-hosted runners and `self-hosted` otherwise, and fail closed:
 
 ```yaml
 - name: Fail if Runner is self-hosted
@@ -862,39 +268,11 @@ Using the following check, a user can be sure that their pipeline is executing o
       exit 1
 ```
 
-Once `exit 1` occurs, we can be sure that our build (or whatever else; signing/verifying) is not running on a `github-hosted` runner.
-
-```yaml
-jobs:
-  build:
-    ...
-    steps:
-      ...
-      - name: Build Image
-        if: ${{ runner.environment == 'github-hosted' }}
-        id: build-image
-        uses: ./.github/actions/build-image
-        with:
-          subject-name: ${{ inputs.subject-name }}
-      ...
-      - name: Build Blob
-        if: ${{ runner.environment == 'github-hosted' }}
-        id: build-blob
-```
-
-#### Acceptable Leeway in an Effort to be Secure
-
-Something we feel is acceptable is to offer control over the workflow's runner label (e.g. `runs-on: ${{ inputs.workflow-runner-label }}`). From a SLSA perspective, this is an external parameter that could potentially not be documented either as a commit or as provenance, though the subtleties of a runner's OS (`ubuntu-latest`, `macos-latest`, `windows-latest`, etc.) are clear enough to be [unambiguous](https://slsa.dev/spec/v1.0/requirements).
+Build steps additionally guard with `if: ${{ runner.environment == 'github-hosted' }}`. We also expose `--deny-self-hosted-runners` on the `gh attestation verify` calls. Offering control over the runner label (`runs-on: ${{ inputs.workflow-runner-label }}`) is acceptable leeway: the OS choice (`ubuntu-latest`, `macos-latest`, `windows-latest`) is [unambiguous](https://slsa.dev/spec/v1.0/requirements) even if not separately documented as provenance.
 
 ### L1: Documented Build Parameters
 
-To achieve [SLSA Build Level 1](https://slsa.dev/spec/v1.0/levels#build-l1), it is expected that the build steps are consistent so that a verifier "forms expectations about what a 'correct' build" process should look like.
-
-To meet SLSA Build Level 1 requirements, we ensure that the build process is unambiguous and verifiable.
-
-#### Checkout by SHA
-
-We also take the step to checkout the source repo by commit SHA, rather than only by the ref (branch or tag) of the calling workflow. This mitigates [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) scenarios where the calling workflow may be triggered by a `push` event, for example, there may be subsequent pushes between then and the time the job is able to checkout the source code.
+To achieve [SLSA Build Level 1](https://slsa.dev/spec/v1.0/levels#build-l1), the build steps must be consistent so that a verifier "forms expectations about what a 'correct' build" should look like. We check out the source repo by commit SHA rather than only by the ref of the calling workflow, mitigating [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) scenarios where subsequent pushes land between trigger time and checkout:
 
 ```yaml
 - name: Checkout code
@@ -904,233 +282,35 @@ We also take the step to checkout the source repo by commit SHA, rather than onl
     persist-credentials: false
 ```
 
-#### Workflow Inputs
+### Workflow Inputs and SLSA
 
-Expected top-level inputs that help describe what entity built the artifact, what process they used, etc.
+SLSA's Provenance Spec requires `externalParameters` to be complete at Build L3 and MUST be included in provenance at L1. GitHub's build-provenance attestation omits workflow *inputs* — it records only `externalParameters.workflow` (path/ref/repository), `internalParameters`, and `resolvedDependencies`, not user-supplied inputs ([attest-build-provenance#55](https://github.com/actions/attest-build-provenance/issues/55)). To close that gap and prevent [script-injection via non-recorded inputs](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105322454), autogov attests the workflow inputs (and other environment values) itself in a custom [metadata predicate](#cosign-generic-predicate) generated via `actions/attest`.
 
-#### A Note About SLSA's Build Level Requirements for Recording/Attesting to Workflow Inputs
-
-We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. This action binds a named artifact along with its digest to a SLSA build provenance predicate using the in-toto format. The action does not [document or save workflow inputs](https://github.com/actions/attest-build-provenance/issues/55), but as the issue points out, SLSA's Build L3 can be summarized as isolation between the builder and signer environments though SLSA's Provenance Spec does touch on `externalParameters`. While it may be somewhat ambiguous if they are necessary for [Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform) or for [Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), [Level 1](https://slsa.dev/spec/v1.0/levels#build-l1) is not ambigous and specifically states the following:
-
-[The SLSA Provenance Model](https://slsa.dev/spec/v1.0/provenance#model)
-> externalParameters: the external interface to the build. In SLSA, these values are untrusted; they MUST be included in the provenance and MUST be verified downstream.
-
-[The SLSA Provenance Build Definition](https://slsa.dev/spec/v1.0/provenance#builddefinition)
-> The parameters that are under external control, such as those set by a user or tenant of the build platform. They MUST be complete at SLSA Build L3, meaning that there is no additional mechanism for an external party to influence the build. (At lower SLSA Build levels, the completeness MAY be best effort.)
-
- One of the main reasons to attest to workflow inputs on GitHub's platform is to avoid [script injection attacks](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#example-of-a-script-injection-attack), that is, a maintainer could ["obfuscate the code used to build their artifact by using a malicious (non-recorded) input"](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105322454).
-
-There is also [further discussion in slsa-github-generator#3618](https://github.com/slsa-framework/slsa-github-generator/issues/3618) where the maintainers of SLSA's slsa-github-generator state that workflow inputs must be included during the attestation generation stage:
-
-- There is a [need to record inputs](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2105994775) from the repository workflow including:
-  - Workflow input(s)
-  - Variables (e.g. user inputted environment vars / `env.*`)
-  - GitHub event(s)
-
-The maintainers of the [SLSA Framework](https://github.com/slsa-framework) just recently included workflow inputs in the [slsa-github-generator](https://github.com/slsa-framework/slsa-github-generator):
-
-- [feat: Record vars in SLSA generators](https://github.com/slsa-framework/slsa-github-generator/commit/40c607fde64a75eaaa47a6e41e674011d96060f1)
-
-Currently, only the following is provided from GitHub's Build Provenance Attestation:
-
-- `externalParameters`: This includes details about the workflow (workflow key) like its path, reference (ref), and repository. This is considered a top-level input as it directly defines the configuration of the workflow used in the build.
-- `internalParameters`: These are specific to the GitHub-hosted runner environment, such as `event_name`, `repository_id`, `repository_owner_id`, and `runner_environment`. They provide information about the context in which the build was run, but they are typically not explicitly set by a user. Instead, they are collected automatically from the GitHub Actions runtime.
-- `resolvedDependencies`: This lists dependencies used during the build, including a `gitCommit` digest that points to a specific version of the source code. This ensures reproducibility by tying the build to an exact version of the source.
-
-- `gh attestation verify oci://<subject_name>@<image_digest> --rep <repo> --cert-identity "<signer_workflow>@<github_ref>" --format json --jq '.[].verificationResult.statement.predicate.buildDefinition'`:
-
-```json
-{
-  "buildType": "https://actions.github.io/buildtypes/workflow/v1",
-  "externalParameters": {
-    "workflow": {
-      "path": ".github/workflows/cw-check.yaml",
-      "ref": "<github.ref>",
-      "repository": "https://github.com/liatrio/autogov-workflows"
-    }
-  },
-  "internalParameters": {
-    "github": {
-      "event_name": "release",
-      "repository_id": "849445664",
-      "repository_owner_id": "5726618",
-      "runner_environment": "github-hosted"
-    }
-  },
-  "resolvedDependencies": [
-    {
-      "digest": {
-        "gitCommit": "<git.sha>"
-      },
-      "uri": "git+https://github.com/liatrio/autogov-workflows@<github.ref>"
-    }
-  ]
-}
-```
-
-While the slsa-github-generator ["...can record the inputs in a trustworthy way", "..the GitHub artifact attestations currently cannot."](https://github.com/slsa-framework/slsa-github-generator/issues/3618#issuecomment-2106479658) Essentially, GitHub would need to provide workflow inputs in the build provenance attestation using something like `buildDefinition.externalParameters.workflow.inputs` instead of just `path`, `ref`, and `repository`.
-
-To be compliant across all SLSA Build Levels, we satisfy this gap in GitHub's artifact attestations offering ourselves by including workflow inputs, as well as other environment variable values, in our [generic metadata predicate/attestation](#cosign-generic-predicate) (discussed further below under the [tools section](#github-artifact-attestation-actions-and-other-tools-used)) that we attest to using the `actions/attest` action.
-
-An example of our metadata predicate:
-
-```json
-{
-  "_type": "https://in-toto.io/Statement/v0.1",
-  "metadata": {
-    "workflowData": {
-      "workflowRefPath": "${{ github.workflow_ref }}",
-      "branch": "${{ github.ref_name }}",
-      "buildWorkflowRunId": "${{ github.run_id }}",
-      "event": "${{ github.event_name }}",
-      "inputs": "${{toJson(inputs)}}"
-    },
-    "commitData": {
-      "commitSHA": "${{ github.sha }}",
-      "commitTimestamp": "${{ github.event.head_commit.timestamp }}"
-    },
-    "repositoryData": {
-      "repository": "${{ github.repository }}",
-      "repositoryId": "${{ github.repository_id }}",
-      "githubServerURL": "${{ github.server_url }}"
-    },
-    "ownerData": {
-      "owner": "${{ github.repository_owner }}",
-      "ownerId": "${{ github.repository_owner_id }}"
-    },
-    "jobData": {
-      "jobId": "${{ github.job }}",
-      "runNumber": "${{ github.run_number }}",
-      "action": "${{ github.action }}",
-      "actor": "${{ github.actor }}",
-      "status": "${{ job.status }}"
-    },
-    "runnerData": {
-      "os": "${{ runner.os }}",
-      "name": "${{ runner.name }}",
-      "arch": "${{ runner.arch }}",
-      "environment": "${{ runner.environment }}"
-    }
-  }
-}
-```
-
-The `inputs` object is used to hydrate the metadata artifact/attestation and then the following `gh attestation verify` commands are used to verify those inputs exist.
-
-image:
-
-```shell
-gh attestation verify \
-  oci://${{ inputs.subject-name }}@${{ inputs.image-digest }} \
-  --repo ${{ github.repository }} \
-  --deny-self-hosted-runners \
-  --cert-identity \
-  "${{ inputs.cert-identity }}" \
-  --format json \
-  --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-| grep -E \
-  'subject-name|registry|workflow-runner-label|show-summary' | \
-  jq -r
-```
-
-blob:
-
-```shell
-find "$ARTIFACTS_FOLDER" -type f | while read -r ARTIFACT; do
-  gh attestation verify \
-    $ARTIFACT \
-    --deny-self-hosted-runners \
-    --repo ${{ github.repository }} \
-    --cert-identity "${{ inputs.cert-identity }}" \
-    --format json \
-    --jq '.[].verificationResult | {keys: (.statement.predicate.metadata.workflowData.inputs // {}) | keys}' \
-  | grep -E \
-    'blob-artifact-name|subject-path|workflow-runner-label|show-summary' | \
-  jq -r
-done
-```
-
-Instead of moving forward with the expectation that `externalParameters.workflow` and the `resolvedDependencies` (e.g. considered top-level inputs since they directly impact the build and are part of what makes the build traceable, but not necessarily reproducible) are sufficient in meeting all of SLSA's Build Level requirements, we are going one step further by including user inputs using our "custom predicate".
-
-For the time being, our solution provides a stop gap until GitHub offers a native solution as per the issue above, [feat: include workflow inputs in externalParameters](https://github.com/actions/attest-build-provenance/issues/55), to record/attest to user workflow inputs.
+See [docs/slsa-workflow-inputs.md](./docs/slsa-workflow-inputs.md) for the full discussion, the metadata predicate shape, and the `gh attestation verify --jq | grep` patterns used to confirm specific inputs were recorded.
 
 ### Why No Pull Request?
 
-[SLSA GitHub Framework](https://github.com/slsa-framework/slsa-github-generator) does not currently support pull request events because the integrity of a workflow triggered by a pull request is not guaranteed. With this in mind, we are now considering what to do with such events using GitHub Artifact Attestations.
-
-The maintainers of slsa-github-generator believe that when using pull request events, the code that triggers the workflow can originate from a fork, which may not be trusted. Since a pull request from an untrusted source could introduce arbitrary changes to the workflow or source code, it is possible for a malicious actor to modify the build environment or bypass security checks.
-
-By only supporting events like push to specific branches or tags, we can ensure that workflows are executed in a controlled and trusted environment, thus preserving the security guarantees necessary for establishing supply chain integrity.
-
-- `pull_request` events are currently not supported. If you would like support for `pull_request`, the maintainers of the [SLSA GitHub Framework](https://github.com/slsa-framework/slsa-github-generator) recommend reaching out via the following issue:
-  - [issue #358](https://github.com/slsa-framework/slsa-github-generator/issues/358).
+`pull_request` events are **not** supported: the [SLSA GitHub Framework](https://github.com/slsa-framework/slsa-github-generator) treats them as untrusted because PR code can originate from a fork and modify the build environment or bypass checks. Restricting to `push`/`create`/`release` keeps builds in a controlled, trusted environment. If you would like `pull_request` support, the maintainers recommend reaching out via [slsa-github-generator issue #358](https://github.com/slsa-framework/slsa-github-generator/issues/358).
 
 ## Usage
 
-### GitHub Artifact Attestation Actions and Other Tools Used
+### Tools Used
 
-#### Build Provenance GitHub Action
-
-- [Attest Action](https://github.com/actions/attest)
-
-We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate build provenance attestations for workflow artifacts. Given a subject and no predicate, it auto-generates a SLSA build provenance predicate, binding the named artifact and its digest using the in-toto format. (`actions/attest-build-provenance` is now a wrapper around `actions/attest`.)
-
-#### Attest SBOM Action
-
-- [Attest Action](https://github.com/actions/attest)
-
-We use the [anchore/sbom-action](https://github.com/anchore/sbom-action) GitHub Action to create a software bill of materials (SBOM) using Syft. This action scans your artifacts and generates an SBOM in various formats, which can be uploaded as workflow artifacts or release assets.
-
-#### Cosign Generic Predicate
-
-- [Attest Action](https://github.com/actions/attest)
-
-We use the [actions/attest](https://github.com/actions/attest) GitHub Action to generate attestations for pipeline metadata, or any other metadata, to attest to a particular event/artifact using the [cosign generic predicate](https://github.com/sigstore/cosign/blob/main/specs/COSIGN_PREDICATE_SPEC.md) which is [a simple, generic, format for data that doesn't fit well into other types](https://github.com/in-toto/attestation/blob/main/spec/predicates/README.md).
-
-#### GitHub CLI Attestation Commands
-
-We use the `gh attestation` commands from the [GitHub CLI](https://cli.github.com/manual/gh_attestation) to manage artifact attestations. These commands allow us to:
-
-- **Verify Attestations**: Ensure the integrity and authenticity of artifacts by verifying their attestations. This can be done both online and offline, providing flexibility in different environments.
-- **Download Attestations**: Retrieve attestations for artifacts, which can then be used for further verification or auditing purposes.
-
-#### OCI Artifacts
-
-The Open Container Initiative (OCI) is an open governance structure for creating open industry standards around container formats and runtimes. For more information, visit the [Open Container Initiative website](https://opencontainers.org/).
-
-The attest GitHub Actions effectively "sign" the images with OCI artifact attestations linking the image to a specific workflow run that built it and has the necessary metadata (e.g. source repo, commit SHA, etc) to prove/attest to provenance (or SBOM, metadata, test-result) is legitimate.
-
-There are three clues as to whether you are dealing with OCI artifacts in a workflow specifically for high permission image builds:
-
-- The GitHub Action that is part of the workflow pushes an image (e.g. `push-to-registry` is `true`)
-- `permissions.packages.read/write` exists
-- Any `oci://` URIs whereby we write and pull attestation data to and from GitHub Container Registry (e.g. using the GitHub CLI)
-
-An OCI Artifact's structure typically includes an Image Manifest or an Image Index, which can reference other OCI artifacts. These artifacts are stored and accessed in a content-addressable manner, either within registries or in on-disk storage, like an OCI-Layout directory.
+- [actions/attest](https://github.com/actions/attest) — generates SLSA build-provenance, the custom [cosign generic predicate](https://github.com/sigstore/cosign/blob/main/specs/COSIGN_PREDICATE_SPEC.md) (metadata), and SBOM attestations in the in-toto format (`actions/attest-build-provenance` is now a wrapper around it).
+- [anchore/sbom-action](https://github.com/anchore/sbom-action) — generates a software bill of materials (SBOM) using Syft.
+- [GitHub CLI `gh attestation`](https://cli.github.com/manual/gh_attestation) — verifies and downloads artifact attestations, online or offline.
+- [OCI artifacts / OCI registries](https://opencontainers.org/) — store image attestations as additional content-addressable manifests linked to the image digest (`oci://` URIs, `permissions.packages`). See [OCI Image Format Spec](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification).
+- [Sigstore](https://www.sigstore.dev/) — Rekor/Fulcio/Cosign provide the keyless signing and transparency log underneath GitHub Artifact Attestations.
 
 ![The OCI Design](./assets/oci_artifact_diagram.png)
 
-OCI artifacts can be identified by either a tag or a digest. The digest, an immutable hash of the artifact's manifest or index, uniquely identifies the artifact version. In contrast, a tag is mutable, allowing updates to reference different versions over time.
-
-A tag links to a descriptor, a data structure that contains the digest for the associated manifest or index.
-
-##### Understanding Attestation Digests in GitHub Container Registry
-
-When viewing your container images in GitHub Container Registry, you might notice additional digests that don't correspond to actual images:
+When viewing your container images in GitHub Container Registry, you might notice additional digests that don't correspond to actual images — these are attestation manifests (metadata proving authenticity and provenance), inspectable via the [Verification Using ORAS](#verification-using-oras) section.
 
 ![Recent Tagged Image Versions](./assets/recent_tagged_image_versions.png)
 
-These additional digests represent attestation manifests - metadata about your image that proves its authenticity and provenance. While they appear alongside your image digests, they serve a different purpose:
-
 ![Additional Digest Example](./assets/additional_digest_example.png)
 
-To inspect and verify these attestation digests, see the [Verification Using ORAS](#verification-using-oras) section above.
-
-The OCI image format specification can be found below:
-
-- [OCI Image Format Spec](https://github.com/opencontainers/image-spec/tree/main?tab=readme-ov-file#oci-image-format-specification)
-
-### Limiting Inputs by Wrapping Reusable Workflow Calls in an Additional Workflow Layer
+### Limiting Inputs by Wrapping Reusable Workflow Calls
 
 It is good practice to wrap the actual call to each respective reusable workflow in an additional reusable workflow layer to limit the amount of inputs the user has access to (e.g. inputs for the verify jobs) which helps to circumvent script injection attacks.
 
@@ -1140,7 +320,7 @@ It is good practice to wrap the actual call to each respective reusable workflow
 
 [Explicit workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run) can be set to only allow the "entrypoint" reusable workflows that call other reusable workflows.
 
-Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, and `rw-<permissions_path>-release.yaml`:
+Below are all of the GitHub Actions and Workflows that are permitted access in the caller workflow repo. The only reusable workflows not given direct access are `rw-<permissions_path>-attest-<build_type>.yaml`, `rw-<permissions_path>-verify.yaml`, and `rw-<permissions_path>-release.yaml`. Every entry needs the `@*` ref suffix (or a pinned ref) — a bare `owner/repo` matches nothing, which blocks the SHA-pinned action and causes a `startup_failure`:
 
 ```yaml
 actions/attest@*,
@@ -1153,7 +333,6 @@ docker/build-push-action@*,
 docker/login-action@*,
 docker/metadata-action@*,
 docker/setup-buildx-action@*,
-docker/setup-qemu-action@*,
 octo-sts/action@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-blob.yaml@*,
 liatrio/autogov-workflows/.github/workflows/rw-build-image.yaml@*,
@@ -1203,6 +382,13 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 ### Inputs
 
+> **Vulnerability thresholds** (the four `vuln-threshold-*` inputs) recur identically on `rw-build-image.yaml`, `rw-build-blob.yaml`, `rw-build-blob-offline.yaml`, `rw-verify.yaml`, and `rw-verify-offline.yaml`. They are defined once here and referenced below as **(vuln-threshold block)**:
+>
+> - `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
+> - `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
+> - `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
+> - `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+
 #### `.github/actions/build-image/action.yaml`
 
 - `subject-name` (required, string, default: '${{ github.repository }}'): Subject name as it should appear in the attestation.
@@ -1221,10 +407,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
-- `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- **(vuln-threshold block)**
 
 #### `.github/workflows/rw-build-blob.yaml`
 
@@ -1234,10 +417,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
-- `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- **(vuln-threshold block)**
 
 #### `.github/workflows/rw-build-blob-offline.yaml`
 
@@ -1248,10 +428,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
-- `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- **(vuln-threshold block)**
 
 #### `.github/workflows/rw-attest-image.yaml`
 
@@ -1297,10 +474,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `policy-repo` (optional, string, default: 'liatrio/autogov-policy-library'): Repository providing the OPA policy bundle and schemas (consumed as `ghrel://<policy-repo>?asset=...`).
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
-- `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- **(vuln-threshold block)**
 - `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
 
 #### `.github/workflows/rw-verify-offline.yaml`
@@ -1316,10 +490,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `autogov-version` (optional, string, default: 'v0.38.0'): The autogov version to use (input name retained for backwards compatibility).
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
-- `vuln-threshold-critical` (optional, string, default: '0'): Maximum critical vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-high` (optional, string, default: '0'): Maximum high vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-medium` (optional, string, default: '0'): Maximum medium vulnerabilities allowed (0=none, -1=unlimited).
-- `vuln-threshold-low` (optional, string, default: '0'): Maximum low vulnerabilities allowed (0=none, -1=unlimited).
+- **(vuln-threshold block)**
 - `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
 
 #### `.github/workflows/rw-release.yaml`
@@ -1339,6 +510,14 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 ### Outputs
 
+> **Attestation artifact IDs** — the following five outputs recur identically across the build/attest workflows. They are defined once here and referenced below as **(attest-artifact-id block)**:
+>
+> - `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
+> - `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
+> - `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
+> - `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+> - `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
+
 #### `.github/actions/build-image/action.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
@@ -1350,58 +529,36 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 #### `.github/workflows/rw-build-image.yaml`
 
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
-- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
+- **(attest-artifact-id block)**
 - `image-digest` (string): The image digest of the image that was built.
 - `vsa-artifact-id` (string): The artifact ID of the uploaded VSA.
 
 #### `.github/workflows/rw-build-blob.yaml`
 
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
-- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
+- **(attest-artifact-id block)**
 - `blob-artifact-id` (string): The artifact-id of the blob artifact(s).
 - `vsa-artifact-id` (string): The artifact ID of the uploaded VSA.
 
 #### `.github/workflows/rw-build-blob-offline.yaml`
 
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- **(attest-artifact-id block)** — except `attest-source-review-attestation-artifact-id`, which this workflow does not emit.
 - `blob-artifact-id` (string): The artifact-id of the blob artifact(s).
 - `vsa-artifact-id` (string): The artifact ID of the uploaded VSA.
 
 #### `.github/workflows/rw-attest-image.yaml`
 
 - `image-digest` (string): The image digest of the image that was built from the build-image job.
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
-- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
+- **(attest-artifact-id block)**
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the blob artifact(s).
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
-- `attest-source-review-attestation-artifact-id` (string): The artifact-id of the source-review (PR-approval) attestation artifact.
+- **(attest-artifact-id block)**
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
 - `blob-artifact-id` (string): The artifact-id of the blob artifact(s).
-- `attest-build-attestation-artifact-id` (string): The artifact-id of the build provenance attestation artifact.
-- `attest-metadata-attestation-artifact-id` (string): The artifact-id of the custom metadata attestation artifact.
-- `attest-sbom-attestation-artifact-id` (string): The artifact-id of the SBOM attestation artifact.
-- `attest-dependency-scan-attestation-artifact-id` (string): The artifact-id of the dependency scan attestation artifact.
+- **(attest-artifact-id block)** — except `attest-source-review-attestation-artifact-id`, which this workflow does not emit.
 
 #### `.github/workflows/rw-verify.yaml`
 
@@ -1418,160 +575,54 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `commit-sha` (string): The SHA of the release commit.
 - `commit-verified` (string): Whether the release commit is verified.
 
-## Example Workflow Snippets
+### Example Workflow Snippets
 
-### Entrypoint Workflows
-
-#### `rw-build-image.yaml`
+An end-to-end pipeline wires the build (entrypoint), attest, verify, and release jobs together. The entrypoint `rw-build-*` workflows call the matching `rw-attest-*` internally; the snippets below show how a caller chains the jobs explicitly:
 
 ```yaml
-attest-image: #image
-  permissions:
-    id-token: write
-    attestations: write
-    packages: write
-    contents: write
-  uses: liatrio/autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  secrets: inherit
-  with:
-    subject-name: ${{ github.repository }}
-    registry: ghcr.io
-    cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@${{ github.ref }}
-```
-
-#### `rw-build-blob.yaml`
-
-```yaml
-attest-image: #blob
-  permissions:
-    id-token: write
-    attestations: write
-    packages: read
-    contents: write
-  uses: liatrio/autogov-workflows/.github/workflows/rw-build-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  with:
-    subject-path: |
-      i_am_blob
-      i_am_another_blob
-    cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-```
-
-#### `rw-build-blob-offline.yaml`
-
-```yaml
-attest-image: #blob
-  permissions:
-    id-token: write
-    attestations: write
-    contents: write
-  uses: liatrio/autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  with:
-    subject-path: |
-      i_am_blob
-      i_am_another_blob
-    cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-```
-
-### Attest Workflows
-
-#### `rw-attest-image.yaml`
-
-```yaml
-attest-image: #image
-  permissions:
-    id-token: write
-    attestations: write
-    packages: write
-    contents: write
-  uses: liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  with:
-    subject-name: ${{ github.repository }}
-    registry: ghcr.io
-```
-
-#### `rw-attest-blob.yaml`
-
-```yaml
-attest-blob: #blob
-  permissions:
-    id-token: write
-    attestations: write
-    contents: read
-  uses: liatrio/autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  with:
-    subject-path: |
-      i_am_blob
-      i_am_another_blob
-```
-
-#### `rw-attest-blob-offline.yaml`
-
-```yaml
-  attest-blob: #blob
+jobs:
+  # 1. build + attest (use rw-build-image / rw-build-blob / rw-build-blob-offline)
+  attest-image:
     permissions:
       id-token: write
       attestations: write
-      contents: read
-  uses: liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
+      packages: write
+      contents: write
+    uses: liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
+    secrets: inherit
     with:
-      subject-path: |
-        i_am_blob
-        i_am_another_blob
+      subject-name: ${{ github.repository }}
+      registry: ghcr.io
+
+  # 2. verify -> emits the gating VSA
+  verify-image:
+    permissions:
+      id-token: write
+      attestations: read
+      packages: read
+    needs: [attest-image]
+    uses: liatrio/autogov-workflows/.github/workflows/rw-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
+    secrets: inherit
+    with:
+      build-type: image
+      image-digest: ${{ needs.attest-image.outputs.image-digest }}
+      cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
+
+  # 3. release -> cuts the release attaching the VSA + blob assets
+  release-image:
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    needs: [verify-image, attest-image]
+    uses: liatrio/autogov-workflows/.github/workflows/rw-release.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
+    secrets: inherit
+    with:
+      mutations-config: .autogov-release.yaml
+      vsa-artifact-id: ${{ needs.verify-image.outputs.vsa-artifact-id }}
 ```
 
-### Verify Workflow
-
-```yaml
-verify-<build-type>:
-  permissions:
-    id-token: write
-    attestations: read
-    packages: read
-  needs: [attest-<build-type>]
-  uses: liatrio/autogov-workflows/.github/workflows/rw-verify.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  secrets: inherit
-  with:
-    build-type: <build-type>
-    image-digest: ${{ needs.attest-image.outputs.image-digest }}
-    or
-    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-    cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-<build-type>.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-```
-
-```yaml
-verify-<build-type>:
-  permissions:
-    id-token: write
-    attestations: read
-    packages: read
-  needs: [attest-<build-type>]
-  uses: liatrio/autogov-workflows/.github/workflows/rw-verify-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  secrets: inherit
-  with:
-    build-type: <build-type>
-    blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}
-    attest-build-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-build-attestation-artifact-id }}
-    attest-metadata-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-metadata-attestation-artifact-id }}
-    attest-sbom-attestation-artifact-id: ${{ needs.attest-blob.outputs.attest-sbom-attestation-artifact-id }}
-    cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-blob-offline.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-```
-
-### Release Workflow
-
-```yaml
-release-<build-type>:
-  permissions:
-    contents: write
-    id-token: write
-    actions: read
-  needs: [verify-<build-type>, attest-<build-type>]
-  uses: liatrio/autogov-workflows/.github/workflows/rw-release.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
-  secrets: inherit
-  with:
-    mutations-config: .autogov-release.yaml
-    vsa-artifact-id: ${{ needs.verify-<build-type>.outputs.vsa-artifact-id }}
-    blob-artifact-id: ${{ needs.attest-<build-type>.outputs.blob-artifact-id }}
-```
+For blob builds, swap `rw-attest-image.yaml` → `rw-attest-blob.yaml` (or `rw-attest-blob-offline.yaml`), set `build-type: blob`, and pass `blob-artifact-id: ${{ needs.attest-blob.outputs.blob-artifact-id }}` (plus the `attest-*-attestation-artifact-id` outputs to `rw-verify-offline.yaml` for the offline path) instead of `image-digest`.
 
 #### Automating Version Updates
 
@@ -1599,27 +650,6 @@ mutations:
 
 For multiple files, add a rule per file, or use an `exec` mutation (e.g. `find . -name '*.yaml' -exec sed -i 's/version: .*/version: ${version}/' {} \;`).
 
-## Verification and VSA Generation
-
-The `autogov` tool performs comprehensive attestation verification and generates Verification Summary Attestations (VSA) that include policy evaluation results. This consolidated approach combines signature verification, policy evaluation, and VSA generation in a single step.
-
-### Attestation Format
-
-Attestations must be in JSONL format (one JSON object per line). To convert regular JSON:
-
-```bash
-jq -c '.' attestation.json > attestation.jsonl
-```
-
-### Integrated Policy Evaluation and VSA Generation
-
-The `autogov` tool integrates policy evaluation directly into the verification process:
-
-- **Signature Verification**: Validates attestation signatures using Sigstore
-- **Policy Evaluation**: Automatically evaluates attestations against OPA policies for SLSA provenance, SBOM, vulnerability scans, and metadata compliance
-- **VSA Generation**: Creates comprehensive Verification Summary Attestations that include both verification results and policy compliance status
-- **Consolidated Output**: Single VSA file contains all verification and policy evaluation results, eliminating the need for separate OPA job outputs
-
 ## Troubleshooting
 
 ### Common Issues
@@ -1633,42 +663,20 @@ The `autogov` tool integrates policy evaluation directly into the verification p
 3. **Attestation Verification Fails**:
    Ensure that the `cert-identity` and other inputs are correctly specified. Verify that the workflow is running on GitHub-hosted runners.
 
-The following can be helpful to troubleshoot GitHub environment variables; often used for things such as the owner and repository:
-
-```yaml
-- name: DEBUG THE THINGS
-  shell: bash
-  env:
-    GITHUB_CONTEXT: ${{ toJson(github) }}
-    JOB_CONTEXT: ${{ toJson(job) }}
-    STEPS_CONTEXT: ${{ toJson(steps) }}
-    RUNNER_CONTEXT: ${{ toJson(runner) }}
-    INPUTS_CONTEXT: ${{ toJson(runner) }}
-  run: |
-    echo "$GITHUB_CONTEXT"
-    echo "$JOB_CONTEXT"
-    echo "$STEPS_CONTEXT"
-    echo "$RUNNER_CONTEXT"
-    echo "$INPUTS_CONTEXT"
-- name: Show default environment variables
-  shell: bash
-  run: |
-    echo "The job_id is: $GITHUB_JOB"
-    echo "The id of this action is: $GITHUB_ACTION"
-    echo "The run id is: $GITHUB_RUN_ID"
-    echo "The GitHub Actor's username is: $GITHUB_ACTOR"
-    echo "GitHub SHA: $GITHUB_SHA"
-- name: List all GitHub environment variables
-  shell: bash
-  run: printenv | grep '^GITHUB_'
-```
+To debug GitHub environment variables (owner, repository, etc.), dump the contexts in a step. A `printenv | grep '^GITHUB_'` or echoing `toJson(github)` / `toJson(runner)` into an `env:` block then `echo`-ing it is usually enough; the `inputs` context (`toJson(inputs)`) is the one to dump when checking workflow inputs.
 
 ### Getting Help
 
 If you encounter any issues not covered here, please open an issue on our [GitHub repository](https://github.com/liatrio/autogov-workflows/issues).
 
-## Additional Resources/Documentation
+## Additional Resources
 
+- [docs/verification-cosign.md](./docs/verification-cosign.md) — verifying attestations with Sigstore cosign (prerequisites + image paths).
+- [docs/oci-attestation-internals.md](./docs/oci-attestation-internals.md) — OCI v1.1 Referrers API and inspecting attestation manifests with ORAS.
+- [docs/slsa-workflow-inputs.md](./docs/slsa-workflow-inputs.md) — how autogov records workflow inputs to satisfy SLSA build-level requirements.
+- [Sigstore Rekor](https://github.com/sigstore/rekor) — transparency log of signed metadata.
+- [Sigstore Fulcio](https://github.com/sigstore/fulcio) — keyless certificate authority for OIDC identities.
+- [Sigstore Cosign](https://github.com/sigstore/cosign) — signing and verifying images and artifacts.
 - [Why is Github Artifact Attestations Considered SLSA Build L2+ and not SLSA Build L3?](https://www.ianlewis.org/en/understanding-github-artifact-attestations)
 - [Trusted Builder and Provenance Generator Specifications](https://github.com/slsa-framework/slsa-github-generator/blob/3d34abbe34b268bb6c02651df2117370e8cee1bd/SPECIFICATIONS.md#trusted-builder-and-provenance-generator)
 - [Hardening Requirements](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#hardening)
