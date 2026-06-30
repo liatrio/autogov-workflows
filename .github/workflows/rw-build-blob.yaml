@@ -20,7 +20,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v0.38.0
+        default: v0.38.2
       octo-sts-read-scope:
         description: >
           octo-sts scope for the release job's autogov CLI download. Leave empty
