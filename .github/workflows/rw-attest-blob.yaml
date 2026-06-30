@@ -147,7 +147,7 @@ jobs:
           merge-multiple: true
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           github-token: ${{ inputs.github-token || github.token }}
@@ -216,7 +216,7 @@ jobs:
             --subject-path ${{ env.ARTIFACTS_FOLDER }}
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-metadata
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
@@ -275,7 +275,7 @@ jobs:
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         id: attest-sbom
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: ${{ env.ARTIFACTS_FOLDER }}
           sbom-path: sbom.cyclonedx.json
@@ -352,7 +352,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-dep-scan
         with:
           predicate-type: 'https://in-toto.io/attestation/vulns/v0.2'
@@ -451,7 +451,7 @@ jobs:
             --output source-review.json
           cat source-review.json
       - name: Attest Source Review
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-source-review
         with:
           predicate-type: 'https://autogov.dev/attestation/source-review/v0.2'
