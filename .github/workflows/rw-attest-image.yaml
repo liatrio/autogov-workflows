@@ -144,7 +144,7 @@ jobs:
           password: ${{ inputs.github-token || github.token }}
       - name: Attest Provenance
         id: attest-build-provenance
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
@@ -213,7 +213,7 @@ jobs:
             --subject-digest "${{ needs.build-high-perms.outputs.image-digest }}"
           cat metadata.json
       - name: Attest Metadata
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-metadata
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -271,7 +271,7 @@ jobs:
         run: cat sbom.cyclonedx.json | jq -r
       - name: Generate SBOM attestation
         id: attest-sbom
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
           subject-digest: ${{ needs.build-high-perms.outputs.image-digest }}
@@ -347,7 +347,7 @@ jobs:
             --output depscan.json
           cat depscan.json
       - name: Attest Dependency Scan
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-dep-scan
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
@@ -446,7 +446,7 @@ jobs:
             --output source-review.json
           cat source-review.json
       - name: Attest Source Review
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         id: attest-source-review
         with:
           subject-name: ${{ format('{0}/{1}', inputs.registry, inputs.subject-name) }}
