@@ -138,13 +138,13 @@ To achieve SLSA Build Level 3, we recommend using GitHub-native tools and reusab
 
 The source repository contains the caller workflow, which interacts with the trusted builder (reusable workflow) to build the artifacts and generate signed provenance; the artifacts and their signed provenance are then securely stored and can be verified to ensure their integrity.
 
-GitHub Artifact Attestations ([docs](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds)) generate cryptographically signed, in-toto-format attestations of artifact provenance, backed by Sigstore (public repos use the public-good instance, private repos use GitHub's private instance). For the SLSA build-track levels and what each requires, see the [SLSA build track](https://slsa.dev/spec/v1.0/levels#build-track).
+GitHub Artifact Attestations ([docs](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds)) generate cryptographically signed, in-toto-format attestations of artifact provenance, backed by Sigstore (public repos use the public-good instance, private repos use GitHub's private instance). For the SLSA build-track levels and what each requires, see the [SLSA build track](https://slsa.dev/spec/v1.2/build-track-basics).
 
 ## Achieving SLSA Build Levels Using Reusable Workflows
 
 ### Verification / cert-identity
 
-Often the focus is put upon the "signing" of an artifact, but the source of value lies within [verifying artifacts](https://slsa.dev/spec/v1.0/verifying-artifacts). The [`gh attestation verify`](https://cli.github.com/manual/gh_attestation) command requires the path to a local or [OCI](https://opencontainers.org/) artifact plus an expected `--owner` or `--repo`. By default, the CLI does **not** check the `--signer-workflow` (a.k.a. `--cert-identity`) or the source ref — a missing `--cert-identity` flag is a real fail-open, since the artifact could have been built from a non-approved branch or by a non-approved workflow.
+Often the focus is put upon the "signing" of an artifact, but the source of value lies within [verifying artifacts](https://slsa.dev/spec/v1.2/verifying-artifacts). The [`gh attestation verify`](https://cli.github.com/manual/gh_attestation) command requires the path to a local or [OCI](https://opencontainers.org/) artifact plus an expected `--owner` or `--repo`. By default, the CLI does **not** check the `--signer-workflow` (a.k.a. `--cert-identity`) or the source ref — a missing `--cert-identity` flag is a real fail-open, since the artifact could have been built from a non-approved branch or by a non-approved workflow.
 
 For autogov, supplying `--cert-identity` (the signer workflow) is **mandatory but on by default** in our reusable workflows: every verify job passes it, ensuring both the source repository and signer workflow originate from approved branches/tags (e.g. commit SHA) so the artifact is proven to meet SLSA Level 3 requirements — as long as whoever verifies remembers to include the flag.
 
@@ -220,7 +220,7 @@ See [docs/oci-attestation-internals.md](./docs/oci-attestation-internals.md) for
 
 ### L3: Isolation of Build from Attest
 
-To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.0/levels#build-l3-hardened-builds), builds and their artifacts must be isolated from one another so that other jobs cannot inadvertently or maliciously alter them. With GitHub Actions this means separating the signing process into its own job, running on GitHub's hardened runners (avoiding self-hosted runners), and abstracting build commands into a [Composite Action](https://docs.github.com/en/actions/sharing-automations/creating-actions/about-custom-actions#composite-actions) at a well-defined path. The reusable workflow runs the repository's local composite action to build an image or blob, then attests the artifacts in a separate attesting job.
+To achieve [SLSA Build Level 3](https://slsa.dev/spec/v1.2/build-track-basics#build-l3-hardened-builds), builds and their artifacts must be isolated from one another so that other jobs cannot inadvertently or maliciously alter them. With GitHub Actions this means separating the signing process into its own job, running on GitHub's hardened runners (avoiding self-hosted runners), and abstracting build commands into a [Composite Action](https://docs.github.com/en/actions/sharing-automations/creating-actions/about-custom-actions#composite-actions) at a well-defined path. The reusable workflow runs the repository's local composite action to build an image or blob, then attests the artifacts in a separate attesting job.
 
 ![Job Isolation](./assets/isolated_attest_jobs.png)
 
@@ -263,7 +263,7 @@ Note: the digest of an exported image tarball (`docker save`, uncompressed) will
 
 ### L2: Ensure a Trusted Build Environment
 
-To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hosted-build-platform), builds must run on a hosted platform that generates and signs the provenance. Self-hosted runners [can be maliciously modified](https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security) by their host. Because a self-hosted runner can be labeled `ubuntu-latest`, the label alone is not enough — so we check the [runner context's](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#runner-context) `runner.environment`, which is `github-hosted` for GitHub-hosted runners and `self-hosted` otherwise, and fail closed:
+To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.2/build-track-basics#build-l2-hosted-build-platform), builds must run on a hosted platform that generates and signs the provenance. Self-hosted runners [can be maliciously modified](https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#self-hosted-runner-security) by their host. Because a self-hosted runner can be labeled `ubuntu-latest`, the label alone is not enough — so we check the [runner context's](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#runner-context) `runner.environment`, which is `github-hosted` for GitHub-hosted runners and `self-hosted` otherwise, and fail closed:
 
 ```yaml
 - name: Fail if Runner is self-hosted
@@ -273,11 +273,11 @@ To achieve [SLSA Build Level 2](https://slsa.dev/spec/v1.0/levels#build-l2-hoste
       exit 1
 ```
 
-Build steps additionally guard with `if: ${{ runner.environment == 'github-hosted' }}`. We also expose `--deny-self-hosted-runners` on the `gh attestation verify` calls. Offering control over the runner label (`runs-on: ${{ inputs.workflow-runner-label }}`) is acceptable leeway: the OS choice (`ubuntu-latest`, `macos-latest`, `windows-latest`) is [unambiguous](https://slsa.dev/spec/v1.0/requirements) even if not separately documented as provenance.
+Build steps additionally guard with `if: ${{ runner.environment == 'github-hosted' }}`. We also expose `--deny-self-hosted-runners` on the `gh attestation verify` calls. Offering control over the runner label (`runs-on: ${{ inputs.workflow-runner-label }}`) is acceptable leeway: the OS choice (`ubuntu-latest`, `macos-latest`, `windows-latest`) is [unambiguous](https://slsa.dev/spec/v1.2/requirements) even if not separately documented as provenance.
 
 ### L1: Documented Build Parameters
 
-To achieve [SLSA Build Level 1](https://slsa.dev/spec/v1.0/levels#build-l1), the build steps must be consistent so that a verifier "forms expectations about what a 'correct' build" should look like. We check out the source repo by commit SHA rather than only by the ref of the calling workflow, mitigating [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) scenarios where subsequent pushes land between trigger time and checkout:
+To achieve [SLSA Build Level 1](https://slsa.dev/spec/v1.2/build-track-basics#build-l1), the build steps must be consistent so that a verifier "forms expectations about what a 'correct' build" should look like. We check out the source repo by commit SHA rather than only by the ref of the calling workflow, mitigating [time-of-check-to-time-of-use (TOCTOU)](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use) scenarios where subsequent pushes land between trigger time and checkout:
 
 ```yaml
 - name: Checkout code
@@ -690,5 +690,5 @@ If you encounter any issues not covered here, please open an issue on our [GitHu
 - [Hardening Requirements](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#hardening)
 - [Best SDLC Practices](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#best-sdlc-practices)
 - [Build Your Own Builder (BYOB) Framework](https://github.com/slsa-framework/slsa-github-generator/blob/main/BYOB.md#build-your-own-builder-byob-framework)
-- [Provenance Build Definition](https://slsa.dev/spec/v1.0/provenance#BuildDefinition)
-- [Provenance Model/Schema](https://slsa.dev/spec/v1.0/provenance#model)
+- [Provenance Build Definition](https://slsa.dev/provenance/v1#buildDefinition)
+- [Provenance Model/Schema](https://slsa.dev/provenance/v1#model)
