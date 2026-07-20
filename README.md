@@ -65,7 +65,6 @@ jobs:
     uses: liatrio/autogov-workflows/.github/workflows/rw-build-image.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
     secrets: inherit
     with:
-      subject-name: ${{ github.repository }}
       registry: ghcr.io
       cert-identity: https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@<commit_sha> # <semver> / a commit SHA from an official autogov-workflows release
 
@@ -406,7 +405,8 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 #### `.github/workflows/rw-build-image.yaml`
 
-- `subject-name` (required, string): Subject name as it should appear in the attestation.
+> There is no `subject-name` input: the subject is always derived from `${{ github.repository }}`, so build, attest, and verify bind to the same subject — the registry-qualified name `<registry>/<github.repository>` (e.g. `ghcr.io/liatrio/autogov-workflows`).
+
 - `registry` (required, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
 - `autogov-version` (optional, string, default: 'v0.38.2'): The autogov version to use.
