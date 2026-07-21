@@ -52,3 +52,39 @@ jobs:
           # github.job_workflow_sha is a valid GitHub context property that actionlint's
           # static schema does not yet recognize — ignore that one false positive.
           actionlint -color -ignore 'property "job_workflow_sha" is not defined'
+      - name: Assert rw-build-image subject-name is consistent
+        run: |
+          set -euo pipefail
+          # rw-build-image has no subject-name input; its nested attest and verify
+          # jobs must bind the same subject. every subject-name: in the file must be
+          # a non-empty pass-through and all must be identical. this guards against
+          # reintroducing the half-honored input that caused divergent build/attest
+          # vs verify subjects, including a bare "subject-name:" input declaration
+          # (empty value), which is rejected outright.
+          f=.github/workflows/rw-build-image.yaml
+          found=0
+          expected=""
+          while IFS= read -r val; do
+            found=1
+            if [ -z "$val" ]; then
+              echo "::error file=${f}::subject-name has an empty value (reintroduced input declaration?)"
+              exit 1
+            fi
+            case "$val" in
+              *github.repository*) ;;
+              *)
+                echo "::error file=${f}::subject-name must derive from github.repository, got '${val}'"
+                exit 1
+                ;;
+            esac
+            if [ -z "$expected" ]; then
+              expected="$val"
+            elif [ "$val" != "$expected" ]; then
+              echo "::error file=${f}::subject-name pass-throughs differ: '${val}' != '${expected}'"
+              exit 1
+            fi
+          done < <(grep -E '^[[:space:]]*subject-name:' "$f" | sed -E 's/^[[:space:]]*subject-name:[[:space:]]*//')
+          if [ "$found" -eq 0 ]; then
+            echo "::error file=${f}::no subject-name pass-through found in rw-build-image"
+            exit 1
+          fi
