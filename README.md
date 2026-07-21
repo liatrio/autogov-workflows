@@ -145,7 +145,7 @@ GitHub Artifact Attestations ([docs](https://docs.github.com/en/actions/security
 
 Often the focus is put upon the "signing" of an artifact, but the source of value lies within [verifying artifacts](https://slsa.dev/spec/v1.2/verifying-artifacts). The [`gh attestation verify`](https://cli.github.com/manual/gh_attestation) command requires the path to a local or [OCI](https://opencontainers.org/) artifact plus an expected `--owner` or `--repo`. By default, the CLI does **not** check the `--signer-workflow` (a.k.a. `--cert-identity`) or the source ref — a missing `--cert-identity` flag is a real fail-open, since the artifact could have been built from a non-approved branch or by a non-approved workflow.
 
-For autogov, supplying `--cert-identity` (the signer workflow) is **mandatory but on by default** in our reusable workflows: every verify job passes it, ensuring both the source repository and signer workflow originate from approved branches/tags (e.g. commit SHA) so the artifact is proven to meet SLSA Level 3 requirements — as long as whoever verifies remembers to include the flag.
+For autogov, supplying `--cert-identity` (the signer workflow) is **mandatory but on by default** in our reusable workflows: every verify job passes it, ensuring both the source repository and signer workflow originate from approved branches/tags (e.g. commit SHA) so the artifact is proven to meet SLSA Build Level 3 requirements — as long as whoever verifies remembers to include the flag.
 
 gh-cli does not support verifying the source ref directly, so we combine `--jq` with `grep` on `sourceRepositoryRef`:
 
