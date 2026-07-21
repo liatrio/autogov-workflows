@@ -88,3 +88,20 @@ jobs:
             echo "::error file=${f}::no subject-name pass-through found in rw-build-image"
             exit 1
           fi
+      - name: Assert build workflows forward policy data overlay
+        run: |
+          set -euo pipefail
+          expected='policy-data-overlay: $'"{{ inputs.policy-data-overlay }}"
+          for f in \
+            .github/workflows/rw-build-image.yaml \
+            .github/workflows/rw-build-blob-offline.yaml; do
+            count="$(grep -c '^[[:space:]]*policy-data-overlay:' "$f")"
+            if [ "$count" -ne 2 ]; then
+              echo "::error file=${f}::expected one input declaration and one pass-through, found ${count}"
+              exit 1
+            fi
+            if ! grep -Fq "$expected" "$f"; then
+              echo "::error file=${f}::policy-data-overlay is not forwarded to verification"
+              exit 1
+            fi
+          done

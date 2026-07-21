@@ -91,6 +91,13 @@ on:
         required: false
         type: string
         default: '0'
+      policy-data-overlay:
+        description: >
+          Optional JSON forwarded to the nested verify workflow and merged over
+          generated policy data. Empty (default) disables the overlay.
+        required: false
+        type: string
+        default: ''
     outputs:
       attest-build-attestation-artifact-id:
         description: "Attestation artifact ID"
@@ -163,6 +170,7 @@ jobs:
       vuln-threshold-high: ${{ inputs.vuln-threshold-high }}
       vuln-threshold-medium: ${{ inputs.vuln-threshold-medium }}
       vuln-threshold-low: ${{ inputs.vuln-threshold-low }}
+      policy-data-overlay: ${{ inputs.policy-data-overlay }}
 
   release-image:
     permissions:
