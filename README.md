@@ -414,6 +414,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
 - **(vuln-threshold block)**
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON forwarded to the nested verify workflow and merged over generated policy data. Use `source_review_thresholds` for source-review settings; empty disables the overlay.
 
 #### `.github/workflows/rw-build-blob.yaml`
 
@@ -435,6 +436,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
 - **(vuln-threshold block)**
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON forwarded to the nested verify workflow and merged over generated policy data. Use `source_review_thresholds` for source-review settings; empty disables the overlay.
 
 #### `.github/workflows/rw-attest-image.yaml`
 
