@@ -37,6 +37,13 @@
       "pinDigests": true,
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions"
+    },
+    {
+      "description": "autogov-version bumps must be fix:-typed so they cut a release. The rw-* defaults only reach consumers via a release tag, so a chore:-typed bump merges to main and stops there -- which is how the pin silently rotted several releases behind (v0.38.2/v1.0.4 while v1.1.2 was current), leaving every consumer, including autogov's own self-attestation, generating attestations with a stale CLI.",
+      "matchPackageNames": [
+        "liatrio/autogov"
+      ],
+      "semanticCommitType": "fix"
     }
   ],
   "schedule": [
