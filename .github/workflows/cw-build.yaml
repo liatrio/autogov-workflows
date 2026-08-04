@@ -7,14 +7,12 @@ on:
     paths-ignore:
       - README.md
       - CONTRIBUTING.md
-      - renovate.json
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     paths-ignore:
       - README.md
       - CONTRIBUTING.md
-      - renovate.json
 
 concurrency:
   # serialize main pushes so back-to-back releases don't race the cut; never
