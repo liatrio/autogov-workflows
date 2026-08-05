@@ -38,7 +38,7 @@ on:
         description: The autogov version to use for predicate generation.
         required: false
         type: string
-        default: v1.1.2
+        default: v1.2.1
       octo-sts-scope:
         description: >
           octo-sts scope for the private-repo autogov CLI download. Leave empty
