@@ -173,6 +173,18 @@ printf 'single-vsa\n' > "$single_path/release-artifacts/vsa/image-vsa/nested/vsa
 run_stage "$single_path" '101' ''
 assert_file "$single_path/staged-release-assets/vsa-PASSED.json"
 
+single_download_layout="$test_root/single-download-layout"
+mkdir -p "$single_download_layout/release-artifacts/vsa"
+printf 'single-vsa\n' > "$single_download_layout/release-artifacts/vsa/vsa-PASSED.json"
+run_stage "$single_download_layout" '101' ''
+assert_file "$single_download_layout/staged-release-assets/vsa-PASSED.json"
+
+single_blob_download_layout="$test_root/single-blob-download-layout"
+mkdir -p "$single_blob_download_layout/release-artifacts/blob"
+printf 'single-blob\n' > "$single_blob_download_layout/release-artifacts/blob/bundle.tar.gz"
+run_stage "$single_blob_download_layout" '' '301'
+assert_file "$single_blob_download_layout/staged-release-assets/bundle.tar.gz"
+
 empty_optional="$test_root/empty-optional"
 mkdir -p "$empty_optional"
 run_stage "$empty_optional" '' ''

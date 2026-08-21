@@ -354,15 +354,24 @@ jobs:
             if [ "$DRY_RUN" == "true" ]; then
               return 0
             fi
-            if [ -d "$download_dir" ]; then
-              while IFS= read -r -d '' source_dir; do
-                source_count=$((source_count + 1))
-                if ! find "$source_dir" -type f -size +0c -print -quit | grep -q .; then
-                  echo "::error::${label} source artifact directory contains no non-empty files: '${source_dir}'"
-                  return 1
-                fi
-              done < <(find "$download_dir" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+            if [ ! -d "$download_dir" ]; then
+              echo "::error::${label} expected ${expected_count} source artifact directories but found 0 under '${download_dir}'"
+              return 1
             fi
+            if [ "$expected_count" -eq 1 ]; then
+              if ! find "$download_dir" -type f -size +0c -print -quit | grep -q .; then
+                echo "::error::${label} source artifact contains no non-empty files under '${download_dir}'"
+                return 1
+              fi
+              return 0
+            fi
+            while IFS= read -r -d '' source_dir; do
+              source_count=$((source_count + 1))
+              if ! find "$source_dir" -type f -size +0c -print -quit | grep -q .; then
+                echo "::error::${label} source artifact directory contains no non-empty files: '${source_dir}'"
+                return 1
+              fi
+            done < <(find "$download_dir" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
             if [ "$source_count" -ne "$expected_count" ]; then
               echo "::error::${label} expected ${expected_count} source artifact directories but found ${source_count} under '${download_dir}'"
               return 1
