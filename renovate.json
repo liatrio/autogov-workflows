@@ -1,6 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "configMigration": true,
+  "minimumReleaseAge": "14 days",
+  "minimumReleaseAgeBehaviour": "timestamp-required",
+  "internalChecksFilter": "strict",
+  "dependencyDashboard": true,
+  "automerge": false,
   "customManagers": [
     {
       "customType": "regex",
@@ -44,6 +49,13 @@
         "liatrio/autogov"
       ],
       "semanticCommitType": "fix"
+    },
+    {
+      "description": "Pin floating references without delaying the security improvement",
+      "matchUpdateTypes": [
+        "pinDigest"
+      ],
+      "minimumReleaseAge": null
     }
   ],
   "schedule": [
