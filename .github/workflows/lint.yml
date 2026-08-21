@@ -52,6 +52,11 @@ jobs:
           # github.job_workflow_sha is a valid GitHub context property that actionlint's
           # static schema does not yet recognize — ignore that one false positive.
           actionlint -color -ignore 'property "job_workflow_sha" is not defined'
+      - name: Test release asset staging
+        run: |
+          set -euo pipefail
+          shellcheck -s bash tests/rw-release-assets.sh
+          bash tests/rw-release-assets.sh
       - name: Assert rw-build-image subject-name is consistent
         run: |
           set -euo pipefail
