@@ -24,15 +24,25 @@ on:
         type: string
         default: v1.1.2
       vsa-artifact-id:
-        description: 'The artifact ID of the VSA to upload as a release asset.'
+        description: 'Comma-delimited artifact IDs of VSAs to upload as release assets.'
         required: false
         type: string
         default: ''
+      expected-vsa-artifact-count:
+        description: 'Required number of normalized VSA artifact IDs; zero disables the count check.'
+        required: false
+        type: number
+        default: 0
       blob-artifact-id:
-        description: 'Artifact ID of the blob to download and publish as a release asset.'
+        description: 'Comma-delimited artifact IDs of blobs to publish as release assets.'
         required: false
         type: string
         default: ''
+      expected-blob-artifact-count:
+        description: 'Required number of normalized blob artifact IDs; zero disables the count check.'
+        required: false
+        type: number
+        default: 0
       workflow-runner-label:
         description: 'The label of the workflow runner.'
         required: false
@@ -143,6 +153,73 @@ jobs:
           echo ""
           autogov release plan --repo .
 
+      - name: Normalize release artifact IDs
+        id: normalize-artifact-ids
+        env:
+          VSA_ARTIFACT_IDS: ${{ inputs.vsa-artifact-id }}
+          BLOB_ARTIFACT_IDS: ${{ inputs.blob-artifact-id }}
+          EXPECTED_VSA_ARTIFACT_COUNT: ${{ inputs.expected-vsa-artifact-count }}
+          EXPECTED_BLOB_ARTIFACT_COUNT: ${{ inputs.expected-blob-artifact-count }}
+        run: |
+          set -euo pipefail
+
+          normalize_ids() {
+            local label="$1"
+            local raw="$2"
+            local token
+            local trimmed
+            local joined
+            local -a normalized=()
+
+            IFS=',' read -r -a tokens <<< "$raw"
+            for token in "${tokens[@]}"; do
+              trimmed="${token#"${token%%[![:space:]]*}"}"
+              trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+              [ -n "$trimmed" ] || continue
+              if [[ ! "$trimmed" =~ ^[0-9]+$ ]]; then
+                echo "::error::${label} contains a non-numeric artifact ID: ${trimmed}" >&2
+                return 1
+              fi
+              normalized+=("$trimmed")
+            done
+
+            joined=""
+            if [ "${#normalized[@]}" -gt 0 ]; then
+              joined="$(IFS=,; echo "${normalized[*]}")"
+            fi
+            printf '%s' "$joined"
+          }
+
+          validate_expected_count() {
+            local label="$1"
+            local expected_count="$2"
+            local normalized_ids="$3"
+            local actual_count=0
+            local -a values=()
+
+            if [[ ! "$expected_count" =~ ^[0-9]+$ ]]; then
+              echo "::error::expected ${label} artifact count must be a non-negative integer: ${expected_count}" >&2
+              return 1
+            fi
+            if [ -n "$normalized_ids" ]; then
+              IFS=',' read -r -a values <<< "$normalized_ids"
+              actual_count="${#values[@]}"
+            fi
+            if [ "$expected_count" -gt 0 ] && [ "$actual_count" -ne "$expected_count" ]; then
+              echo "::error::expected ${expected_count} ${label} artifact IDs but received ${actual_count}" >&2
+              return 1
+            fi
+          }
+
+          normalized_vsa_ids="$(normalize_ids vsa-artifact-id "$VSA_ARTIFACT_IDS")"
+          normalized_blob_ids="$(normalize_ids blob-artifact-id "$BLOB_ARTIFACT_IDS")"
+          validate_expected_count VSA "$EXPECTED_VSA_ARTIFACT_COUNT" "$normalized_vsa_ids"
+          validate_expected_count blob "$EXPECTED_BLOB_ARTIFACT_COUNT" "$normalized_blob_ids"
+          {
+            echo "vsa-artifact-ids=${normalized_vsa_ids}"
+            echo "blob-artifact-ids=${normalized_blob_ids}"
+          } >> "$GITHUB_OUTPUT"
+
       # stage every release asset BEFORE the cut so a single `release cut --asset
       # ... --publish` uploads them while the release is still a draft, then flips
       # it to published — under GitHub immutable releases assets cannot be added or
@@ -153,22 +230,22 @@ jobs:
       # stages to $RUNNER_TEMP for the same reason). cert-identities.json stays at the
       # repo root because it is a tracked/committed file (does not dirty the tree).
       - name: Download VSA artifact
-        if: ${{ inputs.vsa-artifact-id != '' && inputs.dry-run == false }}
+        if: ${{ steps.normalize-artifact-ids.outputs.vsa-artifact-ids != '' && inputs.dry-run == false }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           github-token: ${{ github.token }}
-          artifact-ids: ${{ inputs.vsa-artifact-id }}
-          path: ${{ runner.temp }}/vsa
-          merge-multiple: true
+          artifact-ids: ${{ steps.normalize-artifact-ids.outputs.vsa-artifact-ids }}
+          path: ${{ runner.temp }}/release-artifacts/vsa
+          merge-multiple: false
 
       - name: Download blob artifact
-        if: ${{ inputs.blob-artifact-id != '' && inputs.dry-run == false }}
+        if: ${{ steps.normalize-artifact-ids.outputs.blob-artifact-ids != '' && inputs.dry-run == false }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           github-token: ${{ github.token }}
-          artifact-ids: ${{ inputs.blob-artifact-id }}
-          path: ${{ runner.temp }}/release-assets
-          merge-multiple: true
+          artifact-ids: ${{ steps.normalize-artifact-ids.outputs.blob-artifact-ids }}
+          path: ${{ runner.temp }}/release-artifacts/blob
+          merge-multiple: false
 
       - name: Download attestation bundles
         # pull this run's verified attestation bundles so the release can ship the
@@ -237,19 +314,155 @@ jobs:
             echo "::notice::no build-provenance bundle found; skipping scorecard .intoto.jsonl asset"
           fi
 
+      - name: Stage release assets
+        env:
+          NORMALIZED_VSA_ARTIFACT_IDS: ${{ steps.normalize-artifact-ids.outputs.vsa-artifact-ids }}
+          NORMALIZED_BLOB_ARTIFACT_IDS: ${{ steps.normalize-artifact-ids.outputs.blob-artifact-ids }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+
+          stage_dir="$RUNNER_TEMP/staged-release-assets"
+          vsa_dir="$RUNNER_TEMP/release-artifacts/vsa"
+          blob_dir="$RUNNER_TEMP/release-artifacts/blob"
+          rm -rf "$stage_dir"
+          mkdir -p "$stage_dir"
+
+          declare -A asset_sources=()
+          declare -A vsa_basename_counts=()
+
+          artifact_id_count() {
+            local ids="$1"
+            local -a values=()
+
+            if [ -n "$ids" ]; then
+              IFS=',' read -r -a values <<< "$ids"
+            fi
+            printf '%s' "${#values[@]}"
+          }
+
+          validate_artifact_directories() {
+            local label="$1"
+            local ids="$2"
+            local download_dir="$3"
+            local expected_count
+            local source_count=0
+            local source_dir
+
+            expected_count="$(artifact_id_count "$ids")"
+            [ "$expected_count" -gt 0 ] || return 0
+            if [ "$DRY_RUN" == "true" ]; then
+              return 0
+            fi
+            if [ -d "$download_dir" ]; then
+              while IFS= read -r -d '' source_dir; do
+                source_count=$((source_count + 1))
+                if ! find "$source_dir" -type f -size +0c -print -quit | grep -q .; then
+                  echo "::error::${label} source artifact directory contains no non-empty files: '${source_dir}'"
+                  return 1
+                fi
+              done < <(find "$download_dir" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+            fi
+            if [ "$source_count" -ne "$expected_count" ]; then
+              echo "::error::${label} expected ${expected_count} source artifact directories but found ${source_count} under '${download_dir}'"
+              return 1
+            fi
+          }
+
+          stage_asset() {
+            local source="$1"
+            local asset_name="$2"
+            local previous_source="${asset_sources[$asset_name]-}"
+
+            if [ -n "$previous_source" ]; then
+              echo "::error::release asset basename collision for '${asset_name}': '${previous_source}' conflicts with '${source}'"
+              return 1
+            fi
+            asset_sources["$asset_name"]="$source"
+            cp -- "$source" "$stage_dir/$asset_name"
+            echo "staged release asset: $source -> $asset_name"
+          }
+
+          validate_artifact_directories VSA "$NORMALIZED_VSA_ARTIFACT_IDS" "$vsa_dir"
+          validate_artifact_directories blob "$NORMALIZED_BLOB_ARTIFACT_IDS" "$blob_dir"
+
+          vsa_file_count=0
+          if [ -d "$vsa_dir" ]; then
+            while IFS= read -r -d '' source; do
+              [ -s "$source" ] || continue
+              basename="${source##*/}"
+              vsa_basename_counts["$basename"]=$(( ${vsa_basename_counts[$basename]:-0} + 1 ))
+              vsa_file_count=$((vsa_file_count + 1))
+            done < <(find "$vsa_dir" -type f -print0 | sort -z)
+          fi
+          if [ "$DRY_RUN" != "true" ] && [ -n "$NORMALIZED_VSA_ARTIFACT_IDS" ] && [ "$vsa_file_count" -eq 0 ]; then
+            echo "::error::VSA artifact IDs were provided but no non-empty VSA files were downloaded"
+            exit 1
+          fi
+
+          if [ -d "$vsa_dir" ]; then
+            while IFS= read -r -d '' source; do
+              [ -s "$source" ] || continue
+              basename="${source##*/}"
+              asset_name="$basename"
+              if [ "${vsa_basename_counts[$basename]}" -gt 1 ]; then
+                case "$basename" in
+                  vsa-*.json)
+                    relative_source="${source#"$vsa_dir"/}"
+                    source_identity="${relative_source%%/*}"
+                    source_prefix="$(printf '%s' "$source_identity" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+                    if [ -z "$source_prefix" ]; then
+                      echo "::error::cannot deterministically namespace duplicate VSA '${basename}' from '${source}'"
+                      exit 1
+                    fi
+                    asset_name="${source_prefix}--${basename}"
+                    ;;
+                esac
+              fi
+              stage_asset "$source" "$asset_name"
+            done < <(find "$vsa_dir" -type f -print0 | sort -z)
+          fi
+
+          blob_file_count=0
+          if [ -d "$blob_dir" ]; then
+            while IFS= read -r -d '' source; do
+              [ -s "$source" ] || continue
+              blob_file_count=$((blob_file_count + 1))
+              stage_asset "$source" "${source##*/}"
+            done < <(find "$blob_dir" -type f -print0 | sort -z)
+          fi
+          if [ "$DRY_RUN" != "true" ] && [ -n "$NORMALIZED_BLOB_ARTIFACT_IDS" ] && [ "$blob_file_count" -eq 0 ]; then
+            echo "::error::blob artifact IDs were provided but no non-empty blob files were downloaded"
+            exit 1
+          fi
+
+          for source in \
+            cert-identities.json \
+            "$RUNNER_TEMP/autogov.attestations.intoto.jsonl" \
+            "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"; do
+            if [ -f "$source" ] && [ -s "$source" ]; then
+              stage_asset "$source" "${source##*/}"
+            fi
+          done
+
       - name: Run release cut
         id: release-cut
         env:
           GH_TOKEN: ${{ steps.octo-sts-release.outputs.token }}
           COMMIT_SHA: ${{ github.sha }}
+          RELEASE_BRANCH: ${{ inputs.branch }}
+          MUTATIONS_CONFIG: ${{ inputs.mutations-config }}
+          DRY_RUN: ${{ inputs.dry-run }}
         run: |
-          ARGS=(--repo . --branch "${{ inputs.branch }}")
+          set -euo pipefail
 
-          if [ -n "${{ inputs.mutations-config }}" ]; then
-            ARGS+=(--mutations-config "${{ inputs.mutations-config }}")
+          ARGS=(--repo . --branch "$RELEASE_BRANCH")
+
+          if [ -n "$MUTATIONS_CONFIG" ]; then
+            ARGS+=(--mutations-config "$MUTATIONS_CONFIG")
           fi
 
-          if [ "${{ inputs.dry-run }}" == "true" ]; then
+          if [ "$DRY_RUN" == "true" ]; then
             ARGS+=(--dry-run)
           else
             ARGS+=(--publish)
@@ -257,25 +470,20 @@ jobs:
 
           # append one --asset per staged file that actually exists + is non-empty
           # (the cut validates each path up front, so only pass present files): the
-          # VSA file(s) + blob/release-assets staged under $RUNNER_TEMP, the assembled
-          # full attestation bundle (also under $RUNNER_TEMP), and the committed signer
-          # allowlist at the repo root. globs are expanded to concrete file paths.
+          # VSA, blob, generated, and tracked files have already been copied into one
+          # collision-checked staging directory. Walk it recursively so this exact
+          # publish path cannot omit nested artifact contents.
           add_asset() {
             if [ -f "$1" ] && [ -s "$1" ]; then
               ARGS+=(--asset "$1")
               echo "staging asset: $1"
             fi
           }
-          for d in "$RUNNER_TEMP/vsa" "$RUNNER_TEMP/release-assets"; do
-            if [ -d "$d" ]; then
-              while IFS= read -r f; do
-                add_asset "$f"
-              done < <(find "$d" -maxdepth 1 -type f | sort)
-            fi
-          done
-          add_asset "cert-identities.json"
-          add_asset "$RUNNER_TEMP/autogov.attestations.intoto.jsonl"
-          add_asset "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"
+          if [ -d "$RUNNER_TEMP/staged-release-assets" ]; then
+            while IFS= read -r -d '' asset; do
+              add_asset "$asset"
+            done < <(find "$RUNNER_TEMP/staged-release-assets" -type f -print0 | sort -z)
+          fi
 
           echo "=== Running: autogov release cut ${ARGS[*]} -o json ==="
           OUTPUT=$(autogov release cut "${ARGS[@]}" -o json)
@@ -322,4 +530,3 @@ jobs:
             exit 1
           fi
           echo "::notice::Release commit is verified ✅"
-

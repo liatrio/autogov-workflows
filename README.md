@@ -509,8 +509,10 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml).
 - `dry-run` (optional, boolean, default: false): Run in dry-run mode (no commits, tags, or releases created).
 - `autogov-version` (optional, string, default: 'v1.1.2'): The autogov release version to download and use.
-- `vsa-artifact-id` (optional, string, default: ''): The artifact ID of the VSA to upload as a release asset.
-- `blob-artifact-id` (optional, string, default: ''): Artifact ID of the blob to download and publish as a release asset.
+- `vsa-artifact-id` (optional, string, default: ''): Comma-delimited artifact IDs of VSAs to upload as release assets.
+- `expected-vsa-artifact-count` (optional, number, default: 0): Required normalized VSA ID count. Combined callers set this to their number of required VSA-producing builds so a missing output fails before download; zero preserves optional/single-path behavior.
+- `blob-artifact-id` (optional, string, default: ''): Comma-delimited artifact IDs of blobs to download and publish as release assets.
+- `expected-blob-artifact-count` (optional, number, default: 0): Required normalized blob ID count. Set this when blob release assets are required; zero leaves the class optional.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `github-token` (optional, string, default: ''): GitHub token for the binary download when `octo-sts-read-scope` is empty. Leave empty to use `github.token` (suitable for public repos).
 - `octo-sts-read-scope` (optional, string, default: ''): octo-sts scope for the autogov CLI download (read). When empty, `github.token` is used (suitable for public repos).
@@ -588,6 +590,55 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 ### Example Workflow Snippets
 
 An end-to-end pipeline wires the build (entrypoint), attest, verify, and release jobs together. The entrypoint `rw-build-*` workflows call the matching `rw-attest-*` internally; the snippets below show how a caller chains the jobs explicitly:
+
+#### Combined image and blob releases
+
+When one repository builds an image and a blob in the same run, disable both reusable workflows' child publishers and add one caller-owned release job. Keep a normal `needs` dependency on every required build: do not add `always()` or another permissive job condition, because a failed, cancelled, or skipped required build must prevent publication.
+
+| Build result | Caller release result |
+| --- | --- |
+| Image and blob succeed | One release cut receives both VSAs and every blob release asset. |
+| Either build fails or is cancelled | The release job does not run. |
+| Either required build is skipped | The release job does not run. |
+| A supplied optional artifact-ID list is empty, whitespace, or comma-only | That artifact class is omitted. |
+
+```yaml
+jobs:
+  build-image:
+    uses: liatrio/autogov-workflows/.github/workflows/rw-build-image.yaml@<released_commit_sha>
+    secrets: inherit
+    with:
+      release-image: false
+      # ...image inputs...
+
+  build-blob-offline:
+    uses: liatrio/autogov-workflows/.github/workflows/rw-build-blob-offline.yaml@<released_commit_sha>
+    secrets: inherit
+    with:
+      release-blob: false
+      # ...offline blob inputs...
+
+  release:
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    needs: [build-image, build-blob-offline]
+    uses: liatrio/autogov-workflows/.github/workflows/rw-release.yaml@<released_commit_sha>
+    secrets: inherit
+    with:
+      mutations-config: .autogov-release.yaml
+      vsa-artifact-id: >-
+        ${{ needs.build-image.outputs.vsa-artifact-id }},
+        ${{ needs.build-blob-offline.outputs.vsa-artifact-id }}
+      expected-vsa-artifact-count: 2
+      blob-artifact-id: ${{ needs.build-blob-offline.outputs.blob-artifact-id }}
+      expected-blob-artifact-count: 1
+```
+
+Use the same pattern with `rw-build-blob.yaml`: set `release-blob: false`, replace `build-blob-offline` in `needs` and output references with the online blob job, and keep `mutations-config` on the caller-owned `rw-release.yaml` job. Comma-delimited artifact-ID inputs may contain multiple IDs; `rw-release.yaml` trims whitespace and removes empty entries before checking the expected counts and downloading each artifact into an isolated source directory. Existing single-path callers may keep the default `release-image: true` or `release-blob: true` behavior and leave both expected counts at zero.
+
+#### Explicit build, attest, verify, and release
 
 ```yaml
 jobs:
