@@ -169,6 +169,12 @@ Example of Attesting Blob:
 
 This job should now create an attestation with custom data per your predicate definition.
 
+## AI-assisted contributions
+
+Using AI tools to draft workflows, tests, or docs is fine. You are responsible for everything you submit — review and understand it as you would work you wrote by hand, and hold it to the same standards as the rest of this guide.
+
+Note meaningful AI assistance in the pull request description, not in commit messages or code comments. AI-assisted *review* is tooling and never counts as a second reviewing party (see [MAINTAINERS.md](MAINTAINERS.md)).
+
 ---
 
 By following these guidelines, you can successfully add predicate(s) to attest to artifacts using the [attest GitHub Action](https://github.com/actions/attest). Thank you for contributing to AutoGov!
