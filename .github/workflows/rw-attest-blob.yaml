@@ -41,7 +41,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v1.1.2
+        default: ff839e23f922e176897232c5b4148dc1d4c1b983 # v1.3.0
       octo-sts-scope:
         description: >
           octo-sts scope for the private-repo autogov CLI download. Leave empty
@@ -200,10 +200,32 @@ jobs:
       - name: Install autogov
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+          AUTOGOV_REPO: ${{ inputs.autogov-repo }}
         run: |
-          gh release download ${{ inputs.autogov-version }} \
-            --repo ${{ inputs.autogov-repo }} \
-            --pattern "autogov"
+          set -euo pipefail
+          release_tag="$AUTOGOV_VERSION"
+          if [[ "$AUTOGOV_VERSION" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            published_releases="$(gh api --paginate "repos/${AUTOGOV_REPO}/releases?per_page=100" --jq '.[] | select(.draft == false) | [.tag_name, (.immutable // false)] | @tsv')"
+            if ! awk -F '\t' -v requested="$AUTOGOV_VERSION" '$1 == requested { found = 1 } END { exit !found }' <<< "$published_releases"; then
+              tag_commits="$(gh api --paginate "repos/${AUTOGOV_REPO}/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv')"
+              release_tag="$(while IFS=$'\t' read -r tag immutable; do
+                [ "$immutable" = true ] || continue
+                sha="$(awk -F '\t' -v tag="$tag" '$1 == tag { print $2 }' <<< "$tag_commits")"
+                if [ "${sha,,}" = "${AUTOGOV_VERSION,,}" ]; then printf '%s\n' "$tag"; fi
+              done <<< "$published_releases")"
+              if [ -z "$release_tag" ] || [[ "$release_tag" == *$'\n'* ]]; then
+                echo "::error::autogov full 40-character SHA must identify exactly one immutable published release: ${AUTOGOV_VERSION}"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -n "$release_tag" ]; then
+            gh release download "$release_tag" --repo "$AUTOGOV_REPO" --pattern "autogov"
+          else
+            gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
+          fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Generate Metadata Attestation
         env:
@@ -337,10 +359,32 @@ jobs:
       - name: Install autogov
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+          AUTOGOV_REPO: ${{ inputs.autogov-repo }}
         run: |
-          gh release download ${{ inputs.autogov-version }} \
-            --repo ${{ inputs.autogov-repo }} \
-            --pattern "autogov"
+          set -euo pipefail
+          release_tag="$AUTOGOV_VERSION"
+          if [[ "$AUTOGOV_VERSION" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            published_releases="$(gh api --paginate "repos/${AUTOGOV_REPO}/releases?per_page=100" --jq '.[] | select(.draft == false) | [.tag_name, (.immutable // false)] | @tsv')"
+            if ! awk -F '\t' -v requested="$AUTOGOV_VERSION" '$1 == requested { found = 1 } END { exit !found }' <<< "$published_releases"; then
+              tag_commits="$(gh api --paginate "repos/${AUTOGOV_REPO}/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv')"
+              release_tag="$(while IFS=$'\t' read -r tag immutable; do
+                [ "$immutable" = true ] || continue
+                sha="$(awk -F '\t' -v tag="$tag" '$1 == tag { print $2 }' <<< "$tag_commits")"
+                if [ "${sha,,}" = "${AUTOGOV_VERSION,,}" ]; then printf '%s\n' "$tag"; fi
+              done <<< "$published_releases")"
+              if [ -z "$release_tag" ] || [[ "$release_tag" == *$'\n'* ]]; then
+                echo "::error::autogov full 40-character SHA must identify exactly one immutable published release: ${AUTOGOV_VERSION}"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -n "$release_tag" ]; then
+            gh release download "$release_tag" --repo "$AUTOGOV_REPO" --pattern "autogov"
+          else
+            gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
+          fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Generate Dependency Scan Attestation
         run: |
@@ -414,10 +458,32 @@ jobs:
       - name: Install autogov
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
+          AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+          AUTOGOV_REPO: ${{ inputs.autogov-repo }}
         run: |
-          gh release download ${{ inputs.autogov-version }} \
-            --repo ${{ inputs.autogov-repo }} \
-            --pattern "autogov"
+          set -euo pipefail
+          release_tag="$AUTOGOV_VERSION"
+          if [[ "$AUTOGOV_VERSION" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            published_releases="$(gh api --paginate "repos/${AUTOGOV_REPO}/releases?per_page=100" --jq '.[] | select(.draft == false) | [.tag_name, (.immutable // false)] | @tsv')"
+            if ! awk -F '\t' -v requested="$AUTOGOV_VERSION" '$1 == requested { found = 1 } END { exit !found }' <<< "$published_releases"; then
+              tag_commits="$(gh api --paginate "repos/${AUTOGOV_REPO}/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv')"
+              release_tag="$(while IFS=$'\t' read -r tag immutable; do
+                [ "$immutable" = true ] || continue
+                sha="$(awk -F '\t' -v tag="$tag" '$1 == tag { print $2 }' <<< "$tag_commits")"
+                if [ "${sha,,}" = "${AUTOGOV_VERSION,,}" ]; then printf '%s\n' "$tag"; fi
+              done <<< "$published_releases")"
+              if [ -z "$release_tag" ] || [[ "$release_tag" == *$'\n'* ]]; then
+                echo "::error::autogov full 40-character SHA must identify exactly one immutable published release: ${AUTOGOV_VERSION}"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -n "$release_tag" ]; then
+            gh release download "$release_tag" --repo "$AUTOGOV_REPO" --pattern "autogov"
+          else
+            gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
+          fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       # best-effort: mint a token carrying administration:read via the
       # source-review-controls trust policy (pinned to rw-attest-blob/image), scoped
