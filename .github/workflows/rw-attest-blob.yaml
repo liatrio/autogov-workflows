@@ -225,6 +225,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Generate Metadata Attestation
         env:
@@ -383,6 +384,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Generate Dependency Scan Attestation
         run: |
@@ -481,6 +483,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       # best-effort: mint a token carrying administration:read via the
       # source-review-controls trust policy (pinned to rw-attest-blob/image), scoped

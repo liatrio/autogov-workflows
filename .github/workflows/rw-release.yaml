@@ -158,6 +158,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
           sudo mv autogov /usr/local/bin/autogov
 

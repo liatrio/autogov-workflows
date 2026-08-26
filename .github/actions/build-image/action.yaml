@@ -76,6 +76,7 @@ runs:
         else
           gh release download --repo "$AUTOGOV_REPO" --pattern autogov --clobber
         fi
+        [ -s ./autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
         chmod +x ./autogov
         next="$(./autogov release plan -o json | jq -r '.next_version // empty')"
         echo "version=${next#v}" >> "$GITHUB_OUTPUT"

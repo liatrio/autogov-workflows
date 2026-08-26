@@ -174,15 +174,22 @@ if [ "$1" = api ]; then
     *) exit 2 ;;
   esac
 elif [ "$1 $2" = 'release download' ]; then
+  printf 'ARGS' >> "$GH_CALLS"
+  printf ' %s' "$@" >> "$GH_CALLS"
+  printf '\n' >> "$GH_CALLS"
   if [ "$3" = --repo ]; then
     printf 'DOWNLOAD <latest>\n' >> "$GH_CALLS"
   else
     printf 'DOWNLOAD %s\n' "$3" >> "$GH_CALLS"
   fi
-  cat > autogov <<'AUTOGOV'
+  if [ "$GH_SCENARIO" = empty-binary ]; then
+    : > autogov
+  else
+    cat > autogov <<'AUTOGOV'
 #!/usr/bin/env bash
 printf '%s\n' '{"next_version":"v9.9.9"}'
 AUTOGOV
+  fi
 else
   exit 2
 fi
@@ -196,6 +203,7 @@ chmod +x "$install_bin/gh" "$install_bin/sudo"
 
 run_install() {
   local script="$1" requested="$2" scenario="$3" label="$4" expected_result="$5" expected_download="${6:-}"
+  local allow_download_on_failure="${7:-false}"
   local work="$test_root/install-$label" log="$test_root/$label.log"
   mkdir -p "$work"
   : > "$test_root/$label-gh-calls"; : > "$test_root/$label-sudo-calls"; : > "$test_root/$label-output"
@@ -209,7 +217,7 @@ run_install() {
     assert_contains "$test_root/$label-gh-calls" "DOWNLOAD $expected_download"
   else
     [ "$expected_result" = failure ] || fail "$label unexpectedly failed: $(cat "$log")"
-    if grep -Fq 'DOWNLOAD ' "$test_root/$label-gh-calls"; then
+    if [ "$allow_download_on_failure" != true ] && grep -Fq 'DOWNLOAD ' "$test_root/$label-gh-calls"; then
       fail "$label downloaded a release after resolver failure"
     fi
   fi
@@ -218,6 +226,7 @@ run_install() {
 run_install "$canonical_install_script" ff839e23f922e176897232c5b4148dc1d4c1b983 sha-success canonical-sha success v1.3.0
 run_install "$canonical_install_script" v1.2.3 tag canonical-tag success v1.2.3
 if grep -Fq 'API ' "$test_root/canonical-tag-gh-calls"; then fail 'explicit non-hex tag unexpectedly called the resolver API'; fi
+assert_contains "$test_root/canonical-tag-gh-calls" 'ARGS release download v1.2.3 --repo liatrio/autogov --pattern autogov'
 run_install "$canonical_install_script" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa hex-tag canonical-hex-tag success aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 if grep -Fq '/tags?' "$test_root/canonical-hex-tag-gh-calls"; then fail '40-hex published tag fell through to SHA resolution'; fi
 run_install "$canonical_install_script" '' empty canonical-empty success '<latest>'
@@ -228,11 +237,16 @@ run_install "$canonical_install_script" cccccccccccccccccccccccccccccccccccccccc
 assert_contains "$test_root/canonical-multiple.log" 'full 40-character SHA must identify exactly one immutable published release'
 run_install "$canonical_install_script" dddddddddddddddddddddddddddddddddddddddd api-failure canonical-api-failure failure
 run_install "$canonical_install_script" eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee api-tags-failure canonical-tags-api-failure failure
+run_install "$canonical_install_script" v1.2.3 empty-binary canonical-empty-binary failure v1.2.3 true
+assert_contains "$test_root/canonical-empty-binary.log" 'downloaded autogov binary is empty'
 
 # The release installer has a distinct privileged move suffix; execute it directly.
 run_install "$install_script" ff839e23f922e176897232c5b4148dc1d4c1b983 sha-success release-sha success v1.3.0
+expected_sudo_calls="$(printf '%s\n' mv autogov /usr/local/bin/autogov)"
+[ "$(cat "$test_root/release-sha-sudo-calls")" = "$expected_sudo_calls" ] || fail 'release installer moved autogov to the wrong destination'
 # The composite has a distinct latest-release/plan suffix; execute its empty-input path directly.
 run_install "$composite_install_script" '' empty composite-empty success '<latest>'
+assert_contains "$test_root/composite-empty-gh-calls" 'ARGS release download --repo liatrio/autogov --pattern autogov --clobber'
 
 run_map() {
   env RUNNER_TEMP="$1" NORMALIZED_VSA_ARTIFACT_IDS="$2" NORMALIZED_BLOB_ARTIFACT_IDS="$3" \

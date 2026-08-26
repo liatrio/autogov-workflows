@@ -221,6 +221,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Generate Metadata Attestation
         env:
@@ -370,6 +371,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Scan current project
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
@@ -475,6 +477,7 @@ jobs:
           else
             gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
           fi
+          [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       # best-effort: mint a token carrying administration:read via the
       # source-review-controls trust policy (pinned to rw-attest-blob/image), scoped
