@@ -119,7 +119,7 @@ jobs:
 
 This repository ships reusable workflows, consumed via `uses: liatrio/autogov-workflows/.github/workflows/rw-*.yaml@<sha>`. Its own `cw-build.yaml` dogfoods the pipeline: it runs `rw-build-blob-offline` over the real product — the `rw-*.yaml` reusables — to attest them (SLSA build-provenance, SBOM, metadata, dependency-scan) and verify them offline into a VSA, then cuts the release attaching that evidence. Signed with the repository's own identity.
 
-> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), `vsa-PASSED.json` proving those attestations verified against policy, and `autogov-workflows.intoto.jsonl` — the single build-provenance statement for OpenSSF Scorecard's release-provenance detection. The `rw-*.yaml` reusables themselves are **not** attached as release assets (they're consumed via `uses: ...@<ref>` and attested by digest in the bundle); `rw-build-blob`/`rw-build-blob-offline` expose `release-blob-asset` (default `true`) to control that, and consumer releases built through `rw-build-image` / `rw-build-blob` attach the same evidence shape for their own artifact.
+> **Release assets:** this repository's own releases ship `cert-identities.json` (the signer allowlist), the full attestation bundle `autogov.attestations.intoto.jsonl` (covering the `rw-*.yaml` reusables), a source-namespaced VSA proving those attestations verified against policy, and `autogov-workflows.intoto.jsonl` — the single build-provenance statement for OpenSSF Scorecard's release-provenance detection. Release VSAs are always named `vsa-<source>-<result>.json`, including single-source releases (`vsa-vsa-PASSED.json`); combined online/offline verification artifacts produce names such as `vsa-verification-summary-attestation-high-perms-PASSED.json` and `vsa-verification-summary-attestation-low-perms-PASSED.json`. The `rw-*.yaml` reusables themselves are **not** attached as release assets (they're consumed via `uses: ...@<ref>` and attested by digest in the bundle); `rw-build-blob`/`rw-build-blob-offline` expose `release-blob-asset` (default `true`) to control that, and consumer releases built through `rw-build-image` / `rw-build-blob` attach the same evidence shape for their own artifact.
 
 Consumers can verify the publisher identity of a reusable workflow they reference:
 
@@ -409,7 +409,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 - `registry` (required, string, default: 'ghcr.io'): Container registry to push image.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use.
 - `release-image` (optional, boolean, default: true): Whether to run the release-image job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
@@ -420,7 +420,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob.yaml.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
 - `octo-sts-release-scope` / `octo-sts-release-identity` (optional, string, default: 'liatrio' / 'release-ops'): octo-sts write pair threaded to the release cut and asset upload. See `rw-release.yaml` for the branch ruleset bypass requirement.
@@ -430,7 +430,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 
 - `subject-path` (required, string): Path to the artifact serving as the subject of the attestation.
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use.
 - `release-blob` (optional, boolean, default: true): Whether to run the release-blob job.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml) passed through to the release-blob job. Leave empty to skip mutations.
 - `octo-sts-read-scope` / `octo-sts-read-identity` (optional, string, default: ''): octo-sts read pair threaded to the release job's autogov CLI download. Empty → `github.token`.
@@ -445,7 +445,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use for predicate generation.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use for predicate generation.
 
 #### `.github/workflows/rw-attest-blob.yaml`
 
@@ -454,7 +454,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use.
 
 #### `.github/workflows/rw-attest-blob-offline.yaml`
 
@@ -463,7 +463,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `show-summary` (optional, boolean, default: true): Whether to attach a list of generated attestations to the workflow run summary page.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label used for runner/OS selection.
 - `github-token` (optional, string): The GitHub token set throughout the reusable workflow including the composite (build) action.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use.
 
 #### `.github/workflows/rw-verify.yaml`
 
@@ -475,7 +475,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-image.yaml for images, or rw-attest-blob.yaml for blob(s).
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use (input name retained for backwards compatibility).
 - `octo-sts-scope` (optional, string, default: ''): octo-sts scope for cross-repo reads (autogov binary, policy bundle, cert-identities). When empty, `github.token` is used (suitable for public repos); when set, the octo-sts token is used and is required (verification fails closed if the exchange fails).
 - `octo-sts-identity` (optional, string, default: ''): octo-sts identity. Required when `octo-sts-scope` is set.
 - `autogov-repo` (optional, string, default: 'liatrio/autogov'): Repository to download the autogov CLI release from.
@@ -496,7 +496,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `cert-identity` (required, string): The certificate identity of the signer workflow used in the verify job. The workflow name should be rw-attest-blob-offline.yaml.
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov version to use (input name retained for backwards compatibility).
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use (input name retained for backwards compatibility).
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - **(vuln-threshold block)**
@@ -508,7 +508,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `branch` (optional, string, default: 'main'): Branch to cut the release from.
 - `mutations-config` (optional, string, default: ''): Path to the mutations config file (e.g. .autogov-release.yaml).
 - `dry-run` (optional, boolean, default: false): Run in dry-run mode (no commits, tags, or releases created).
-- `autogov-version` (optional, string, default: 'v1.1.2'): The autogov release version to download and use.
+- `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to download and use. A SHA is accepted only when exactly one immutable published release tag resolves to that commit; explicit tag overrides remain supported, including published 40-hex tag names.
 - `vsa-artifact-id` (optional, string, default: ''): Comma-delimited artifact IDs of VSAs to upload as release assets.
 - `expected-vsa-artifact-count` (optional, number, default: 0): Required normalized VSA ID count. Combined callers set this to their number of required VSA-producing builds so a missing output fails before download; zero preserves optional/single-path behavior.
 - `blob-artifact-id` (optional, string, default: ''): Comma-delimited artifact IDs of blobs to download and publish as release assets.
@@ -636,7 +636,9 @@ jobs:
       expected-blob-artifact-count: 1
 ```
 
-Use the same pattern with `rw-build-blob.yaml`: set `release-blob: false`, replace `build-blob-offline` in `needs` and output references with the online blob job, and keep `mutations-config` on the caller-owned `rw-release.yaml` job. Comma-delimited artifact-ID inputs may contain multiple IDs; `rw-release.yaml` trims whitespace and removes empty entries before checking the expected counts and downloading each artifact into an isolated source directory. Existing single-path callers may keep the default `release-image: true` or `release-blob: true` behavior and leave both expected counts at zero.
+Use the same pattern with `rw-build-blob.yaml`: set `release-blob: false`, replace `build-blob-offline` in `needs` and output references with the online blob job, and keep `mutations-config` on the caller-owned `rw-release.yaml` job. Comma-delimited artifact-ID inputs may contain multiple IDs; `rw-release.yaml` trims whitespace and removes empty entries before checking the expected counts and downloading each artifact into an isolated source directory. For multiple artifacts, each source ID is the stable artifact-name directory created by `actions/download-artifact` (for example, `verification-summary-attestation-high-perms` and `verification-summary-attestation-low-perms`); the CLI sanitizes that ID when constructing the VSA release name, so renaming an uploaded artifact also changes its released VSA name. Single-artifact classes retain the fixed `vsa` and `blob` source IDs. The v1.3.0 CLI recursively resolves those directories, omits empty files, namespaces every source VSA, and rejects final-name collisions before release mutation. Existing single-path callers may keep the default `release-image: true` or `release-blob: true` behavior and leave both expected counts at zero.
+
+> **Migration note:** do not resume a draft created by an older workflow after switching to source-namespaced release assets. Remove that unpublished draft and rerun the release so the new CLI can preflight and upload one internally consistent asset set.
 
 #### Explicit build, attest, verify, and release
 

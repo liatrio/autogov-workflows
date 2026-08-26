@@ -22,7 +22,7 @@ on:
         description: 'The autogov release version to download and use.'
         required: false
         type: string
-        default: v1.1.2
+        default: ff839e23f922e176897232c5b4148dc1d4c1b983 # v1.3.0
       vsa-artifact-id:
         description: 'Comma-delimited artifact IDs of VSAs to upload as release assets.'
         required: false
@@ -133,10 +133,31 @@ jobs:
       - name: Install autogov
         env:
           GH_TOKEN: ${{ inputs.octo-sts-read-scope == '' && (inputs.github-token || github.token) || steps.octo-sts-read.outputs.token }}
+          AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+          AUTOGOV_REPO: liatrio/autogov
         run: |
-          gh release download ${{ inputs.autogov-version }} \
-            --repo liatrio/autogov \
-            --pattern "autogov"
+          set -euo pipefail
+          release_tag="$AUTOGOV_VERSION"
+          if [[ "$AUTOGOV_VERSION" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            published_releases="$(gh api --paginate "repos/${AUTOGOV_REPO}/releases?per_page=100" --jq '.[] | select(.draft == false) | [.tag_name, (.immutable // false)] | @tsv')"
+            if ! awk -F '\t' -v requested="$AUTOGOV_VERSION" '$1 == requested { found = 1 } END { exit !found }' <<< "$published_releases"; then
+              tag_commits="$(gh api --paginate "repos/${AUTOGOV_REPO}/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv')"
+              release_tag="$(while IFS=$'\t' read -r tag immutable; do
+                [ "$immutable" = true ] || continue
+                sha="$(awk -F '\t' -v tag="$tag" '$1 == tag { print $2 }' <<< "$tag_commits")"
+                if [ "${sha,,}" = "${AUTOGOV_VERSION,,}" ]; then printf '%s\n' "$tag"; fi
+              done <<< "$published_releases")"
+              if [ -z "$release_tag" ] || [[ "$release_tag" == *$'\n'* ]]; then
+                echo "::error::autogov full 40-character SHA must identify exactly one immutable published release: ${AUTOGOV_VERSION}"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -n "$release_tag" ]; then
+            gh release download "$release_tag" --repo "$AUTOGOV_REPO" --pattern "autogov"
+          else
+            gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
+          fi
           chmod +x autogov
           sudo mv autogov /usr/local/bin/autogov
 
@@ -220,15 +241,10 @@ jobs:
             echo "blob-artifact-ids=${normalized_blob_ids}"
           } >> "$GITHUB_OUTPUT"
 
-      # stage every release asset BEFORE the cut so a single `release cut --asset
-      # ... --publish` uploads them while the release is still a draft, then flips
-      # it to published — under GitHub immutable releases assets cannot be added or
-      # clobbered after publish, so post-publish uploads would hard-fail.
-      # stage UNDER $RUNNER_TEMP (off the worktree): `release cut --repo .` runs a
-      # clean-worktree check in its default (auto) mode, so downloading these into
-      # the checked-out tree would dirty it and fail the cut (autogov's own release
-      # stages to $RUNNER_TEMP for the same reason). cert-identities.json stays at the
-      # repo root because it is a tracked/committed file (does not dirty the tree).
+      # Download every artifact before the one caller-owned cut. Sources stay
+      # isolated under $RUNNER_TEMP and are passed intact to autogov, which performs
+      # asset discovery and preflight before publishing the draft. Keeping downloads
+      # off the worktree also preserves the cut's clean-tree requirement.
       - name: Download VSA artifact
         if: ${{ steps.normalize-artifact-ids.outputs.vsa-artifact-ids != '' && inputs.dry-run == false }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -314,7 +330,7 @@ jobs:
             echo "::notice::no build-provenance bundle found; skipping scorecard .intoto.jsonl asset"
           fi
 
-      - name: Stage release assets
+      - name: Map release asset sources
         env:
           NORMALIZED_VSA_ARTIFACT_IDS: ${{ steps.normalize-artifact-ids.outputs.vsa-artifact-ids }}
           NORMALIZED_BLOB_ARTIFACT_IDS: ${{ steps.normalize-artifact-ids.outputs.blob-artifact-ids }}
@@ -322,14 +338,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          stage_dir="$RUNNER_TEMP/staged-release-assets"
-          vsa_dir="$RUNNER_TEMP/release-artifacts/vsa"
-          blob_dir="$RUNNER_TEMP/release-artifacts/blob"
-          rm -rf "$stage_dir"
-          mkdir -p "$stage_dir"
-
-          declare -A asset_sources=()
-          declare -A vsa_basename_counts=()
+          source_map="$RUNNER_TEMP/release-asset-sources"
+          : > "$source_map"
 
           artifact_id_count() {
             local ids="$1"
@@ -341,10 +351,11 @@ jobs:
             printf '%s' "${#values[@]}"
           }
 
-          validate_artifact_directories() {
+          map_artifact_sources() {
             local label="$1"
-            local ids="$2"
-            local download_dir="$3"
+            local class_id="$2"
+            local ids="$3"
+            local download_dir="$4"
             local expected_count
             local source_count=0
             local source_dir
@@ -355,22 +366,21 @@ jobs:
               return 0
             fi
             if [ ! -d "$download_dir" ]; then
-              echo "::error::${label} expected ${expected_count} source artifact directories but found 0 under '${download_dir}'"
+              echo "::error::${label} download directory is missing: '${download_dir}'"
               return 1
             fi
             if [ "$expected_count" -eq 1 ]; then
-              if ! find "$download_dir" -type f -size +0c -print -quit | grep -q .; then
-                echo "::error::${label} source artifact contains no non-empty files under '${download_dir}'"
-                return 1
-              fi
+              printf '%s\0%s\0' "$class_id" "$download_dir" >> "$source_map"
               return 0
             fi
             while IFS= read -r -d '' source_dir; do
               source_count=$((source_count + 1))
-              if ! find "$source_dir" -type f -size +0c -print -quit | grep -q .; then
-                echo "::error::${label} source artifact directory contains no non-empty files: '${source_dir}'"
+              source_id="${source_dir##*/}"
+              if [[ "$source_id" == *'='* ]]; then
+                echo "::error::${label} artifact directory name cannot contain '=': '${source_id}'"
                 return 1
               fi
+              printf '%s\0%s\0' "$source_id" "$source_dir" >> "$source_map"
             done < <(find "$download_dir" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
             if [ "$source_count" -ne "$expected_count" ]; then
               echo "::error::${label} expected ${expected_count} source artifact directories but found ${source_count} under '${download_dir}'"
@@ -378,81 +388,8 @@ jobs:
             fi
           }
 
-          stage_asset() {
-            local source="$1"
-            local asset_name="$2"
-            local previous_source="${asset_sources[$asset_name]-}"
-
-            if [ -n "$previous_source" ]; then
-              echo "::error::release asset basename collision for '${asset_name}': '${previous_source}' conflicts with '${source}'"
-              return 1
-            fi
-            asset_sources["$asset_name"]="$source"
-            cp -- "$source" "$stage_dir/$asset_name"
-            echo "staged release asset: $source -> $asset_name"
-          }
-
-          validate_artifact_directories VSA "$NORMALIZED_VSA_ARTIFACT_IDS" "$vsa_dir"
-          validate_artifact_directories blob "$NORMALIZED_BLOB_ARTIFACT_IDS" "$blob_dir"
-
-          vsa_file_count=0
-          if [ -d "$vsa_dir" ]; then
-            while IFS= read -r -d '' source; do
-              [ -s "$source" ] || continue
-              basename="${source##*/}"
-              vsa_basename_counts["$basename"]=$(( ${vsa_basename_counts[$basename]:-0} + 1 ))
-              vsa_file_count=$((vsa_file_count + 1))
-            done < <(find "$vsa_dir" -type f -print0 | sort -z)
-          fi
-          if [ "$DRY_RUN" != "true" ] && [ -n "$NORMALIZED_VSA_ARTIFACT_IDS" ] && [ "$vsa_file_count" -eq 0 ]; then
-            echo "::error::VSA artifact IDs were provided but no non-empty VSA files were downloaded"
-            exit 1
-          fi
-
-          if [ -d "$vsa_dir" ]; then
-            while IFS= read -r -d '' source; do
-              [ -s "$source" ] || continue
-              basename="${source##*/}"
-              asset_name="$basename"
-              if [ "${vsa_basename_counts[$basename]}" -gt 1 ]; then
-                case "$basename" in
-                  vsa-*.json)
-                    relative_source="${source#"$vsa_dir"/}"
-                    source_identity="${relative_source%%/*}"
-                    source_prefix="$(printf '%s' "$source_identity" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
-                    if [ -z "$source_prefix" ]; then
-                      echo "::error::cannot deterministically namespace duplicate VSA '${basename}' from '${source}'"
-                      exit 1
-                    fi
-                    asset_name="${source_prefix}--${basename}"
-                    ;;
-                esac
-              fi
-              stage_asset "$source" "$asset_name"
-            done < <(find "$vsa_dir" -type f -print0 | sort -z)
-          fi
-
-          blob_file_count=0
-          if [ -d "$blob_dir" ]; then
-            while IFS= read -r -d '' source; do
-              [ -s "$source" ] || continue
-              blob_file_count=$((blob_file_count + 1))
-              stage_asset "$source" "${source##*/}"
-            done < <(find "$blob_dir" -type f -print0 | sort -z)
-          fi
-          if [ "$DRY_RUN" != "true" ] && [ -n "$NORMALIZED_BLOB_ARTIFACT_IDS" ] && [ "$blob_file_count" -eq 0 ]; then
-            echo "::error::blob artifact IDs were provided but no non-empty blob files were downloaded"
-            exit 1
-          fi
-
-          for source in \
-            cert-identities.json \
-            "$RUNNER_TEMP/autogov.attestations.intoto.jsonl" \
-            "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"; do
-            if [ -f "$source" ] && [ -s "$source" ]; then
-              stage_asset "$source" "${source##*/}"
-            fi
-          done
+          map_artifact_sources VSA vsa "$NORMALIZED_VSA_ARTIFACT_IDS" "$RUNNER_TEMP/release-artifacts/vsa"
+          map_artifact_sources blob blob "$NORMALIZED_BLOB_ARTIFACT_IDS" "$RUNNER_TEMP/release-artifacts/blob"
 
       - name: Run release cut
         id: release-cut
@@ -477,22 +414,27 @@ jobs:
             ARGS+=(--publish)
           fi
 
-          # append one --asset per staged file that actually exists + is non-empty
-          # (the cut validates each path up front, so only pass present files): the
-          # VSA, blob, generated, and tracked files have already been copied into one
-          # collision-checked staging directory. Walk it recursively so this exact
-          # publish path cannot omit nested artifact contents.
+          # Source directories are passed intact: autogov owns recursive discovery,
+          # empty-file filtering, final naming, ordering, and collision preflight.
+          source_map="$RUNNER_TEMP/release-asset-sources"
+          if [ -f "$source_map" ]; then
+            while IFS= read -r -d '' source_id && IFS= read -r -d '' source_dir; do
+              ARGS+=(--asset-source "${source_id}=${source_dir}")
+              echo "staging asset source: ${source_id}=${source_dir}"
+            done < "$source_map"
+          fi
+
+          # Generated and tracked release assets stay explicit so autogov checks
+          # them for collisions with every discovered source asset.
           add_asset() {
             if [ -f "$1" ] && [ -s "$1" ]; then
               ARGS+=(--asset "$1")
               echo "staging asset: $1"
             fi
           }
-          if [ -d "$RUNNER_TEMP/staged-release-assets" ]; then
-            while IFS= read -r -d '' asset; do
-              add_asset "$asset"
-            done < <(find "$RUNNER_TEMP/staged-release-assets" -type f -print0 | sort -z)
-          fi
+          add_asset cert-identities.json
+          add_asset "$RUNNER_TEMP/autogov.attestations.intoto.jsonl"
+          add_asset "$RUNNER_TEMP/${GITHUB_REPOSITORY##*/}.intoto.jsonl"
 
           echo "=== Running: autogov release cut ${ARGS[*]} -o json ==="
           OUTPUT=$(autogov release cut "${ARGS[@]}" -o json)

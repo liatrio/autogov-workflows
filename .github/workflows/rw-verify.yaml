@@ -50,7 +50,7 @@ on:
         description: The autogov version to use (input name retained for backwards compatibility).
         required: false
         type: string
-        default: v1.1.2
+        default: ff839e23f922e176897232c5b4148dc1d4c1b983 # v1.3.0
       use-cert-identity-list:
         description: Whether to use cert-identity-list for validation
         required: false
@@ -194,9 +194,28 @@ jobs:
           AUTOGOV_VERSION: ${{ inputs.autogov-version }}
           AUTOGOV_REPO: ${{ inputs.autogov-repo }}
         run: |
-          gh release download "$AUTOGOV_VERSION" \
-            --repo "$AUTOGOV_REPO" \
-            --pattern "autogov"
+          set -euo pipefail
+          release_tag="$AUTOGOV_VERSION"
+          if [[ "$AUTOGOV_VERSION" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            published_releases="$(gh api --paginate "repos/${AUTOGOV_REPO}/releases?per_page=100" --jq '.[] | select(.draft == false) | [.tag_name, (.immutable // false)] | @tsv')"
+            if ! awk -F '\t' -v requested="$AUTOGOV_VERSION" '$1 == requested { found = 1 } END { exit !found }' <<< "$published_releases"; then
+              tag_commits="$(gh api --paginate "repos/${AUTOGOV_REPO}/tags?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv')"
+              release_tag="$(while IFS=$'\t' read -r tag immutable; do
+                [ "$immutable" = true ] || continue
+                sha="$(awk -F '\t' -v tag="$tag" '$1 == tag { print $2 }' <<< "$tag_commits")"
+                if [ "${sha,,}" = "${AUTOGOV_VERSION,,}" ]; then printf '%s\n' "$tag"; fi
+              done <<< "$published_releases")"
+              if [ -z "$release_tag" ] || [[ "$release_tag" == *$'\n'* ]]; then
+                echo "::error::autogov full 40-character SHA must identify exactly one immutable published release: ${AUTOGOV_VERSION}"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -n "$release_tag" ]; then
+            gh release download "$release_tag" --repo "$AUTOGOV_REPO" --pattern "autogov"
+          else
+            gh release download --repo "$AUTOGOV_REPO" --pattern "autogov"
+          fi
           chmod +x autogov
       - name: Download cert-identities file
         if: ${{ inputs.use-cert-identity-list }}

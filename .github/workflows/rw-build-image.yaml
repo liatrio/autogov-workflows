@@ -17,7 +17,7 @@ on:
         description: The autogov version to use.
         required: false
         type: string
-        default: v1.1.2
+        default: ff839e23f922e176897232c5b4148dc1d4c1b983 # v1.3.0
       octo-sts-read-scope:
         description: >
           octo-sts scope for the release job's autogov CLI download. Leave empty
