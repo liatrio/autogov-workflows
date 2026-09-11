@@ -14,8 +14,9 @@ repo="${AUTOGOV_REPO:-}"
   fail "autogov-version cannot contain control characters"
 [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
   fail "autogov-repo must use owner/repo format"
-[ "${RUNNER_OS:-}" = Linux ] && [ "${RUNNER_ARCH:-}" = X64 ] ||
+if [ "${RUNNER_OS:-}" != Linux ] || [ "${RUNNER_ARCH:-}" != X64 ]; then
   fail "setup-autogov requires a Linux X64 runner"
+fi
 [ -n "${RUNNER_TEMP:-}" ] || fail "RUNNER_TEMP is required"
 [ -n "${GITHUB_OUTPUT:-}" ] || fail "GITHUB_OUTPUT is required"
 [ -n "${GITHUB_PATH:-}" ] || fail "GITHUB_PATH is required"
@@ -87,8 +88,9 @@ asset_size="$(awk -F $'\t' '{ print $5 }' <<< "$release_row")"
   fail "immutable release $release_tag must contain exactly one 'autogov' asset"
 [[ "$asset_digest" =~ ^sha256:[0-9a-fA-F]{64}$ ]] ||
   fail "immutable release $release_tag has no valid SHA-256 digest for 'autogov'"
-[[ "$asset_size" =~ ^[0-9]+$ ]] && [ "$asset_size" -gt 0 ] ||
+if ! [[ "$asset_size" =~ ^[0-9]+$ ]] || [ "$asset_size" -le 0 ]; then
   fail "immutable release $release_tag has an invalid 'autogov' asset size"
+fi
 
 if ! release_commit="$(
   gh api "repos/${repo}/commits/${release_tag}" --jq '.sha'
@@ -117,8 +119,9 @@ if ! gh release download "$release_tag" \
 fi
 
 download="$stage/autogov"
-[ -f "$download" ] && [ ! -L "$download" ] && [ -s "$download" ] ||
+if [ ! -f "$download" ] || [ -L "$download" ] || [ ! -s "$download" ]; then
   fail "downloaded autogov binary is not a non-empty regular file"
+fi
 
 actual_size="$(wc -c < "$download" | tr -d '[:space:]')"
 [ "$actual_size" = "$asset_size" ] ||
