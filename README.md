@@ -26,6 +26,7 @@ These workflows are part of the [autogov](https://github.com/liatrio/autogov) ec
   - [Tools Used](#tools-used)
   - [Limiting Inputs by Wrapping](#limiting-inputs-by-wrapping-reusable-workflow-calls)
   - [Access](#access)
+  - [Setup AutoGov](#setup-autogov)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Example Workflow Snippets](#example-workflow-snippets)
@@ -384,6 +385,43 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 > - Write: `octo-sts-release-scope` / `octo-sts-release-identity` default to `liatrio` / `release-ops` so liatrio's release is unchanged. External orgs override these with their own scope and identity.
 >
 > If your release branch (e.g. `main`) is protected by a branch ruleset, the write actor MUST be on that ruleset's bypass list — `github.token` cannot bypass a branch ruleset, only an actor on the bypass list can. So external orgs with a protected main must (1) install their own octo-sts GitHub App, (2) add that App to the ruleset's bypass list, and (3) set `octo-sts-release-scope` / `octo-sts-release-identity` to a trust policy that issues `contents: write` for that App on the release branch. These same four inputs are threaded through `rw-build-image.yaml` / `rw-build-blob.yaml` / `rw-build-blob-offline.yaml` to the nested `rw-release` call.
+
+### Setup AutoGov
+
+The `setup-autogov` composite action installs the Linux X64 `autogov` binary
+from an immutable GitHub release and adds it to `PATH`. Pin the action itself by
+full commit SHA and pass either an immutable release tag or, preferably, the
+full 40-character commit SHA referenced by that release:
+
+```yaml
+permissions:
+  contents: read
+
+steps:
+  - uses: liatrio/autogov-workflows/.github/actions/setup-autogov@<full-commit-sha>
+    id: setup-autogov
+    with:
+      autogov-version: <autogov-release-commit-sha>
+  - run: autogov version
+```
+
+`autogov-version` has no latest-release default. A commit SHA must resolve to
+exactly one immutable published release; a supplied tag must also name an
+immutable published release. The action checks the release-published SHA-256
+digest and verifies GitHub's signed release attestation with
+`gh release verify-asset` before installing the binary. This binds the local
+bytes to the immutable release's tag, commit, and asset list; it does not
+independently enforce the identity of the workflow that built the binary.
+
+The action requires a stable GitHub CLI release at version **2.93.0 or newer**,
+a Linux X64 runner, and only `contents: read`. It checks `gh --version` before
+any API calls and rejects older, prerelease, or unrecognized version strings.
+The minimum includes the token-forwarding fix for
+[GHSA-8xvp-7hj6-mcj9](https://github.com/cli/cli/security/advisories/GHSA-8xvp-7hj6-mcj9).
+For `liatrio/autogov`, the default `github.token` is sufficient while the
+repository is public. Pass `github-token` when a different repository requires
+an explicit read token. Outputs are `path`, `release-tag`, `commit-sha`, and
+`sha256`.
 
 ### Inputs
 
