@@ -40,6 +40,7 @@ jobs:
             --slurpfile event "$GITHUB_EVENT_PATH" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg server "$GITHUB_SERVER_URL" '
+            def bounded($max): if length > $max then .[:($max - 1)] + "…" else . end;
             . as $jobs
             | $event[0].workflow_run as $run
             | ($jobs.jobs // [] | map(select(.conclusion == "failure"))
@@ -62,22 +63,22 @@ jobs:
                     {
                       type: "section",
                       fields: [
-                        {type: "mrkdwn", text: ("*Repository:*\n" + $repository)},
-                        {type: "mrkdwn", text: ("*Failed Step:*\n`" + $step + "`")}
+                        {type: "plain_text", text: (("Repository:\n" + $repository) | bounded(2000))},
+                        {type: "plain_text", text: (("Failed Step:\n" + $step) | bounded(2000))}
                       ]
                     },
                     {
                       type: "section",
                       fields: [
-                        {type: "mrkdwn", text: ("*Triggered By:*\n" + ($run.triggering_actor.login // $run.actor.login // "unknown"))},
-                        {type: "mrkdwn", text: ("*Commit:*\n`" + $sha[:7] + "`")}
+                        {type: "plain_text", text: (("Triggered By:\n" + ($run.triggering_actor.login // $run.actor.login // "unknown")) | bounded(2000))},
+                        {type: "plain_text", text: ("Commit:\n" + $sha[:7])}
                       ]
                     },
                     {
                       type: "section",
                       text: {
-                        type: "mrkdwn",
-                        text: ("*Commit Message:*\n```" + ($run.head_commit.message // "unknown") + "```")
+                        type: "plain_text",
+                        text: (("Commit Message:\n" + ($run.head_commit.message // "unknown")) | bounded(3000))
                       }
                     },
                     {

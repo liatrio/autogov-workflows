@@ -142,7 +142,7 @@ assert_one_request() {
 
 assert_fallback() {
   jq -e '.attachments[0].blocks as $blocks |
-    $blocks[1].fields[1].text == "*Failed Step:*\n\u0060unknown\u0060" and
+    $blocks[1].fields[1].text == "Failed Step:\nunknown" and
     $blocks[4].fields[0].text ==
       "<https://github.example.test/org/repo/actions/runs/123|❌ View Failed Run>"' \
     "$tmp/payload.json" > /dev/null || fail "expected unknown step and run-level link"
@@ -155,11 +155,11 @@ jq -e --slurpfile event "$tmp/original-event.json" --slurpfile jobs "$tmp/origin
   .attachments[0] as $attachment | $attachment.blocks as $blocks |
   $attachment.color == "#FF0000" and
   $blocks[0].text.text == "🚨 Pipeline Failure" and
-  $blocks[1].fields[0].text == "*Repository:*\norg/repo" and
-  $blocks[1].fields[1].text == ("*Failed Step:*\n\u0060" + $jobs[0].jobs[2].steps[2].name + "\u0060") and
-  $blocks[2].fields[0].text == "*Triggered By:*\nrerun-user" and
-  $blocks[2].fields[1].text == "*Commit:*\n\u00601111111\u0060" and
-  $blocks[3].text.text == ("*Commit Message:*\n\u0060\u0060\u0060" + $event[0].workflow_run.head_commit.message + "\u0060\u0060\u0060") and
+  $blocks[1].fields[0].text == "Repository:\norg/repo" and
+  $blocks[1].fields[1].text == ("Failed Step:\n" + $jobs[0].jobs[2].steps[2].name) and
+  $blocks[2].fields[0].text == "Triggered By:\nrerun-user" and
+  $blocks[2].fields[1].text == "Commit:\n1111111" and
+  $blocks[3].text.text == ("Commit Message:\n" + $event[0].workflow_run.head_commit.message) and
   $blocks[4].fields[0].text == "<https://github.example.test/org/repo/actions/runs/123/job/900|❌ View Failed Job>" and
   $blocks[4].fields[1].text == "<https://github.example.test/org/repo/tree/111111122222223333333444444455555556666666|:github: View Repository>"
 ' "$tmp/payload.json" > /dev/null || fail "payload changed triggering commit or failed-step text"
@@ -214,9 +214,9 @@ jq '.workflow_run.head_commit = null | del(.workflow_run.triggering_actor)' \
 run_alert || fail "missing head commit should still notify"
 assert_one_request
 jq -e '.attachments[0].blocks as $blocks |
-  $blocks[2].fields[0].text == "*Triggered By:*\noriginal-author" and
-  $blocks[2].fields[1].text == "*Commit:*\n\u00601111111\u0060" and
-  $blocks[3].text.text == "*Commit Message:*\n\u0060\u0060\u0060unknown\u0060\u0060\u0060"' \
+  $blocks[2].fields[0].text == "Triggered By:\noriginal-author" and
+  $blocks[2].fields[1].text == "Commit:\n1111111" and
+  $blocks[3].text.text == "Commit Message:\nunknown"' \
   "$tmp/payload.json" > /dev/null || fail "missing head commit fabricated metadata"
 echo "PASS: missing head commit is explicitly unknown"
 
@@ -232,3 +232,35 @@ assert_one_request
 grep -Fq "curl: (22) mock HTTP 500" "$tmp/output.log" ||
   fail "HTTP error was hidden"
 echo "PASS: HTTP failures surface and fail the step"
+
+reset_case
+jq '.workflow_run.head_commit.message = "```\n<!channel> <https://example.invalid|Click me>\n```"' \
+  "$tmp/original-event.json" > "$GITHUB_EVENT_PATH"
+jq '.jobs[2].steps[2].name = "` <!here> <https://example.invalid|Click me>"' \
+  "$tmp/original-jobs.json" > "$tmp/jobs.json"
+run_alert || fail "markup metadata should still notify"
+assert_one_request
+jq -e --slurpfile event "$GITHUB_EVENT_PATH" --slurpfile jobs "$tmp/jobs.json" '
+  .attachments[0].blocks as $blocks |
+  $blocks[1].fields[1].type == "plain_text" and
+  $blocks[1].fields[1].text == ("Failed Step:\n" + $jobs[0].jobs[2].steps[2].name) and
+  $blocks[3].text.type == "plain_text" and
+  $blocks[3].text.text == ("Commit Message:\n" + $event[0].workflow_run.head_commit.message)
+' "$tmp/payload.json" > /dev/null || fail "external metadata can activate Slack markup"
+echo "PASS: commit and step markup remain literal plain text"
+
+reset_case
+jq '.workflow_run.head_commit.message = ([range(0; 4000) | "界"] | join(""))' \
+  "$tmp/original-event.json" > "$GITHUB_EVENT_PATH"
+jq '.jobs[2].steps[2].name = ([range(0; 3000) | "🚧"] | join(""))' \
+  "$tmp/original-jobs.json" > "$tmp/jobs.json"
+run_alert || fail "long metadata should still notify"
+assert_one_request
+jq -e '.attachments[0].blocks as $blocks |
+  ($blocks[1].fields[1].text | length) == 2000 and
+  ($blocks[1].fields[1].text | endswith("…")) and
+  ($blocks[3].text.text | length) == 3000 and
+  ($blocks[3].text.text | endswith("…")) and
+  all($blocks[] | select(.type == "section") | .fields[]?; (.text | length) <= 2000)
+' "$tmp/payload.json" > /dev/null || fail "Slack block character limits exceeded"
+echo "PASS: long Unicode metadata fits Slack limits and indicates truncation"
