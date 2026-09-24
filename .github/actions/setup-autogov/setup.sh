@@ -21,6 +21,17 @@ fi
 [ -n "${GITHUB_OUTPUT:-}" ] || fail "GITHUB_OUTPUT is required"
 [ -n "${GITHUB_PATH:-}" ] || fail "GITHUB_PATH is required"
 command -v gh >/dev/null 2>&1 || fail "GitHub CLI is required"
+# Older verify-asset versions can forward tokens to TUF mirrors (GHSA-8xvp-7hj6-mcj9).
+if ! gh_version="$(gh --version)" || ! awk '
+  NR == 1 {
+    if ($1 != "gh" || $2 != "version" ||
+        $3 !~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/) exit 1
+    split($3, version, ".")
+    exit !(version[1] > 2 || (version[1] == 2 && version[2] >= 93))
+  }
+' <<< "$gh_version"; then
+  fail "GitHub CLI 2.93.0 or newer (stable release) is required"
+fi
 
 release_query="
   .[]
@@ -42,7 +53,7 @@ if ! published_releases="$(
 fi
 
 release_row="$(
-  awk -F $'\t' -v requested="$version" '$1 == requested { print }' <<< "$published_releases"
+  awk -F $'\t' -v requested="$version" '"tag:" $1 == "tag:" requested { print }' <<< "$published_releases"
 )"
 resolved_from_commit=false
 
@@ -58,7 +69,7 @@ if [[ "$version" =~ ^[0-9a-fA-F]{40}$ ]] && [ -z "$release_row" ]; then
     while IFS=$'\t' read -r tag immutable asset_count asset_digest asset_size; do
       [ "$immutable" = true ] || continue
       commit="$(
-        awk -F $'\t' -v wanted="$tag" '$1 == wanted { print $2 }' <<< "$tag_commits"
+        awk -F $'\t' -v wanted="$tag" '"tag:" $1 == "tag:" wanted { print $2 }' <<< "$tag_commits"
       )"
       if [ "${commit,,}" = "${version,,}" ]; then
         printf '%s\t%s\t%s\t%s\t%s\n' \
@@ -92,8 +103,22 @@ if ! [[ "$asset_size" =~ ^[0-9]+$ ]] || [ "$asset_size" -le 0 ]; then
   fail "immutable release $release_tag has an invalid 'autogov' asset size"
 fi
 
+# Encode the whole ref so legal tag characters cannot alter the URL. Qualifying
+# refs/tags also prevents a same-named branch from supplying the commit. The
+# commits endpoint peels annotated tags to their underlying commit.
+urlencode() {
+  local value="$1" char i LC_ALL=C
+  for ((i = 0; i < ${#value}; i++)); do
+    char="${value:i:1}"
+    case "$char" in
+      [a-zA-Z0-9.~_-]) printf '%s' "$char" ;;
+      *) printf '%%%02X' "'$char" ;;
+    esac
+  done
+}
+release_ref="$(urlencode "refs/tags/$release_tag")"
 if ! release_commit="$(
-  gh api "repos/${repo}/commits/${release_tag}" --jq '.sha'
+  gh api "repos/${repo}/commits/${release_ref}" --jq '.sha'
 )"; then
   fail "unable to resolve commit for immutable release $release_tag"
 fi

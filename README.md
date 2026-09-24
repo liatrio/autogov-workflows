@@ -413,7 +413,11 @@ digest and verifies GitHub's signed release attestation with
 bytes to the immutable release's tag, commit, and asset list; it does not
 independently enforce the identity of the workflow that built the binary.
 
-The action requires GitHub CLI, a Linux X64 runner, and only `contents: read`.
+The action requires a stable GitHub CLI release at version **2.93.0 or newer**,
+a Linux X64 runner, and only `contents: read`. It checks `gh --version` before
+any API calls and rejects older, prerelease, or unrecognized version strings.
+The minimum includes the token-forwarding fix for
+[GHSA-8xvp-7hj6-mcj9](https://github.com/cli/cli/security/advisories/GHSA-8xvp-7hj6-mcj9).
 For `liatrio/autogov`, the default `github.token` is sufficient while the
 repository is public. Pass `github-token` when a different repository requires
 an explicit read token. Outputs are `path`, `release-tag`, `commit-sha`, and

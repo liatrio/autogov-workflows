@@ -43,4 +43,4 @@ runs:
         GH_TOKEN: ${{ inputs.github-token || github.token }}
         AUTOGOV_VERSION: ${{ inputs.autogov-version }}
         AUTOGOV_REPO: ${{ inputs.autogov-repo }}
-      run: "$GITHUB_ACTION_PATH/setup.sh"
+      run: '"$GITHUB_ACTION_PATH/setup.sh"'
