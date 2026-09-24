@@ -6,108 +6,90 @@ on:
     types: [completed]
     branches: main
 
-env:
-  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-  GH_TOKEN: ${{ github.token }}
-
 permissions: {}
 
 jobs:
   alert:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # checkout + git log/rev-parse
-      actions: read # gh run view (read the failed run's jobs/steps)
+      actions: read # gh run view reads the failed run's jobs and steps
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: send slack alert
+      # Keep notification code in this trusted workflow; never execute failed-run code.
+      - name: Send Slack alert
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if ! job_id=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .databaseId'); then
-              echo "Failed to get job ID"
-              job_id="unknown"
+          set -euo pipefail
+
+          if [ -z "${SLACK_WEBHOOK:-}" ]; then
+            echo "::notice::SLACK_WEBHOOK is not configured; skipping Slack alert."
+            exit 0
           fi
 
-          if ! failing_step=$(gh run view ${{ github.event.workflow_run.id }} --json jobs --jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | .name'); then
-              echo "Failed to get failing step"
-              failing_step="unknown"
+          run_id=$(jq -er '.workflow_run.id | tostring' "$GITHUB_EVENT_PATH")
+          if ! jobs=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json jobs); then
+            echo "::warning::Failed to look up failed jobs; linking to the workflow run."
+            jobs='{"jobs":[]}'
           fi
 
-          if [ "$job_id" != "unknown" ]; then
-              failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/job/${job_id}"
-          else
-              failure_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
-          fi
-
-          commit_msg=$(git log -1 --pretty=format:%s)
-          short_sha=$(git rev-parse --short HEAD)
-
-          curl -X POST -H 'Content-Type: application/json' $SLACK_WEBHOOK --data-binary @- << EOF
-          {
-              "attachments": [
-                  {
-                      "color": "#FF0000",
-                      "blocks": [
-                          {
-                              "type": "header",
-                              "text": {
-                                  "type": "plain_text",
-                                  "text": "🚨 Pipeline Failure",
-                                  "emoji": true
-                              }
-                          },
-                          {
-                              "type": "section",
-                              "fields": [
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "*Repository:*\n${{ github.repository }}"
-                                  },
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "*Failed Step:*\n\`$failing_step\`"
-                                  }
-                              ]
-                          },
-                          {
-                              "type": "section",
-                              "fields": [
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "*Triggered By:*\n${{ github.actor }}"
-                                  },
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "*Commit:*\n\`$short_sha\`"
-                                  }
-                              ]
-                          },
-                          {
-                              "type": "section",
-                              "text": {
-                                  "type": "mrkdwn",
-                                  "text": "*Last Commit Message:*\n\`\`\`$commit_msg\`\`\`"
-                              }
-                          },
-                          {
-                              "type": "section",
-                              "fields": [
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "<$failure_url|❌ View Failed Job>"
-                                  },
-                                  {
-                                      "type": "mrkdwn",
-                                      "text": "<https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}|:github: View Repository>"
-                                  }
-                              ]
-                          }
+          # Choose one job and its first failed step, regardless of API response order.
+          # Event/API strings stay JSON data, including embedded quotes and newlines.
+          jq \
+            --slurpfile event "$GITHUB_EVENT_PATH" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg server "$GITHUB_SERVER_URL" '
+            . as $jobs
+            | $event[0].workflow_run as $run
+            | ($jobs.jobs // [] | map(select(.conclusion == "failure"))
+              | sort_by(.databaseId) | first) as $job
+            | ($job.steps // [] | map(select(.conclusion == "failure"))
+              | sort_by(.number) | first | .name // "unknown") as $step
+            | ($run.html_url // ($server + "/" + $repository + "/actions/runs/" + ($run.id | tostring))) as $run_url
+            | (if $job.databaseId then $run_url + "/job/" + ($job.databaseId | tostring)
+              else $run_url end) as $failure_url
+            | (if $job.databaseId then "View Failed Job" else "View Failed Run" end) as $link_label
+            | ($run.head_sha // "unknown") as $sha
+            | {
+                attachments: [{
+                  color: "#FF0000",
+                  blocks: [
+                    {
+                      type: "header",
+                      text: {type: "plain_text", text: "🚨 Pipeline Failure", emoji: true}
+                    },
+                    {
+                      type: "section",
+                      fields: [
+                        {type: "mrkdwn", text: ("*Repository:*\n" + $repository)},
+                        {type: "mrkdwn", text: ("*Failed Step:*\n`" + $step + "`")}
                       ]
-                  }
-              ]
-          }
-          EOF
+                    },
+                    {
+                      type: "section",
+                      fields: [
+                        {type: "mrkdwn", text: ("*Triggered By:*\n" + ($run.triggering_actor.login // $run.actor.login // "unknown"))},
+                        {type: "mrkdwn", text: ("*Commit:*\n`" + $sha[:7] + "`")}
+                      ]
+                    },
+                    {
+                      type: "section",
+                      text: {
+                        type: "mrkdwn",
+                        text: ("*Commit Message:*\n```" + ($run.head_commit.message // "unknown") + "```")
+                      }
+                    },
+                    {
+                      type: "section",
+                      fields: [
+                        {type: "mrkdwn", text: ("<" + $failure_url + "|❌ " + $link_label + ">")},
+                        {type: "mrkdwn", text: ("<" + $server + "/" + $repository + "/tree/" + $sha + "|:github: View Repository>")}
+                      ]
+                    }
+                  ]
+                }]
+              }
+          ' <<< "$jobs" | curl --fail --silent --show-error \
+            -X POST -H 'Content-Type: application/json' \
+            --data-binary @- "$SLACK_WEBHOOK"
