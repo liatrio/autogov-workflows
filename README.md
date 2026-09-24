@@ -178,6 +178,8 @@ Each identity consists of a version (e.g. `0.5.1`), a commit SHA, a `status`, an
 
 When a new release is tagged, the release creates a tag pointing to a specific commit, and that tag's commit SHA is recorded in the identity entries. An automated workflow then updates `cert-identities.json` in a **separate** commit to `main` — the original tag remains pointing to its initial commit (intentionally). When consuming these workflows, reference them by their full identity URL with commit SHA rather than a branch ref, for immutability and security.
 
+The online and offline verifiers obtain the called workflow's repository and commit from GitHub OIDC, then select the allowlist asset from the unique immutable published release whose tag resolves to that commit. This includes the signer entries generated for that release; the source file at the workflow commit predates those entries. A missing OIDC identity, unmatched or ambiguous release, missing asset, or invalid asset digest fails verification. Callers must grant the existing `id-token: write` permission and use a published workflow release (tag or full commit SHA). The separate release metadata commit is not that release's workflow commit. When `cert-identities-repo` explicitly names a different repository, its default-branch allowlist is used as before.
+
 ### Verification Using Cosign
 
 You can also verify bundles with Sigstore's [cosign](https://github.com/sigstore/cosign) via `cosign verify-blob-attestation` (note: verifying images this way requires extra tooling such as regctl or Docker to fetch the OCI artifacts).
@@ -480,11 +482,20 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `octo-sts-identity` (optional, string, default: ''): octo-sts identity. Required when `octo-sts-scope` is set.
 - `autogov-repo` (optional, string, default: 'liatrio/autogov'): Repository to download the autogov CLI release from.
 - `policy-repo` (optional, string, default: 'liatrio/autogov-policy-library'): Repository providing the OPA policy bundle and schemas (consumed as `ghrel://<policy-repo>?asset=...`).
-- `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
+- `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`). When this is the called workflow repository, verification uses the matching immutable release asset; an explicit different repository uses its default branch.
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
 - **(vuln-threshold block)**
-- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+
 - `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
+
+For example, require source-review evidence with at least two qualifying approvals:
+
+```yaml
+policy-data-overlay: '{"source_review_thresholds":{"require_source_review":true,"min_approvals":2}}'
+```
+
+Use `source_review_thresholds` as the external data key. `source_review_config` is a Rego package name; setting its rule names in external data causes a policy compilation conflict. The overlay must be a JSON object and cannot set `vuln_thresholds`; use the validated `vuln-threshold-*` inputs for those values.
 
 #### `.github/workflows/rw-verify-offline.yaml`
 
@@ -497,10 +508,10 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `github-token` (optional, string, default: ''): The GitHub token set throughout the reusable workflow including the composite (build) action.
 - `workflow-runner-label` (optional, string, default: 'ubuntu-latest'): The label of the workflow runner.
 - `autogov-version` (optional, string, default: `ff839e23f922e176897232c5b4148dc1d4c1b983`, the v1.3.0 commit): The autogov release tag or full 40-character released commit SHA to use (input name retained for backwards compatibility).
-- `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`).
+- `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`). When this is the called workflow repository, verification uses the matching immutable release asset; an explicit different repository uses its default branch.
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - **(vuln-threshold block)**
-- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_config` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
 - `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
 
 #### `.github/workflows/rw-release.yaml`

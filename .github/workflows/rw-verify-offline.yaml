@@ -72,7 +72,7 @@ on:
       policy-data-overlay:
         description: >
           Optional JSON merged over the generated vuln thresholds to enable
-          per-repo gates such as source_review_config / bypass_config /
+          per-repo gates such as source_review_thresholds / bypass_config /
           code_scan_thresholds. Empty (default) disables the overlay.
         required: false
         type: string
@@ -100,7 +100,7 @@ on:
         type: boolean
         default: ${{ github.repository != 'liatrio/autogov-workflows' }}
       cert-identities-repo:
-        description: Repository hosting cert-identities.json (the signer allowlist).
+        description: Repository hosting the signer allowlist. The called workflow repository uses its matching immutable release asset; a different repository uses its default branch.
         required: false
         type: string
         default: liatrio/autogov-workflows
@@ -203,21 +203,56 @@ jobs:
         env:
           GH_TOKEN: ${{ inputs.octo-sts-scope == '' && (inputs.github-token || github.token) || steps.octo-sts.outputs.token }}
           CERT_IDENTITIES_REPO: ${{ inputs.cert-identities-repo }}
-          GH_REPO: ${{ github.repository }}
-          JOB_WF_SHA: ${{ github.job_workflow_sha }}
         run: |
-          # Pin the allowlist fetch to the running reusable-workflow SHA when the
-          # allowlist lives in this same repo (TOCTOU), else fall back to the
-          # default branch. Inputs reach the shell via env, never template splicing.
-          ref_qs=""
-          if [ "$CERT_IDENTITIES_REPO" = "$GH_REPO" ] && [ -n "$JOB_WF_SHA" ]; then
-            ref_qs="?ref=$JOB_WF_SHA"
-            echo "cert-identities.json pinned to job_workflow_sha $JOB_WF_SHA"
-          else
-            echo "cert-identities.json fetched from $CERT_IDENTITIES_REPO default branch (unpinned: cross-repo or empty job_workflow_sha)"
+          set -euo pipefail
+          set +x
+          # github.repository/workflow_sha describe the caller. Obtain the called
+          # workflow identity from GitHub's documented OIDC claims instead. Trust
+          # only this direct HTTPS response, never a token supplied by an input.
+          if ! claims="$(curl --fail --silent --show-error --retry 3 --proto '=https' \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?OIDC permission required}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL:?OIDC endpoint required}&audience=autogov-cert-identities" |
+            jq -er '.value | split(".") | select(length == 3) | .[1] |
+              gsub("-"; "+") | gsub("_"; "/") | @base64d | fromjson |
+              select(.iss == "https://token.actions.githubusercontent.com" and .aud == "autogov-cert-identities") |
+              select(.job_workflow_ref | type == "string") |
+              select(.job_workflow_sha | type == "string" and test("^[0-9a-fA-F]{40}$")) |
+              [.job_workflow_ref, .job_workflow_sha] | @tsv')"; then
+            echo "::error::Cannot obtain the called workflow identity from GitHub OIDC"
+            exit 1
           fi
-          gh api "repos/$CERT_IDENTITIES_REPO/contents/cert-identities.json$ref_qs" \
-            --jq '.content' | base64 -d > cert-identities.json
+          IFS=$'\t' read -r job_wf_ref job_wf_sha <<< "$claims"
+          if ! [[ "$job_wf_ref" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/\.github/workflows/[^/@]+\.ya?ml@.+$ ]]; then
+            echo "::error::Invalid called workflow reference in GitHub OIDC claims"
+            exit 1
+          fi
+          job_wf_repo="${BASH_REMATCH[1]}"
+          if [ "${CERT_IDENTITIES_REPO,,}" = "${job_wf_repo,,}" ]; then
+            # The source file at the workflow SHA predates its own signer entry.
+            # Resolve the immutable release by its peeled tag commit, then use
+            # the allowlist asset generated for that release. Never use HEAD.
+            releases="$(gh api --paginate "repos/$CERT_IDENTITIES_REPO/releases?per_page=100" |
+              jq -sc 'add | map(select(.draft == false and .immutable == true) |
+                {id, tag_name, assets: [.assets[] | select(.name == "cert-identities.json") | {name, digest}]})')"
+            tags="$(gh api --paginate "repos/$CERT_IDENTITIES_REPO/tags?per_page=100" |
+              jq -sc 'add | map({name, commit: {sha: .commit.sha}})')"
+            release="$(jq -cen --arg sha "${job_wf_sha,,}" --argjson releases "$releases" --argjson tags "$tags" '
+              [$releases[] as $r | $tags[] |
+                select((.commit.sha | ascii_downcase) == $sha and .name == $r.tag_name) | $r] |
+              unique_by(.id) |
+              if length == 1 then .[0] else error("called workflow SHA must identify exactly one immutable published release") end')"
+            release_tag="$(jq -er '.tag_name | select(type == "string" and length > 0)' <<< "$release")"
+            digest="$(jq -er '.assets | map(select(.name == "cert-identities.json")) |
+              if length == 1 then .[0].digest else error("release must have exactly one cert-identities.json asset") end |
+              select(type == "string" and test("^sha256:[0-9a-f]{64}$"))' <<< "$release")"
+            gh release download "$release_tag" --repo "$CERT_IDENTITIES_REPO" --pattern cert-identities.json
+            printf '%s  cert-identities.json\n' "${digest#sha256:}" | sha256sum --check --strict -
+            echo "cert-identities.json bound to $job_wf_repo@$job_wf_sha immutable release $release_tag"
+          else
+            echo "cert-identities.json fetched from explicit cross-repo override $CERT_IDENTITIES_REPO default branch (unpinned)"
+            gh api "repos/$CERT_IDENTITIES_REPO/contents/cert-identities.json" \
+              --jq '.content' | base64 -d > cert-identities.json
+          fi
       - name: Validate Vulnerability Thresholds
         env:
           VULN_CRITICAL: ${{ inputs.vuln-threshold-critical }}
@@ -256,7 +291,7 @@ jobs:
             '{vuln_thresholds: {critical: $c, high: $h, medium: $m, low: $l}}' > vuln.json
           if [ -n "$OVERLAY" ]; then
             echo "$OVERLAY" | jq -e 'type == "object"' > /dev/null || { echo "error: policy-data-overlay must be a JSON object"; exit 1; }
-            # the overlay enables ADDITIONAL gate keys (source_review_config /
+            # the overlay enables ADDITIONAL gate keys (source_review_thresholds /
             # bypass_config / code_scan_thresholds); it must not override the
             # vuln thresholds, which come only from the validated inputs above.
             if echo "$OVERLAY" | jq -e 'has("vuln_thresholds")' > /dev/null; then
