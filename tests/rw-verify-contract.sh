@@ -58,9 +58,9 @@ cat > "$test_root/bin/gh" <<'SH'
 set -euo pipefail
 printf '%s\n' "$*" >> "$CALL_LOG"
 if [ "$1" = api ]; then
-  [ "${API_FAILURE:-false}" = false ] || exit 24
   shift
   if [ "$1" = --paginate ]; then
+    [ "${API_FAILURE:-false}" = false ] || exit 24
     [ "$#" = 2 ] || exit 94
     endpoint="$2"
     case "$endpoint" in
@@ -71,9 +71,18 @@ if [ "$1" = api ]; then
     # gh --paginate emits each response page as a separate JSON array.
     jq -c '.[]' "$FIXTURE_DIR/$fixture.json"
   else
-    [ "$1" = 'repos/example/security/contents/cert-identities.json' ] || exit 95
-    [ "$2" = --jq ] && [ "$3" = .content ] || exit 96
-    base64 < "$FIXTURE_DIR/override.json"
+    [ "${REPO_API_FAILURE:-false}" = false ] || exit 25
+    [ "$2" = --jq ] && [ "$#" = 3 ] || exit 96
+    case "${1,,}" in
+      repos/liatrio/autogov-workflows|repos/liatrio/old-workflows)
+        jq "$3" "$FIXTURE_DIR/called-repo.json" -r ;;
+      repos/example/security|repos/example/old-security)
+        jq "$3" "$FIXTURE_DIR/override-repo.json" -r ;;
+      repos/example/security/contents/cert-identities.json)
+        [ "$3" = .content ] || exit 96
+        base64 < "$FIXTURE_DIR/override.json" ;;
+      *) exit 95 ;;
+    esac
   fi
 elif [ "$1" = release ] && [ "$2" = download ]; then
   [ "$3" = v1.1.5 ] && [ "$4" = --repo ] || exit 97
@@ -106,6 +115,8 @@ reset_fixtures() {
   local filename="$1" digest
   jq -n --arg sha "$workflow_sha" '{identities:[{version:"1.1.5",sha:$sha,status:"latest",identities:[("https://github.com/liatrio/autogov-workflows/.github/workflows/rw-attest-image.yaml@"+$sha)]}]}' > "$FIXTURE_DIR/release-allowlist.json"
   printf '%s\n' '{"identities":[{"version":"override"}]}' > "$FIXTURE_DIR/override.json"
+  printf '%s\n' '{"id":892862598,"full_name":"liatrio/autogov-workflows"}' > "$FIXTURE_DIR/called-repo.json"
+  printf '%s\n' '{"id":123456789,"full_name":"example/security"}' > "$FIXTURE_DIR/override-repo.json"
   digest="$(sha256sum "$FIXTURE_DIR/release-allowlist.json")"
   digest="${digest%% *}"
   # v1.1.5's actual annotated tag peels to workflow_sha, not metadata_sha.
@@ -115,7 +126,7 @@ reset_fixtures() {
   jq -n --arg sha "$workflow_sha" --arg filename "$filename" --arg caller_sha "$GITHUB_SHA" '{iss:"https://token.actions.githubusercontent.com",aud:"autogov-cert-identities",repository:"external-org/application",workflow_sha:$caller_sha,job_workflow_ref:("liatrio/autogov-workflows/.github/workflows/"+$filename+"@refs/tags/v1.1.5"),job_workflow_sha:$sha}' > "$FIXTURE_DIR/claims.json"
   write_oidc_response
   export CERT_IDENTITIES_REPO=liatrio/autogov-workflows
-  export OIDC_FAILURE=false DOWNLOAD_FAILURE=false API_FAILURE=false
+  export OIDC_FAILURE=false DOWNLOAD_FAILURE=false API_FAILURE=false REPO_API_FAILURE=false
 }
 
 mutate_fixture() {
@@ -184,12 +195,68 @@ for filename in rw-verify.yaml rw-verify-offline.yaml; do
   assert_absent "$CALL_LOG" /contents/
 
   reset_fixtures "$filename"
+  export CERT_IDENTITIES_REPO=liatrio/old-workflows
+  run_resolver same-repo-rename-alias pass
+  assert_contains "$CALL_LOG" 'release download v1.1.5 --repo liatrio/autogov-workflows --pattern cert-identities.json'
+  assert_absent "$CALL_LOG" /contents/
+
+  reset_fixtures "$filename"
+  export CERT_IDENTITIES_REPO=liatrio/old-workflows
+  mutate_fixture claims ".job_workflow_sha = \"$metadata_sha\""
+  run_resolver same-repo-alias-metadata-commit fail
+  assert_absent "$CALL_LOG" 'release download'
+
+  reset_fixtures "$filename"
+  mutate_fixture claims '.job_workflow_ref |= sub("liatrio/autogov-workflows/"; "liatrio/old-workflows/")'
+  run_resolver called-repo-rename-alias pass
+  assert_contains "$CALL_LOG" 'release download v1.1.5 --repo liatrio/autogov-workflows --pattern cert-identities.json'
+  assert_absent "$CALL_LOG" /contents/
+
+  # Encoded paths and URL/path suffixes must fail before even the metadata API.
+  for invalid_repo in \
+    'liatrio/%61utogov-workflows' \
+    'liatrio/autogov-workflows?ref=main' \
+    'liatrio/autogov-workflows#fragment' \
+    'liatrio/autogov-workflows/contents' \
+    'liatrio/../autogov-workflows' \
+    'liatrio/..' \
+    'liatrio/.' \
+    'liatrio/autogov-wörkflows'; do
+    reset_fixtures "$filename"
+    export CERT_IDENTITIES_REPO="$invalid_repo"
+    mutate_fixture claims ".job_workflow_sha = \"$metadata_sha\""
+    run_resolver "invalid-repo-$(printf '%s' "$invalid_repo" | sha256sum | cut -c 1-12)" fail
+    [ ! -s "$CALL_LOG" ] || fail 'invalid repository reached a transport'
+  done
+
+  reset_fixtures "$filename"
   export CERT_IDENTITIES_REPO=example/security
   run_resolver cross-repo-override pass
   assert_contains "$CALL_LOG" 'api repos/example/security/contents/cert-identities.json --jq .content'
   assert_absent "$CALL_LOG" 'release download'
   assert_absent "$CALL_LOG" '/releases?'
   cmp "$FIXTURE_DIR/override.json" "$case_root/cross-repo-override/cert-identities.json"
+
+  reset_fixtures "$filename"
+  export CERT_IDENTITIES_REPO=example/old-security
+  run_resolver cross-repo-rename-alias pass
+  assert_contains "$CALL_LOG" 'api repos/example/security/contents/cert-identities.json --jq .content'
+  assert_absent "$CALL_LOG" '/releases?'
+  cmp "$FIXTURE_DIR/override.json" "$case_root/cross-repo-rename-alias/cert-identities.json"
+
+  reset_fixtures "$filename"
+  mutate_fixture called-repo 'del(.id)'
+  run_resolver missing-repository-id fail
+
+  reset_fixtures "$filename"
+  export REPO_API_FAILURE=true
+  run_resolver repository-api-denied fail
+  assert_absent "$CALL_LOG" '/releases?'
+
+  reset_fixtures "$filename"
+  export CERT_IDENTITIES_REPO=example/security
+  mutate_fixture override-repo '.full_name = "example/%73ecurity"'
+  run_resolver invalid-canonical-repository-name fail
 
   reset_fixtures "$filename"
   mutate_fixture claims "del(.job_workflow_sha)"

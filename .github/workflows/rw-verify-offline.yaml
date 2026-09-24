@@ -206,6 +206,15 @@ jobs:
         run: |
           set -euo pipefail
           set +x
+          valid_repository() {
+            local LC_ALL=C
+            [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$ ]] &&
+              [[ "${1#*/}" != . && "${1#*/}" != .. ]]
+          }
+          if ! valid_repository "$CERT_IDENTITIES_REPO"; then
+            echo "::error::cert-identities-repo must be an ASCII owner/name repository name"
+            exit 1
+          fi
           # github.repository/workflow_sha describe the caller. Obtain the called
           # workflow identity from GitHub's documented OIDC claims instead. Trust
           # only this direct HTTPS response, never a token supplied by an input.
@@ -227,7 +236,27 @@ jobs:
             exit 1
           fi
           job_wf_repo="${BASH_REMATCH[1]}"
-          if [ "${CERT_IDENTITIES_REPO,,}" = "${job_wf_repo,,}" ]; then
+          if ! valid_repository "$job_wf_repo"; then
+            echo "::error::Invalid called workflow repository in GitHub OIDC claims"
+            exit 1
+          fi
+          # GitHub can redirect valid rename aliases to the same repository.
+          # Compare stable IDs, then use canonical names for subsequent requests.
+          canonical_repository() {
+            local identity repo_id full_name
+            identity="$(gh api "repos/$1" --jq '[.id, .full_name] | @tsv')" || return 1
+            IFS=$'\t' read -r repo_id full_name <<< "$identity"
+            if ! [[ "$repo_id" =~ ^[1-9][0-9]*$ ]] || ! valid_repository "$full_name"; then
+              echo "::error::Cannot resolve a canonical repository identity" >&2
+              return 1
+            fi
+            printf '%s\t%s\n' "$repo_id" "$full_name"
+          }
+          cert_repo_identity="$(canonical_repository "$CERT_IDENTITIES_REPO")"
+          job_repo_identity="$(canonical_repository "$job_wf_repo")"
+          IFS=$'\t' read -r cert_repo_id CERT_IDENTITIES_REPO <<< "$cert_repo_identity"
+          IFS=$'\t' read -r job_repo_id job_wf_repo <<< "$job_repo_identity"
+          if [ "$cert_repo_id" = "$job_repo_id" ]; then
             # The source file at the workflow SHA predates its own signer entry.
             # Resolve the immutable release by its peeled tag commit, then use
             # the allowlist asset generated for that release. Never use HEAD.
