@@ -49,9 +49,21 @@ jobs:
           SHELLCHECK_OPTS: --severity=warning
         run: |
           set -euo pipefail
-          # github.job_workflow_sha is a valid GitHub context property that actionlint's
-          # static schema does not yet recognize — ignore that one false positive.
-          actionlint -color -ignore 'property "job_workflow_sha" is not defined'
+          actionlint -color
+      - name: Test verification contracts
+        env:
+          # Match the OPA version embedded in the default autogov v1.3.0 CLI.
+          OPA_VERSION: 1.19.0
+          OPA_SHA256: 1dd5c5591ff856f5e20a1d66bafae9511ddf3c5552ed3b5070c70b2b6580ee3f
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static" \
+            --output "$RUNNER_TEMP/opa"
+          echo "${OPA_SHA256}  $RUNNER_TEMP/opa" | sha256sum --check --strict -
+          chmod +x "$RUNNER_TEMP/opa"
+          shellcheck -s bash tests/rw-verify-contract.sh
+          OPA_TEST_BINARY="$RUNNER_TEMP/opa" bash tests/rw-verify-contract.sh
       - name: Test release asset wiring
         run: |
           set -euo pipefail
