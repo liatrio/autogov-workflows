@@ -281,7 +281,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ inputs.github-token || github.token }}
       - name: Generate SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
           format: cyclonedx-json
@@ -374,7 +374,7 @@ jobs:
           [ -s autogov ] || { echo "::error::downloaded autogov binary is empty"; exit 1; }
           chmod +x autogov
       - name: Scan current project
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         id: anchore-scan
         with:
           image: ${{ format('{0}/{1}@{2}', inputs.registry, needs.build-high-perms.outputs.subject-name-sanitized, needs.build-high-perms.outputs.image-digest) }}
