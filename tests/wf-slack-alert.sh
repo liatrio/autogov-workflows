@@ -177,8 +177,9 @@ reset_case
 unset SLACK_WEBHOOK
 rm "$GITHUB_EVENT_PATH"
 run_alert || fail "missing webhook should skip successfully"
-[ ! -e "$tmp/gh.calls" ] && [ ! -e "$tmp/curl.calls" ] && [ ! -e "$tmp/git.called" ] ||
+if [ -e "$tmp/gh.calls" ] || [ -e "$tmp/curl.calls" ] || [ -e "$tmp/git.called" ]; then
   fail "missing webhook must skip all lookups and requests"
+fi
 grep -Fq "::notice::SLACK_WEBHOOK is not configured; skipping Slack alert." "$tmp/output.log" ||
   fail "missing webhook did not explain the skip"
 echo "PASS: missing webhook explicitly skips without any request"
@@ -186,8 +187,9 @@ echo "PASS: missing webhook explicitly skips without any request"
 reset_case
 export SLACK_WEBHOOK=""
 run_alert || fail "empty webhook should skip successfully"
-[ ! -e "$tmp/gh.calls" ] && [ ! -e "$tmp/curl.calls" ] ||
+if [ -e "$tmp/gh.calls" ] || [ -e "$tmp/curl.calls" ]; then
   fail "empty webhook must skip all requests"
+fi
 grep -Fq "::notice::SLACK_WEBHOOK is not configured; skipping Slack alert." "$tmp/output.log" ||
   fail "empty webhook did not explain the skip"
 echo "PASS: empty webhook explicitly skips without any request"
