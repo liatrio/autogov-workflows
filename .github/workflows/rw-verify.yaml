@@ -84,7 +84,7 @@ on:
       policy-data-overlay:
         description: >
           Optional JSON merged over the generated vuln thresholds to enable
-          per-repo gates such as source_review_thresholds / bypass_config /
+          per-repo gates such as source_review_thresholds / bypass_thresholds /
           code_scan_thresholds. Empty (default) disables the overlay.
         required: false
         type: string
@@ -342,7 +342,7 @@ jobs:
           if [ -n "$OVERLAY" ]; then
             echo "$OVERLAY" | jq -e 'type == "object"' > /dev/null || { echo "error: policy-data-overlay must be a JSON object"; exit 1; }
             # the overlay enables ADDITIONAL gate keys (source_review_thresholds /
-            # bypass_config / code_scan_thresholds); it must not override the
+            # bypass_thresholds / code_scan_thresholds); it must not override the
             # vuln thresholds, which come only from the validated inputs above.
             if echo "$OVERLAY" | jq -e 'has("vuln_thresholds")' > /dev/null; then
               echo "error: policy-data-overlay must not set vuln_thresholds; use the validated vuln-threshold-* inputs"; exit 1

@@ -485,7 +485,7 @@ More information about `octo-sts` can be found in the [octo-sts app](https://git
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`). When this is the called workflow repository, verification uses the matching immutable release asset; an explicit different repository uses its default branch.
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list for validation.
 - **(vuln-threshold block)**
-- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_thresholds` / `code_scan_thresholds`. Empty disables the overlay.
 
 - `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
 
@@ -511,7 +511,7 @@ Use `source_review_thresholds` as the external data key. `source_review_config` 
 - `cert-identities-repo` (optional, string, default: 'liatrio/autogov-workflows'): Repository providing the cert-identities allowlist (`cert-identities.json`). When this is the called workflow repository, verification uses the matching immutable release asset; an explicit different repository uses its default branch.
 - `use-cert-identity-list` (optional, boolean, default: '${{ github.repository != 'liatrio/autogov-workflows' }}'): Whether to use cert-identity-list (multi-signer allowlist) for validation. Mirrors the online verify default.
 - **(vuln-threshold block)**
-- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_config` / `code_scan_thresholds`. Empty disables the overlay.
+- `policy-data-overlay` (optional, string, default: ''): Optional JSON merged over the generated vuln thresholds to enable per-repo gates such as `source_review_thresholds` / `bypass_thresholds` / `code_scan_thresholds`. Empty disables the overlay.
 - `allow-failed-vsa` (optional, boolean, default: false): When false, a FAILED policy result fails this job after the FAILED VSA is attested and uploaded (record preserved, release blocked); set true to keep the advisory (non-gating) behavior. (Also accepted by the `rw-build-image` / `rw-build-blob` / `rw-build-blob-offline` workflows.)
 
 #### `.github/workflows/rw-release.yaml`
