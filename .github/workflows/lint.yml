@@ -57,7 +57,19 @@ jobs:
           set -euo pipefail
           shellcheck -s bash tests/rw-release-assets.sh
           bash tests/rw-release-assets.sh
+      - name: Test setup-autogov fixtures
+        run: |
+          set -euo pipefail
+          shellcheck -s bash .github/actions/setup-autogov/setup.sh tests/setup-autogov.sh
+          bash tests/setup-autogov.sh
+      - name: Install released autogov with setup-autogov
+        id: setup-autogov
+        uses: ./.github/actions/setup-autogov
+        with:
+          autogov-version: ff839e23f922e176897232c5b4148dc1d4c1b983 # v1.3.0
       - name: Test released autogov asset resolution
+        env:
+          AUTOGOV_TEST_BINARY: ${{ steps.setup-autogov.outputs.path }}
         run: |
           set -euo pipefail
           shellcheck -s bash tests/rw-release-cli.sh
