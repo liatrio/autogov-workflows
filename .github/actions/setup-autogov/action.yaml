@@ -1,0 +1,46 @@
+name: Setup AutoGov
+
+description: >-
+  Downloads an immutable AutoGov release, verifies its signed GitHub release
+  attestation and SHA-256 digest, and adds the binary to PATH.
+
+inputs:
+  autogov-version:
+    description: >-
+      Immutable release tag or full 40-character released commit SHA.
+    required: true
+  autogov-repo:
+    description: Repository containing the AutoGov release.
+    required: false
+    default: liatrio/autogov
+  github-token:
+    description: >-
+      GitHub token with contents: read access to autogov-repo.
+    required: false
+    default: ''
+
+outputs:
+  path:
+    description: Absolute path to the verified AutoGov binary.
+    value: ${{ steps.setup.outputs.path }}
+  release-tag:
+    description: Immutable release tag selected for installation.
+    value: ${{ steps.setup.outputs.release-tag }}
+  commit-sha:
+    description: Commit SHA referenced by the immutable release tag.
+    value: ${{ steps.setup.outputs.commit-sha }}
+  sha256:
+    description: GitHub-published SHA-256 digest of the verified binary.
+    value: ${{ steps.setup.outputs.sha256 }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install verified AutoGov release
+      id: setup
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
+        AUTOGOV_VERSION: ${{ inputs.autogov-version }}
+        AUTOGOV_REPO: ${{ inputs.autogov-repo }}
+      run: '"$GITHUB_ACTION_PATH/setup.sh"'
