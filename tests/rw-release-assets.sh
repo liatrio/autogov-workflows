@@ -87,7 +87,7 @@ for input_file in \
   rw-attest-blob-offline.yaml rw-attest-blob.yaml rw-attest-image.yaml \
   rw-build-blob-offline.yaml rw-build-blob.yaml rw-build-image.yaml \
   rw-release.yaml rw-verify-offline.yaml rw-verify.yaml; do
-  assert_input_default "$repo_root/.github/workflows/$input_file" autogov-version ff839e23f922e176897232c5b4148dc1d4c1b983
+  assert_input_default "$repo_root/.github/workflows/$input_file" autogov-version c78ba4d39b3e7a2fc752389f738aeddd53b8eba5
 done
 
 while IFS='|' read -r installer_file expected_count; do

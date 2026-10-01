@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AUTOGOV_VERSION='v1.3.0'
-AUTOGOV_SHA256='570a49ccf59376cb4c341041e00fa6126e5653cdec73ea8f6532b9d60562ef3d'
+AUTOGOV_VERSION='v1.4.5'
+AUTOGOV_COMMIT='c78ba4d39b3e7a2fc752389f738aeddd53b8eba5'
+OPA_VERSION='v1.20.2'
+AUTOGOV_SHA256='8d71b5b3a5108b53b31e35a57d4b7234d61009a5b8c661e7efa3b43f793b43bc'
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 assert_contains() { grep -Fq -- "$2" "$1" || fail "expected '$2' in $1"; }
@@ -25,6 +27,17 @@ else
   echo "${AUTOGOV_SHA256}  ${autogov}" | sha256sum --check --strict -
   chmod +x "$autogov"
 fi
+
+# Check the executable selected by setup-autogov, not just the configured pin.
+"$autogov" version > "$test_root/version.out"
+assert_line "$test_root/version.out" "autogov version $AUTOGOV_VERSION"
+assert_line "$test_root/version.out" "  commit: $AUTOGOV_COMMIT"
+go version -m "$autogov" > "$test_root/buildinfo.out"
+awk -v expected="$OPA_VERSION" '
+  $1 == "dep" && $2 == "github.com/open-policy-agent/opa" && $3 == expected { found = 1 }
+  END { exit !found }
+' "$test_root/buildinfo.out" || fail "installed CLI does not embed OPA $OPA_VERSION"
+echo "Released CLI metadata verified: $AUTOGOV_VERSION ($AUTOGOV_COMMIT), OPA $OPA_VERSION"
 
 repo="$test_root/repo"
 git init --initial-branch=main "$repo" >/dev/null
@@ -96,4 +109,4 @@ git -C "$repo" diff --cached --quiet || fail 'CLI preflight staged repository ch
 [ "$(git -C "$repo" tag --list)" = "$baseline_tags" ] || fail 'CLI preflight created a tag'
 [ -z "$(git -C "$repo" status --porcelain)" ] || fail 'CLI preflight created staged or untracked repository state'
 
-echo 'rw-release v1.3.0 CLI regression tests passed'
+echo "rw-release $AUTOGOV_VERSION CLI regression tests passed"
