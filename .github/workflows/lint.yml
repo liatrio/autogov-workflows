@@ -81,7 +81,7 @@ jobs:
           bash tests/setup-autogov.sh
       - name: Install released autogov with setup-autogov
         id: setup-autogov
-        uses: $/.github/actions/setup-autogov
+        uses: ./.github/actions/setup-autogov
         with:
           autogov-version: c78ba4d39b3e7a2fc752389f738aeddd53b8eba5 # v1.4.5
       - name: Test released autogov asset resolution
