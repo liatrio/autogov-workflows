@@ -30,7 +30,7 @@ jobs:
       ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Install actionlint (pinned + checksum-verified)
@@ -81,7 +81,7 @@ jobs:
           bash tests/setup-autogov.sh
       - name: Install released autogov with setup-autogov
         id: setup-autogov
-        uses: ./.github/actions/setup-autogov
+        uses: $/.github/actions/setup-autogov
         with:
           autogov-version: c78ba4d39b3e7a2fc752389f738aeddd53b8eba5 # v1.4.5
       - name: Test released autogov asset resolution
