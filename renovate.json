@@ -15,10 +15,10 @@
         "/^\\.github/workflows/.*\\.ya?ml$/"
       ],
       "matchStrings": [
-        "autogov-version:[\\s\\S]*?default:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+        "autogov-version:\\n(?:[ \\t]+[^\\n]*\\n)*?[ \\t]+default:[ \\t]*(?<currentDigest>[0-9a-f]{40})[ \\t]*#[ \\t]*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
       ],
       "depNameTemplate": "liatrio/autogov",
-      "datasourceTemplate": "github-releases"
+      "datasourceTemplate": "github-tags"
     },
     {
       "customType": "regex",
@@ -26,10 +26,21 @@
         "/^README\\.md$/"
       ],
       "matchStrings": [
-        "autogov-version`.*?default: '(?<currentValue>v\\d+\\.\\d+\\.\\d+)'"
+        "autogov-version`[^\\n]*?default: `(?<currentDigest>[0-9a-f]{40})`, the (?<currentValue>v\\d+\\.\\d+\\.\\d+) commit"
       ],
       "depNameTemplate": "liatrio/autogov",
-      "datasourceTemplate": "github-releases"
+      "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^tests/rw-release-assets\\.sh$/"
+      ],
+      "matchStrings": [
+        "assert_input_default [^\\n]* autogov-version (?<currentDigest>[0-9a-f]{40}) # (?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "liatrio/autogov",
+      "datasourceTemplate": "github-tags"
     }
   ],
   "packageRules": [
