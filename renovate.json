@@ -4,7 +4,9 @@
   "minimumReleaseAge": "14 days",
   "minimumReleaseAgeBehaviour": "timestamp-required",
   "internalChecksFilter": "strict",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": false
+  },
   "automerge": false,
   "customManagers": [
     {
